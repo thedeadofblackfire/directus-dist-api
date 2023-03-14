@@ -2,7 +2,6 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.systemFieldRows = void 0;
 const lodash_1 = require("lodash");
@@ -80,7 +79,7 @@ if (process.env?.VERCEL || (process.env?.VERCEL_REGION && process.env.VERCEL_REG
     fieldData = fse.readdirSync(path.resolve(__dirname));
 }
 */
-console.log('__fieldData__', (_a = process.env) === null || _a === void 0 ? void 0 : _a.VERCEL_REGION, fieldData);
+//console.log('__fieldData__', process.env?.VERCEL_REGION, fieldData);
 exports.systemFieldRows = [];
 for (const filepath of fieldData) {
     if (filepath.includes('_defaults') || filepath.includes('index'))
