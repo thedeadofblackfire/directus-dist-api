@@ -1,0 +1,15 @@
+import { Accountability } from '@directus/shared/types';
+import { Knex } from 'knex';
+import { AbstractServiceOptions, Snapshot, SnapshotDiff, SnapshotDiffWithHash, SnapshotWithHash } from '../types';
+export declare class SchemaService {
+    knex: Knex;
+    accountability: Accountability | null;
+    constructor(options: Omit<AbstractServiceOptions, 'schema'>);
+    snapshot(): Promise<Snapshot>;
+    apply(payload: SnapshotDiffWithHash): Promise<void>;
+    diff(snapshot: Snapshot, options?: {
+        currentSnapshot?: Snapshot;
+        force?: boolean;
+    }): Promise<SnapshotDiff | null>;
+    getHashedSnapshot(snapshot: Snapshot): SnapshotWithHash;
+}
