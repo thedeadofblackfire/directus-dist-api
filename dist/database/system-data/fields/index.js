@@ -6,7 +6,6 @@ var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.systemFieldRows = void 0;
 const lodash_1 = require("lodash");
-const path_1 = __importDefault(require("path"));
 const get_auth_providers_1 = require("../../../utils/get-auth-providers");
 const require_yaml_1 = require("../../../utils/require-yaml");
 // @ts-ignore
@@ -86,7 +85,7 @@ exports.systemFieldRows = [];
 for (const filepath of fieldData) {
     if (filepath.includes('_defaults') || filepath.includes('index'))
         continue;
-    console.log(path_1.default.resolve(__dirname, filepath));
+    //console.log(path.resolve(__dirname, filepath));
     //const systemFields = requireYAML(path.resolve(__dirname, filepath));
     const systemFields = (0, require_yaml_1.requireYAML)(require.resolve('./' + filepath));
     //const systemFields = requireYAML(process.cwd()+'/dist/database/system-data/fields/'+filepath);
