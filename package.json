@@ -37,7 +37,7 @@
 		"!**/__*__/"
 	],
 	"scripts": {
-		"start": "npx directus start",
+		"start": "npx directus start"
 	},
 	"dependencies": {
 		"@authenio/samlify-node-xmllint": "2.0.0",
