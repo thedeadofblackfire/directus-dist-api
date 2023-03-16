@@ -119,7 +119,19 @@
 		"uuid": "9.0.0",
 		"uuid-validate": "0.0.3",
 		"vm2": "3.9.14",
-		"wellknown": "0.5.0"
+		"wellknown": "0.5.0",
+		"@directus/app": "9.23.1",
+		"@directus/extensions-sdk": "9.23.1",
+		"@directus/schema": "9.23.1",
+		"@directus/shared": "9.23.1",
+		"@directus/specs": "9.23.1",
+		"@directus/storage": "9.23.1",
+		"@directus/storage-driver-azure": "9.23.1",
+		"@directus/storage-driver-cloudinary": "9.23.1",
+		"@directus/storage-driver-gcs": "9.23.1",
+		"@directus/storage-driver-local": "9.23.1",
+		"@directus/storage-driver-s3": "9.23.1",
+		"@directus/utils": "9.23.1"
 	},
 	"optionalDependencies": {
 		"@keyv/redis": "2.5.5",
