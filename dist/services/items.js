@@ -256,10 +256,6 @@ class ItemsService {
                 accountability: this.accountability,
             })
             : query;
-        //readByQuery { fields: [ '*' ], limit: 1 }
-        //console.log('readByQuery', updatedQuery);
-        //console.log('accountability', this.accountability);
-        //if (this.collection == 'directus_settings') console.log(this.schema.collections['directus_settings'].fields['module_bar']);
         let ast = await (0, get_ast_from_query_1.default)(this.collection, updatedQuery, this.schema, {
             accountability: this.accountability,
             // By setting the permissions action, you can read items using the permissions for another
@@ -268,7 +264,6 @@ class ItemsService {
             action: (opts === null || opts === void 0 ? void 0 : opts.permissionsAction) || 'read',
             knex: this.knex,
         });
-        //console.log('ast', ast);
         if (this.accountability && this.accountability.admin !== true) {
             const authorizationService = new authorization_1.AuthorizationService({
                 accountability: this.accountability,
@@ -282,7 +277,6 @@ class ItemsService {
             // GraphQL requires relational keys to be returned regardless
             stripNonRequested: (opts === null || opts === void 0 ? void 0 : opts.stripNonRequested) !== undefined ? opts.stripNonRequested : true,
         });
-        //console.log('records', records);
         if (records === null) {
             throw new exceptions_1.ForbiddenException();
         }

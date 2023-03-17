@@ -18,6 +18,7 @@ const services_1 = require("../services");
 const async_handler_1 = __importDefault(require("../utils/async-handler"));
 // @ts-ignore
 const format_title_1 = __importDefault(require("@directus/format-title"));
+const sanitize_query_1 = require("../utils/sanitize-query");
 const router = express_1.default.Router();
 router.use((0, use_collection_1.default)('directus_files'));
 const multipartHandler = (req, res, next) => {
@@ -209,7 +210,8 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
         keys = await service.updateMany(req.body.keys, req.body.data);
     }
     else {
-        keys = await service.updateByQuery(req.body.query, req.body.data);
+        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        keys = await service.updateByQuery(sanitizedQuery, req.body.data);
     }
     try {
         const result = await service.readMany(keys, req.sanitizedQuery);
@@ -253,7 +255,8 @@ router.delete('/', (0, validate_batch_1.validateBatch)('delete'), (0, async_hand
         await service.deleteMany(req.body.keys);
     }
     else {
-        await service.deleteByQuery(req.body.query);
+        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        await service.deleteByQuery(sanitizedQuery);
     }
     return next();
 }), respond_1.respond);

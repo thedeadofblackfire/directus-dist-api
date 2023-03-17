@@ -39,7 +39,7 @@ vitest_1.vi.mock('../../src/database/index', () => {
     let tracker;
     (0, vitest_1.beforeAll)(async () => {
         db = (0, knex_1.default)({ client: knex_mock_client_1.MockClient });
-        tracker = (0, knex_mock_client_1.getTracker)();
+        tracker = (0, knex_mock_client_1.createTracker)(db);
     });
     (0, vitest_1.beforeEach)(() => {
         tracker.on.any('directus_permissions').response({});

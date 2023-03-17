@@ -46,7 +46,7 @@ vitest_1.vi.mock('../cache', () => ({
     };
     (0, vitest_1.beforeAll)(() => {
         db = vitest_1.vi.mocked((0, knex_1.default)({ client: knex_mock_client_1.MockClient }));
-        tracker = (0, knex_mock_client_1.getTracker)();
+        tracker = (0, knex_mock_client_1.createTracker)(db);
     });
     (0, vitest_1.beforeEach)(() => {
         vitest_1.vi.mocked(index_1.getDatabaseClient).mockReturnValue('postgres');

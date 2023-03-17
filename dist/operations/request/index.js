@@ -14,25 +14,26 @@ exports.default = (0, utils_1.defineOperationApi)({
             acc[header] = value;
             return acc;
         }, {})) !== null && _a !== void 0 ? _a : {};
-        if (!customHeaders['Content-Type'] && isValidJSON(body)) {
+        if (!customHeaders['Content-Type'] && (typeof body === 'object' || (0, utils_1.isValidJSON)(body))) {
             customHeaders['Content-Type'] = 'application/json';
         }
         const axios = await (0, index_1.getAxios)();
-        const result = await axios({
-            url: (0, encodeurl_1.default)(url),
-            method,
-            data: body,
-            headers: customHeaders,
-        });
-        return { status: result.status, statusText: result.statusText, headers: result.headers, data: result.data };
-        function isValidJSON(value) {
-            try {
-                (0, utils_1.parseJSON)(value);
-                return true;
-            }
-            catch {
-                return false;
-            }
+        try {
+            const result = await axios({
+                url: (0, encodeurl_1.default)(url),
+                method,
+                data: body,
+                headers: customHeaders,
+            });
+            return { status: result.status, statusText: result.statusText, headers: result.headers, data: result.data };
+        }
+        catch (error) {
+            throw JSON.stringify({
+                status: error.response.status,
+                statusText: error.response.statusText,
+                headers: error.response.headers,
+                data: error.response.data,
+            });
         }
     },
 });

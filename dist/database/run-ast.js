@@ -61,7 +61,6 @@ async function runAST(originalAST, schema, options) {
         const rawItems = await dbQuery;
         if (!rawItems)
             return null;
-        //console.log('__rawItems', rawItems);
         // Run the items through the special transforms
         const payloadService = new payload_1.PayloadService(collection, { knex, schema });
         let items = await payloadService.processValues('read', rawItems);

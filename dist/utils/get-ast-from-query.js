@@ -173,7 +173,7 @@ async function getASTFromQuery(collection, query, schema, options) {
                     relation: relation,
                 };
                 for (const relatedCollection of allowedCollections) {
-                    child.children[relatedCollection] = await parseFields(relatedCollection, Array.isArray(nestedFields) ? nestedFields : nestedFields[relatedCollection] || ['*'], deep === null || deep === void 0 ? void 0 : deep[`${fieldKey}:${relatedCollection}`]);
+                    child.children[relatedCollection] = await parseFields(relatedCollection, Array.isArray(nestedFields) ? nestedFields : nestedFields[relatedCollection] || [], deep === null || deep === void 0 ? void 0 : deep[`${fieldKey}:${relatedCollection}`]);
                     child.query[relatedCollection] = getDeepQuery((deep === null || deep === void 0 ? void 0 : deep[`${fieldKey}:${relatedCollection}`]) || {});
                     child.relatedKey[relatedCollection] = schema.collections[relatedCollection].primary;
                 }

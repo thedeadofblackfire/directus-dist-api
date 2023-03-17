@@ -123,15 +123,11 @@ class PayloadService {
         return this;
     }
     async processValues(action, payload) {
-        //console.log('processValues', action);
         const processedPayload = (0, utils_1.toArray)(payload);
         if (processedPayload.length === 0)
             return [];
         const fieldsInPayload = Object.keys(processedPayload[0]);
-        //console.log('fieldsInPayload', fieldsInPayload);
-        //console.log(this.schema.collections[this.collection].fields);
         let specialFieldsInCollection = Object.entries(this.schema.collections[this.collection].fields).filter(([_name, field]) => field.special && field.special.length > 0);
-        //console.log('specialFieldsInCollection', specialFieldsInCollection);
         if (action === 'read') {
             specialFieldsInCollection = specialFieldsInCollection.filter(([name]) => {
                 return fieldsInPayload.includes(name);
@@ -175,12 +171,6 @@ class PayloadService {
         }
     }
     async processField(field, payload, action, accountability) {
-        /*
-        if (field.field == 'module_bar') {
-            console.log('field', field);
-            console.log('payload_field', payload[field.field]);
-        }
-        */
         if (!field.special)
             return payload[field.field];
         const fieldSpecials = field.special ? (0, utils_1.toArray)(field.special) : [];

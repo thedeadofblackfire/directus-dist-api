@@ -344,6 +344,8 @@ class FlowManager {
                 accountability: null,
                 ...context,
             });
+            // Validate that the operations result is serializable and thus catching the error inside the flow execution
+            JSON.stringify(result !== null && result !== void 0 ? result : null);
             // JSON structures don't allow for undefined values, so we need to replace them with null
             // Otherwise the applyOptionsData function will not work correctly on the next operation
             if (typeof result === 'object' && result !== null) {
@@ -352,7 +354,25 @@ class FlowManager {
             return { successor: operation.resolve, status: 'resolve', data: result !== null && result !== void 0 ? result : null, options };
         }
         catch (error) {
-            return { successor: operation.reject, status: 'reject', data: error !== null && error !== void 0 ? error : null, options };
+            let data;
+            if (error instanceof Error) {
+                // If the error is instance of Error, use the message of it as the error data
+                data = { message: error.message };
+            }
+            else if (typeof error === 'string') {
+                // If the error is a JSON string, parse it and use that as the error data
+                data = (0, utils_1.isValidJSON)(error) ? (0, utils_1.parseJSON)(error) : error;
+            }
+            else {
+                // If error is plain object, use this as the error data and otherwise fallback to null
+                data = error !== null && error !== void 0 ? error : null;
+            }
+            return {
+                successor: operation.reject,
+                status: 'reject',
+                data,
+                options,
+            };
         }
     }
 }

@@ -10,6 +10,7 @@ const respond_1 = require("../middleware/respond");
 const validate_batch_1 = require("../middleware/validate-batch");
 const services_1 = require("../services");
 const async_handler_1 = __importDefault(require("../utils/async-handler"));
+const sanitize_query_1 = require("../utils/sanitize-query");
 const router = express_1.default.Router();
 router.post('/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
     if (req.params.collection.startsWith('directus_'))
@@ -112,7 +113,8 @@ router.patch('/:collection', collection_exists_1.default, (0, validate_batch_1.v
         keys = await service.updateMany(req.body.keys, req.body.data);
     }
     else {
-        keys = await service.updateByQuery(req.body.query, req.body.data);
+        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        keys = await service.updateByQuery(sanitizedQuery, req.body.data);
     }
     try {
         const result = await service.readMany(keys, req.sanitizedQuery);
@@ -163,7 +165,8 @@ router.delete('/:collection', collection_exists_1.default, (0, validate_batch_1.
         await service.deleteMany(req.body.keys);
     }
     else {
-        await service.deleteByQuery(req.body.query);
+        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        await service.deleteByQuery(sanitizedQuery);
     }
     return next();
 }), respond_1.respond);

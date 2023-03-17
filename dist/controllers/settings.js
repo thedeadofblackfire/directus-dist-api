@@ -17,7 +17,6 @@ router.get('/', (0, async_handler_1.default)(async (req, res, next) => {
         schema: req.schema,
     });
     const records = await service.readSingleton(req.sanitizedQuery);
-    //console.log('records setup', records);
     res.locals.payload = { data: records || null };
     return next();
 }), respond_1.respond);

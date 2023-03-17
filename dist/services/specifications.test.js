@@ -14,7 +14,7 @@ class Client_PG extends knex_mock_client_1.MockClient {
     let tracker;
     (0, vitest_1.beforeAll)(async () => {
         db = vitest_1.vi.mocked((0, knex_1.default)({ client: Client_PG }));
-        tracker = (0, knex_mock_client_1.getTracker)();
+        tracker = (0, knex_mock_client_1.createTracker)(db);
     });
     (0, vitest_1.afterEach)(() => {
         tracker.reset();
