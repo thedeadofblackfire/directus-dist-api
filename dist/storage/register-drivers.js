@@ -12,6 +12,7 @@ const registerDrivers = async (storage) => {
         if (value && usedDrivers.includes(value) === false)
             usedDrivers.push(value);
     }
+	console.log('usedDrivers', usedDrivers);
     for (const driverName of usedDrivers) {
         const storageDriver = await (0, get_storage_driver_1.getStorageDriver)(driverName);
         if (storageDriver) {
