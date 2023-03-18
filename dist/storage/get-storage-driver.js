@@ -27,7 +27,8 @@ const getStorageDriver = async (driverName) => {
     else {
         throw new Error(`Driver "${driverName}" doesn't exist.`);
     }
-	return require(driverName); // change here
+	//return require(driverName); // change here
+	return (await require(driverName)).default; 
     //return (await import(driverName)).default;
 };
 exports.getStorageDriver = getStorageDriver;
