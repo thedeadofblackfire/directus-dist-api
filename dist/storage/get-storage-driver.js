@@ -2,8 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getStorageDriver = exports._aliasMap = void 0;
 exports._aliasMap = {
-    local: '/var/task/node_modules/@directus/storage-driver-local',
-    s3: '/var/task/node_modules/@directus/storage-driver-s3',
+    local: process.cwd()+'/node_modules/@directus/storage-driver-local',
+    s3: process.cwd()+'/node_modules/@directus/storage-driver-s3',
+	  //s3: '/var/task/node_modules/@directus/storage-driver-s3',
+	//local: '@directus/storage-driver-local',
+    //s3: '@directus/storage-driver-s3',
     gcs: '@directus/storage-driver-gcs',
     azure: '@directus/storage-driver-azure',
     cloudinary: '@directus/storage-driver-cloudinary',
