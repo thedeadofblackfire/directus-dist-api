@@ -18,14 +18,22 @@ const registerDrivers = async (storage) => {
         if (value && usedDrivers.includes(value) === false)
             usedDrivers.push(value);
     }
+	
 	console.log('usedDrivers', usedDrivers); // usedDrivers [ 'local', 's3' ]
 	
 	//storage.registerDriver('local', storageDrivers_local);
 	//storage.registerDriver('s3', storageDrivers_s3.default);
 	const { DriverLocal } = await import('@directus/storage-driver-local');
 	const { DriverS3 } = await import('@directus/storage-driver-s3');
+	//const { DriverAzure } = await import('@directus/storage-driver-azure');
+	//const { DriverGCS } = await import('@directus/storage-driver-gcs');
+	//const { DriverCloudinary } = await import('@directus/storage-driver-cloudinary');
+	
 	storage.registerDriver('local', DriverLocal);
 	storage.registerDriver('s3', DriverS3);
+	//storage.registerDriver('azure', DriverAzure);
+	//storage.registerDriver('gcs', DriverGCS);
+	//storage.registerDriver('cloudinary', DriverCloudinary);
 	 
 	 
 	/*
