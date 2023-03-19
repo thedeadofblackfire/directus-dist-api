@@ -4,10 +4,10 @@ exports.registerDrivers = void 0;
 const env_1 = require("../env");
 const get_storage_driver_1 = require("./get-storage-driver");
 
-//const storageDrivers_local = require("@directus/storage-driver-local");
-//const storageDrivers_s3 = require("@directus/storage-driver-s3");
-import { default as storageDrivers_local } from '@directus/storage-driver-local';
-import { default as storageDrivers_s3 } from '@directus/storage-driver-s3';
+const storageDrivers_local = require("@directus/storage-driver-local");
+const storageDrivers_s3 = require("@directus/storage-driver-s3");
+//import { default as storageDrivers_local } from '@directus/storage-driver-local';
+//import { default as storageDrivers_s3 } from '@directus/storage-driver-s3';
 
 const registerDrivers = async (storage) => {
     const env = (0, env_1.getEnv)();
@@ -27,7 +27,7 @@ const registerDrivers = async (storage) => {
 	*/
 	
 	storage.registerDriver('local', storageDrivers_local);
-	storage.registerDriver('s3', storageDrivers_s3);
+	storage.registerDriver('s3', storageDrivers_s3.default);
 	
 	/*
     for (const driverName of usedDrivers) {
