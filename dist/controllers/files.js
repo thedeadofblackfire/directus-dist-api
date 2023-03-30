@@ -37,13 +37,13 @@ const multipartHandler = (req, res, next) => {
     const busboy = (0, busboy_1.default)({ headers, defParamCharset: 'utf8' });
     const savedFiles = [];
     const service = new services_1.FilesService({ accountability: req.accountability, schema: req.schema });
-    const existingPrimaryKey = req.params.pk || undefined;
+    const existingPrimaryKey = req.params['pk'] || undefined;
     /**
      * The order of the fields in multipart/form-data is important. We require that all fields
      * are provided _before_ the files. This allows us to set the storage location, and create
      * the row in directus_files async during the upload of the actual file.
      */
-    let disk = (0, utils_1.toArray)(env_1.default.STORAGE_LOCATIONS)[0];
+    let disk = (0, utils_1.toArray)(env_1.default['STORAGE_LOCATIONS'])[0];
     let payload = {};
     let fileCount = 0;
     busboy.on('field', (fieldname, val) => {
@@ -64,12 +64,14 @@ const multipartHandler = (req, res, next) => {
             return busboy.emit('error', new exceptions_1.InvalidPayloadException(`File is missing filename`));
         }
         fileCount++;
-        if (!payload.title) {
-            payload.title = (0, format_title_1.default)(path_1.default.parse(filename).name);
+        if (!existingPrimaryKey) {
+            if (!payload.title) {
+                payload.title = (0, format_title_1.default)(path_1.default.parse(filename).name);
+            }
+            payload.filename_download = filename;
         }
         const payloadWithRequiredFields = {
             ...payload,
-            filename_download: filename,
             type: mimeType,
             storage: payload.storage || disk,
         };
@@ -83,6 +85,7 @@ const multipartHandler = (req, res, next) => {
         catch (error) {
             busboy.emit('error', error);
         }
+        return undefined;
     });
     busboy.on('error', (error) => {
         next(error);
@@ -96,7 +99,7 @@ const multipartHandler = (req, res, next) => {
             if (fileCount === 0) {
                 return next(new exceptions_1.InvalidPayloadException(`No files were included in the body`));
             }
-            res.locals.savedFiles = savedFiles;
+            res.locals['savedFiles'] = savedFiles;
             return next();
         }
     }
@@ -109,7 +112,7 @@ router.post('/', (0, async_handler_1.default)(exports.multipartHandler), (0, asy
     });
     let keys = [];
     if (req.is('multipart/form-data')) {
-        keys = res.locals.savedFiles;
+        keys = res.locals['savedFiles'];
     }
     else {
         keys = await service.createOne(req.body);
@@ -117,14 +120,14 @@ router.post('/', (0, async_handler_1.default)(exports.multipartHandler), (0, asy
     try {
         if (Array.isArray(keys) && keys.length > 1) {
             const records = await service.readMany(keys, req.sanitizedQuery);
-            res.locals.payload = {
+            res.locals['payload'] = {
                 data: records,
             };
         }
         else {
             const key = Array.isArray(keys) ? keys[0] : keys;
             const record = await service.readOne(key, req.sanitizedQuery);
-            res.locals.payload = {
+            res.locals['payload'] = {
                 data: record,
             };
         }
@@ -153,7 +156,7 @@ router.post('/import', (0, async_handler_1.default)(async (req, res, next) => {
     const primaryKey = await service.importOne(req.body.url, req.body.data);
     try {
         const record = await service.readOne(primaryKey, req.sanitizedQuery);
-        res.locals.payload = { data: record || null };
+        res.locals['payload'] = { data: record || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -183,7 +186,7 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
         result = await service.readByQuery(req.sanitizedQuery);
     }
     const meta = await metaService.getMetaForQuery('directus_files', req.sanitizedQuery);
-    res.locals.payload = { data: result, meta };
+    res.locals['payload'] = { data: result, meta };
     return next();
 });
 router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
@@ -193,8 +196,8 @@ router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const record = await service.readOne(req.params.pk, req.sanitizedQuery);
-    res.locals.payload = { data: record || null };
+    const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
+    res.locals['payload'] = { data: record || null };
     return next();
 }), respond_1.respond);
 router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handler_1.default)(async (req, res, next) => {
@@ -215,7 +218,7 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
     }
     try {
         const result = await service.readMany(keys, req.sanitizedQuery);
-        res.locals.payload = { data: result || null };
+        res.locals['payload'] = { data: result || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -230,10 +233,10 @@ router.patch('/:pk', (0, async_handler_1.default)(exports.multipartHandler), (0,
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.updateOne(req.params.pk, req.body);
+    await service.updateOne(req.params['pk'], req.body);
     try {
-        const record = await service.readOne(req.params.pk, req.sanitizedQuery);
-        res.locals.payload = { data: record || null };
+        const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
+        res.locals['payload'] = { data: record || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -243,7 +246,7 @@ router.patch('/:pk', (0, async_handler_1.default)(exports.multipartHandler), (0,
     }
     return next();
 }), respond_1.respond);
-router.delete('/', (0, validate_batch_1.validateBatch)('delete'), (0, async_handler_1.default)(async (req, res, next) => {
+router.delete('/', (0, validate_batch_1.validateBatch)('delete'), (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.FilesService({
         accountability: req.accountability,
         schema: req.schema,
@@ -260,12 +263,12 @@ router.delete('/', (0, validate_batch_1.validateBatch)('delete'), (0, async_hand
     }
     return next();
 }), respond_1.respond);
-router.delete('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
+router.delete('/:pk', (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.FilesService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.deleteOne(req.params.pk);
+    await service.deleteOne(req.params['pk']);
     return next();
 }), respond_1.respond);
 exports.default = router;

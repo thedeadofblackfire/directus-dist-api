@@ -6,17 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chalk_1 = __importDefault(require("chalk"));
 const execa_1 = __importDefault(require("execa"));
 const inquirer_1 = __importDefault(require("inquirer"));
+const joi_1 = __importDefault(require("joi"));
 const ora_1 = __importDefault(require("ora"));
 const uuid_1 = require("uuid");
-const joi_1 = __importDefault(require("joi"));
 const run_1 = __importDefault(require("../../../database/migrations/run"));
 const run_2 = __importDefault(require("../../../database/seeds/run"));
+const generate_hash_1 = require("../../../utils/generate-hash");
 const create_db_connection_1 = __importDefault(require("../../utils/create-db-connection"));
 const create_env_1 = __importDefault(require("../../utils/create-env"));
+const defaults_1 = require("../../utils/defaults");
 const drivers_1 = require("../../utils/drivers");
 const questions_1 = require("./questions");
-const generate_hash_1 = require("../../../utils/generate-hash");
-const defaults_1 = require("../../utils/defaults");
 async function init() {
     const rootPath = process.cwd();
     const { client } = await inquirer_1.default.prompt([

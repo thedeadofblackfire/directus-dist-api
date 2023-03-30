@@ -41,7 +41,6 @@ const apply_snapshot_1 = require("../../../utils/apply-snapshot");
 const get_snapshot_1 = require("../../../utils/get-snapshot");
 const get_snapshot_diff_1 = require("../../../utils/get-snapshot-diff");
 async function apply(snapshotPath, options) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
     const filename = path_1.default.resolve(process.cwd(), snapshotPath);
     const database = (0, database_1.default)();
     await (0, database_1.validateDatabaseConnection)(database);
@@ -68,14 +67,14 @@ async function apply(snapshotPath, options) {
             database.destroy();
             process.exit(0);
         }
-        const dryRun = (options === null || options === void 0 ? void 0 : options.dryRun) === true;
-        const promptForChanges = !dryRun && (options === null || options === void 0 ? void 0 : options.yes) !== true;
+        const dryRun = options?.dryRun === true;
+        const promptForChanges = !dryRun && options?.yes !== true;
         if (dryRun || promptForChanges) {
             let message = '';
             if (snapshotDiff.collections.length > 0) {
                 message += chalk_1.default.black.underline.bold('Collections:');
                 for (const { collection, diff } of snapshotDiff.collections) {
-                    if (((_a = diff[0]) === null || _a === void 0 ? void 0 : _a.kind) === types_1.DiffKind.EDIT) {
+                    if (diff[0]?.kind === types_1.DiffKind.EDIT) {
                         message += `\n  - ${chalk_1.default.blue('Update')} ${collection}`;
                         for (const change of diff) {
                             if (change.kind === types_1.DiffKind.EDIT) {
@@ -84,13 +83,13 @@ async function apply(snapshotPath, options) {
                             }
                         }
                     }
-                    else if (((_b = diff[0]) === null || _b === void 0 ? void 0 : _b.kind) === types_1.DiffKind.DELETE) {
+                    else if (diff[0]?.kind === types_1.DiffKind.DELETE) {
                         message += `\n  - ${chalk_1.default.red('Delete')} ${collection}`;
                     }
-                    else if (((_c = diff[0]) === null || _c === void 0 ? void 0 : _c.kind) === types_1.DiffKind.NEW) {
+                    else if (diff[0]?.kind === types_1.DiffKind.NEW) {
                         message += `\n  - ${chalk_1.default.green('Create')} ${collection}`;
                     }
-                    else if (((_d = diff[0]) === null || _d === void 0 ? void 0 : _d.kind) === types_1.DiffKind.ARRAY) {
+                    else if (diff[0]?.kind === types_1.DiffKind.ARRAY) {
                         message += `\n  - ${chalk_1.default.blue('Update')} ${collection}`;
                     }
                 }
@@ -98,7 +97,7 @@ async function apply(snapshotPath, options) {
             if (snapshotDiff.fields.length > 0) {
                 message += '\n\n' + chalk_1.default.black.underline.bold('Fields:');
                 for (const { collection, field, diff } of snapshotDiff.fields) {
-                    if (((_e = diff[0]) === null || _e === void 0 ? void 0 : _e.kind) === types_1.DiffKind.EDIT || (0, apply_diff_1.isNestedMetaUpdate)(diff[0])) {
+                    if (diff[0]?.kind === types_1.DiffKind.EDIT || (0, apply_diff_1.isNestedMetaUpdate)(diff[0])) {
                         message += `\n  - ${chalk_1.default.blue('Update')} ${collection}.${field}`;
                         for (const change of diff) {
                             const path = change.path.slice(1).join('.');
@@ -113,13 +112,13 @@ async function apply(snapshotPath, options) {
                             }
                         }
                     }
-                    else if (((_f = diff[0]) === null || _f === void 0 ? void 0 : _f.kind) === types_1.DiffKind.DELETE) {
+                    else if (diff[0]?.kind === types_1.DiffKind.DELETE) {
                         message += `\n  - ${chalk_1.default.red('Delete')} ${collection}.${field}`;
                     }
-                    else if (((_g = diff[0]) === null || _g === void 0 ? void 0 : _g.kind) === types_1.DiffKind.NEW) {
+                    else if (diff[0]?.kind === types_1.DiffKind.NEW) {
                         message += `\n  - ${chalk_1.default.green('Create')} ${collection}.${field}`;
                     }
-                    else if (((_h = diff[0]) === null || _h === void 0 ? void 0 : _h.kind) === types_1.DiffKind.ARRAY) {
+                    else if (diff[0]?.kind === types_1.DiffKind.ARRAY) {
                         message += `\n  - ${chalk_1.default.blue('Update')} ${collection}.${field}`;
                     }
                 }
@@ -127,7 +126,7 @@ async function apply(snapshotPath, options) {
             if (snapshotDiff.relations.length > 0) {
                 message += '\n\n' + chalk_1.default.black.underline.bold('Relations:');
                 for (const { collection, field, related_collection, diff } of snapshotDiff.relations) {
-                    if (((_j = diff[0]) === null || _j === void 0 ? void 0 : _j.kind) === types_1.DiffKind.EDIT) {
+                    if (diff[0]?.kind === types_1.DiffKind.EDIT) {
                         message += `\n  - ${chalk_1.default.blue('Update')} ${collection}.${field}`;
                         for (const change of diff) {
                             if (change.kind === types_1.DiffKind.EDIT) {
@@ -136,13 +135,13 @@ async function apply(snapshotPath, options) {
                             }
                         }
                     }
-                    else if (((_k = diff[0]) === null || _k === void 0 ? void 0 : _k.kind) === types_1.DiffKind.DELETE) {
+                    else if (diff[0]?.kind === types_1.DiffKind.DELETE) {
                         message += `\n  - ${chalk_1.default.red('Delete')} ${collection}.${field}`;
                     }
-                    else if (((_l = diff[0]) === null || _l === void 0 ? void 0 : _l.kind) === types_1.DiffKind.NEW) {
+                    else if (diff[0]?.kind === types_1.DiffKind.NEW) {
                         message += `\n  - ${chalk_1.default.green('Create')} ${collection}.${field}`;
                     }
-                    else if (((_m = diff[0]) === null || _m === void 0 ? void 0 : _m.kind) === types_1.DiffKind.ARRAY) {
+                    else if (diff[0]?.kind === types_1.DiffKind.ARRAY) {
                         message += `\n  - ${chalk_1.default.blue('Update')} ${collection}.${field}`;
                     }
                     else {

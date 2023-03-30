@@ -38,7 +38,6 @@ function extractError(error) {
 }
 exports.extractError = extractError;
 function uniqueViolation(error) {
-    var _a, _b, _c, _d, _e;
     const betweenQuotes = /'([^']+)'/g;
     const matches = error.sqlMessage.match(betweenQuotes);
     if (!matches)
@@ -50,13 +49,13 @@ function uniqueViolation(error) {
      */
     /** MySQL 8+ style error message */
     if (matches[1].includes('.')) {
-        const collection = (_a = matches[1]) === null || _a === void 0 ? void 0 : _a.slice(1, -1).split('.')[0];
+        const collection = matches[1].slice(1, -1).split('.')[0];
         let field = null;
-        const indexName = (_b = matches[1]) === null || _b === void 0 ? void 0 : _b.slice(1, -1).split('.')[1];
-        if ((indexName === null || indexName === void 0 ? void 0 : indexName.startsWith(`${collection}_`)) && indexName.endsWith('_unique')) {
-            field = indexName === null || indexName === void 0 ? void 0 : indexName.slice(collection.length + 1, -7);
+        const indexName = matches[1]?.slice(1, -1).split('.')[1];
+        if (indexName?.startsWith(`${collection}_`) && indexName.endsWith('_unique')) {
+            field = indexName?.slice(collection.length + 1, -7);
         }
-        const invalid = (_c = matches[0]) === null || _c === void 0 ? void 0 : _c.slice(1, -1);
+        const invalid = matches[0]?.slice(1, -1);
         return new record_not_unique_1.RecordNotUniqueException(field, {
             collection,
             field,
@@ -65,13 +64,13 @@ function uniqueViolation(error) {
     }
     else {
         /** MySQL 5.7 style error message */
-        const indexName = (_d = matches[1]) === null || _d === void 0 ? void 0 : _d.slice(1, -1);
+        const indexName = matches[1].slice(1, -1);
         const collection = indexName.split('_')[0];
         let field = null;
-        if ((indexName === null || indexName === void 0 ? void 0 : indexName.startsWith(`${collection}_`)) && indexName.endsWith('_unique')) {
-            field = indexName === null || indexName === void 0 ? void 0 : indexName.slice(collection.length + 1, -7);
+        if (indexName?.startsWith(`${collection}_`) && indexName.endsWith('_unique')) {
+            field = indexName?.slice(collection.length + 1, -7);
         }
-        const invalid = (_e = matches[0]) === null || _e === void 0 ? void 0 : _e.slice(1, -1);
+        const invalid = matches[0]?.slice(1, -1);
         return new record_not_unique_1.RecordNotUniqueException(field, {
             collection,
             field,
@@ -80,61 +79,57 @@ function uniqueViolation(error) {
     }
 }
 function numericValueOutOfRange(error) {
-    var _a, _b;
     const betweenTicks = /`([^`]+)`/g;
     const betweenQuotes = /'([^']+)'/g;
     const tickMatches = error.sql.match(betweenTicks);
     const quoteMatches = error.sqlMessage.match(betweenQuotes);
     if (!tickMatches || !quoteMatches)
         return error;
-    const collection = (_a = tickMatches[0]) === null || _a === void 0 ? void 0 : _a.slice(1, -1);
-    const field = (_b = quoteMatches[0]) === null || _b === void 0 ? void 0 : _b.slice(1, -1);
+    const collection = tickMatches[0]?.slice(1, -1);
+    const field = quoteMatches[0]?.slice(1, -1);
     return new value_out_of_range_1.ValueOutOfRangeException(field, {
         collection,
         field,
     });
 }
 function valueLimitViolation(error) {
-    var _a, _b;
     const betweenTicks = /`([^`]+)`/g;
     const betweenQuotes = /'([^']+)'/g;
     const tickMatches = error.sql.match(betweenTicks);
     const quoteMatches = error.sqlMessage.match(betweenQuotes);
     if (!tickMatches || !quoteMatches)
         return error;
-    const collection = (_a = tickMatches[0]) === null || _a === void 0 ? void 0 : _a.slice(1, -1);
-    const field = (_b = quoteMatches[0]) === null || _b === void 0 ? void 0 : _b.slice(1, -1);
+    const collection = tickMatches[0]?.slice(1, -1);
+    const field = quoteMatches[0]?.slice(1, -1);
     return new value_too_long_1.ValueTooLongException(field, {
         collection,
         field,
     });
 }
 function notNullViolation(error) {
-    var _a, _b;
     const betweenTicks = /`([^`]+)`/g;
     const betweenQuotes = /'([^']+)'/g;
     const tickMatches = error.sql.match(betweenTicks);
     const quoteMatches = error.sqlMessage.match(betweenQuotes);
     if (!tickMatches || !quoteMatches)
         return error;
-    const collection = (_a = tickMatches[0]) === null || _a === void 0 ? void 0 : _a.slice(1, -1);
-    const field = (_b = quoteMatches[0]) === null || _b === void 0 ? void 0 : _b.slice(1, -1);
+    const collection = tickMatches[0]?.slice(1, -1);
+    const field = quoteMatches[0]?.slice(1, -1);
     return new not_null_violation_1.NotNullViolationException(field, {
         collection,
         field,
     });
 }
 function foreignKeyViolation(error) {
-    var _a, _b, _c;
     const betweenTicks = /`([^`]+)`/g;
     const betweenParens = /\(([^)]+)\)/g;
     const tickMatches = error.sqlMessage.match(betweenTicks);
     const parenMatches = error.sql.match(betweenParens);
     if (!tickMatches || !parenMatches)
         return error;
-    const collection = (_a = tickMatches[1]) === null || _a === void 0 ? void 0 : _a.slice(1, -1);
-    const field = (_b = tickMatches[3]) === null || _b === void 0 ? void 0 : _b.slice(1, -1);
-    const invalid = (_c = parenMatches[1]) === null || _c === void 0 ? void 0 : _c.slice(1, -1);
+    const collection = tickMatches[1].slice(1, -1);
+    const field = tickMatches[3].slice(1, -1);
+    const invalid = parenMatches[1].slice(1, -1);
     return new invalid_foreign_key_1.InvalidForeignKeyException(field, {
         collection,
         field,
@@ -142,13 +137,12 @@ function foreignKeyViolation(error) {
     });
 }
 function containsNullValues(error) {
-    var _a;
     const betweenTicks = /`([^`]+)`/g;
     // Normally, we shouldn't read from the executed SQL. In this case, we're altering a single
     // column, so we shouldn't have the problem where multiple columns are altered at the same time
     const tickMatches = error.sql.match(betweenTicks);
     if (!tickMatches)
         return error;
-    const field = (_a = tickMatches[1]) === null || _a === void 0 ? void 0 : _a.slice(1, -1);
+    const field = tickMatches[1].slice(1, -1);
     return new contains_null_values_1.ContainsNullValuesException(field);
 }

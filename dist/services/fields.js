@@ -44,10 +44,18 @@ const items_1 = require("../services/items");
 const payload_1 = require("../services/payload");
 const get_default_value_1 = __importDefault(require("../utils/get-default-value"));
 const get_local_type_1 = __importDefault(require("../utils/get-local-type"));
-const relations_1 = require("./relations");
-const constants_3 = require("@directus/shared/constants");
 const get_schema_1 = require("../utils/get-schema");
+const relations_1 = require("./relations");
 class FieldsService {
+    knex;
+    helpers;
+    accountability;
+    itemsService;
+    payloadService;
+    schemaInspector;
+    schema;
+    cache;
+    systemCache;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.helpers = (0, helpers_1.getHelpers)(this.knex);
@@ -61,13 +69,11 @@ class FieldsService {
         this.systemCache = systemCache;
     }
     get hasReadAccess() {
-        var _a, _b;
-        return !!((_b = (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.permissions) === null || _b === void 0 ? void 0 : _b.find((permission) => {
+        return !!this.accountability?.permissions?.find((permission) => {
             return permission.collection === 'directus_fields' && permission.action === 'read';
-        }));
+        });
     }
     async readAll(collection) {
-        var _a, _b, _c, _d;
         let fields;
         if (this.accountability && this.accountability.admin !== true && this.hasReadAccess === false) {
             throw new exceptions_1.ForbiddenException();
@@ -144,8 +150,7 @@ class FieldsService {
             });
             const allowedFieldsInCollection = {};
             permissions.forEach((permission) => {
-                var _a;
-                allowedFieldsInCollection[permission.collection] = (_a = permission.fields) !== null && _a !== void 0 ? _a : [];
+                allowedFieldsInCollection[permission.collection] = permission.fields ?? [];
             });
             if (collection && collection in allowedFieldsInCollection === false) {
                 throw new exceptions_1.ForbiddenException();
@@ -161,10 +166,10 @@ class FieldsService {
         }
         // Update specific database type overrides
         for (const field of result) {
-            if ((_b = (_a = field.meta) === null || _a === void 0 ? void 0 : _a.special) === null || _b === void 0 ? void 0 : _b.includes('cast-timestamp')) {
+            if (field.meta?.special?.includes('cast-timestamp')) {
                 field.type = 'timestamp';
             }
-            else if ((_d = (_c = field.meta) === null || _c === void 0 ? void 0 : _c.special) === null || _d === void 0 ? void 0 : _d.includes('cast-datetime')) {
+            else if (field.meta?.special?.includes('cast-datetime')) {
                 field.type = 'dateTime';
             }
             field.type = this.helpers.schema.processFieldType(field);
@@ -281,7 +286,7 @@ class FieldsService {
                         accountability: this.accountability,
                     },
                 };
-                if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+                if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(actionEvent);
                 }
                 else {
@@ -293,13 +298,13 @@ class FieldsService {
             if (runPostColumnChange) {
                 await this.helpers.schema.postColumnChange();
             }
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -309,7 +314,6 @@ class FieldsService {
         }
     }
     async updateField(collection, field, opts) {
-        var _a, _b, _c;
         if (this.accountability && this.accountability.admin !== true) {
             throw new exceptions_1.ForbiddenException();
         }
@@ -329,8 +333,8 @@ class FieldsService {
                 : null;
             if (hookAdjustedField.type &&
                 (hookAdjustedField.type === 'alias' ||
-                    ((_a = this.schema.collections[collection].fields[field.field]) === null || _a === void 0 ? void 0 : _a.type) === 'alias') &&
-                hookAdjustedField.type !== ((_c = (_b = this.schema.collections[collection].fields[field.field]) === null || _b === void 0 ? void 0 : _b.type) !== null && _c !== void 0 ? _c : 'alias')) {
+                    this.schema.collections[collection].fields[field.field]?.type === 'alias') &&
+                hookAdjustedField.type !== (this.schema.collections[collection].fields[field.field]?.type ?? 'alias')) {
                 throw new exceptions_1.InvalidPayloadException('Alias type cannot be changed');
             }
             if (hookAdjustedField.schema) {
@@ -377,7 +381,7 @@ class FieldsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+            if (opts?.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
@@ -389,13 +393,13 @@ class FieldsService {
             if (runPostColumnChange) {
                 await this.helpers.schema.postColumnChange();
             }
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -419,11 +423,9 @@ class FieldsService {
                 accountability: this.accountability,
             });
             await this.knex.transaction(async (trx) => {
-                var _a, _b;
                 const relations = this.schema.relations.filter((relation) => {
-                    var _a;
                     return ((relation.collection === collection && relation.field === field) ||
-                        (relation.related_collection === collection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === field));
+                        (relation.related_collection === collection && relation.meta?.one_field === field));
                 });
                 const relationsService = new relations_1.RelationsService({
                     knex: trx,
@@ -441,21 +443,21 @@ class FieldsService {
                     if (isM2O) {
                         await relationsService.deleteOne(collection, field, {
                             autoPurgeSystemCache: false,
-                            bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                            bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         });
                         if (relation.related_collection &&
-                            ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) &&
+                            relation.meta?.one_field &&
                             relation.related_collection !== collection &&
                             relation.meta.one_field !== field) {
                             await fieldsService.deleteField(relation.related_collection, relation.meta.one_field, {
                                 autoPurgeCache: false,
                                 autoPurgeSystemCache: false,
-                                bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                                bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                             });
                         }
                     }
                     // If the current field is a o2m, just delete the one field config from the relation
-                    if (!isM2O && ((_b = relation.meta) === null || _b === void 0 ? void 0 : _b.one_field)) {
+                    if (!isM2O && relation.meta?.one_field) {
                         await trx('directus_relations')
                             .update({ one_field: null })
                             .where({ many_collection: relation.collection, many_field: relation.field });
@@ -475,11 +477,11 @@ class FieldsService {
                     .where({ collection })
                     .first();
                 const collectionMetaUpdates = {};
-                if ((collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.archive_field) === field) {
-                    collectionMetaUpdates.archive_field = null;
+                if (collectionMeta?.archive_field === field) {
+                    collectionMetaUpdates['archive_field'] = null;
                 }
-                if ((collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.sort_field) === field) {
-                    collectionMetaUpdates.sort_field = null;
+                if (collectionMeta?.sort_field === field) {
+                    collectionMetaUpdates['sort_field'] = null;
                 }
                 if (Object.keys(collectionMetaUpdates).length > 0) {
                     await trx('directus_collections').update(collectionMetaUpdates).where({ collection });
@@ -510,7 +512,7 @@ class FieldsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+            if (opts?.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
@@ -521,13 +523,13 @@ class FieldsService {
             if (runPostColumnChange) {
                 await this.helpers.schema.postColumnChange();
             }
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -537,14 +539,12 @@ class FieldsService {
         }
     }
     addColumnToTable(table, field, alter = null) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         let column;
         // Don't attempt to add a DB column for alias / corrupt fields
         if (field.type === 'alias' || field.type === 'unknown')
             return;
-        if ((_a = field.schema) === null || _a === void 0 ? void 0 : _a.has_auto_increment) {
+        if (field.schema?.has_auto_increment) {
             if (field.type === 'bigInteger') {
-                // Create an auto-incremented big integer (MySQL, PostgreSQL) or an auto-incremented integer (other DBs)
                 column = table.bigIncrements(field.field);
             }
             else {
@@ -552,11 +552,11 @@ class FieldsService {
             }
         }
         else if (field.type === 'string') {
-            column = table.string(field.field, (_c = (_b = field.schema) === null || _b === void 0 ? void 0 : _b.max_length) !== null && _c !== void 0 ? _c : undefined);
+            column = table.string(field.field, field.schema?.max_length ?? undefined);
         }
         else if (['float', 'decimal'].includes(field.type)) {
             const type = field.type;
-            column = table[type](field.field, (_e = (_d = field.schema) === null || _d === void 0 ? void 0 : _d.numeric_precision) !== null && _e !== void 0 ? _e : 10, (_g = (_f = field.schema) === null || _f === void 0 ? void 0 : _f.numeric_scale) !== null && _g !== void 0 ? _g : 5);
+            column = table[type](field.field, field.schema?.numeric_precision ?? 10, field.schema?.numeric_scale ?? 5);
         }
         else if (field.type === 'csv') {
             column = table.string(field.field);
@@ -573,13 +573,13 @@ class FieldsService {
         else if (field.type.startsWith('geometry')) {
             column = this.helpers.st.createColumn(table, field);
         }
-        else if (constants_3.KNEX_TYPES.includes(field.type)) {
+        else if (constants_1.KNEX_TYPES.includes(field.type)) {
             column = table[field.type](field.field);
         }
         else {
             throw new exceptions_1.InvalidPayloadException(`Illegal type passed: "${field.type}"`);
         }
-        if (((_h = field.schema) === null || _h === void 0 ? void 0 : _h.default_value) !== undefined) {
+        if (field.schema?.default_value !== undefined) {
             if (typeof field.schema.default_value === 'string' &&
                 (field.schema.default_value.toLowerCase() === 'now()' || field.schema.default_value === 'CURRENT_TIMESTAMP')) {
                 column.defaultTo(this.knex.fn.now());
@@ -594,7 +594,7 @@ class FieldsService {
                 column.defaultTo(field.schema.default_value);
             }
         }
-        if (((_j = field.schema) === null || _j === void 0 ? void 0 : _j.is_nullable) === false) {
+        if (field.schema?.is_nullable === false) {
             if (!alter || alter.is_nullable === true) {
                 column.notNullable();
             }
@@ -604,15 +604,15 @@ class FieldsService {
                 column.nullable();
             }
         }
-        if ((_k = field.schema) === null || _k === void 0 ? void 0 : _k.is_primary_key) {
+        if (field.schema?.is_primary_key) {
             column.primary().notNullable();
         }
-        else if (((_l = field.schema) === null || _l === void 0 ? void 0 : _l.is_unique) === true) {
+        else if (field.schema?.is_unique === true) {
             if (!alter || alter.is_unique === false) {
                 column.unique();
             }
         }
-        else if (((_m = field.schema) === null || _m === void 0 ? void 0 : _m.is_unique) === false) {
+        else if (field.schema?.is_unique === false) {
             if (alter && alter.is_unique === true) {
                 table.dropUnique([field.field]);
             }

@@ -17,10 +17,10 @@ exports.parseGraphQL = (0, async_handler_1.default)(async (req, res, next) => {
     let operationName = null;
     let document;
     if (req.method === 'GET') {
-        query = req.query.query || null;
-        if (req.query.variables) {
+        query = req.query['query'] || null;
+        if (req.query['variables']) {
             try {
-                variables = (0, utils_1.parseJSON)(req.query.variables);
+                variables = (0, utils_1.parseJSON)(req.query['variables']);
             }
             catch {
                 throw new exceptions_1.InvalidQueryException(`Variables are invalid JSON.`);
@@ -29,7 +29,7 @@ exports.parseGraphQL = (0, async_handler_1.default)(async (req, res, next) => {
         else {
             variables = {};
         }
-        operationName = req.query.operationName || null;
+        operationName = req.query['operationName'] || null;
     }
     else {
         query = req.body.query || null;
@@ -49,15 +49,21 @@ exports.parseGraphQL = (0, async_handler_1.default)(async (req, res, next) => {
     }
     const operationAST = (0, graphql_1.getOperationAST)(document, operationName);
     // You can only do `query` through GET
-    if (req.method === 'GET' && (operationAST === null || operationAST === void 0 ? void 0 : operationAST.operation) !== 'query') {
-        throw new exceptions_1.MethodNotAllowedException(`Can only perform a ${operationAST === null || operationAST === void 0 ? void 0 : operationAST.operation} from a POST request.`, {
+    if (req.method === 'GET' && operationAST?.operation !== 'query') {
+        throw new exceptions_1.MethodNotAllowedException(`Can only perform a ${operationAST?.operation} from a POST request.`, {
             allow: ['POST'],
         });
     }
     // Prevent caching responses when mutations are made
-    if ((operationAST === null || operationAST === void 0 ? void 0 : operationAST.operation) === 'mutation') {
-        res.locals.cache = false;
+    if (operationAST?.operation === 'mutation') {
+        res.locals['cache'] = false;
     }
-    res.locals.graphqlParams = { document, query, variables, operationName, contextValue: { req, res } };
+    res.locals['graphqlParams'] = {
+        document,
+        query,
+        variables,
+        operationName,
+        contextValue: { req, res },
+    };
     return next();
 });

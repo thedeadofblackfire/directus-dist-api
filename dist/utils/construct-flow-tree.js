@@ -3,12 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.constructFlowTree = void 0;
 const lodash_1 = require("lodash");
 function constructFlowTree(flow) {
-    var _a;
-    const rootOperation = (_a = flow.operations.find((operation) => operation.id === flow.operation)) !== null && _a !== void 0 ? _a : null;
+    const rootOperation = flow.operations.find((operation) => operation.id === flow.operation) ?? null;
     const operationTree = constructOperationTree(rootOperation, flow.operations);
     const flowTree = {
         ...(0, lodash_1.omit)(flow, 'operations'),
         operation: operationTree,
+        options: flow.options ?? {},
     };
     return flowTree;
 }

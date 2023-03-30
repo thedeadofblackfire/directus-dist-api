@@ -9,6 +9,8 @@ const database_1 = __importDefault(require("../database"));
 const exceptions_1 = require("../exceptions");
 const items_1 = require("./items");
 class TFAService {
+    knex;
+    itemsService;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.itemsService = new items_1.ItemsService('directus_users', options);
@@ -18,29 +20,29 @@ class TFAService {
             return otplib_1.authenticator.check(otp, secret);
         }
         const user = await this.knex.select('tfa_secret').from('directus_users').where({ id: key }).first();
-        if (!(user === null || user === void 0 ? void 0 : user.tfa_secret)) {
+        if (!user?.tfa_secret) {
             throw new exceptions_1.InvalidPayloadException(`User "${key}" doesn't have TFA enabled.`);
         }
         return otplib_1.authenticator.check(otp, user.tfa_secret);
     }
     async generateTFA(key) {
         const user = await this.knex.select('email', 'tfa_secret').from('directus_users').where({ id: key }).first();
-        if ((user === null || user === void 0 ? void 0 : user.tfa_secret) !== null) {
+        if (user?.tfa_secret !== null) {
             throw new exceptions_1.InvalidPayloadException('TFA Secret is already set for this user');
         }
-        if (!(user === null || user === void 0 ? void 0 : user.email)) {
+        if (!user?.email) {
             throw new exceptions_1.InvalidPayloadException('User must have a valid email to enable TFA');
         }
         const secret = otplib_1.authenticator.generateSecret();
         const project = await this.knex.select('project_name').from('directus_settings').limit(1).first();
         return {
             secret,
-            url: otplib_1.authenticator.keyuri(user.email, (project === null || project === void 0 ? void 0 : project.project_name) || 'Directus', secret),
+            url: otplib_1.authenticator.keyuri(user.email, project?.project_name || 'Directus', secret),
         };
     }
     async enableTFA(key, otp, secret) {
         const user = await this.knex.select('tfa_secret').from('directus_users').where({ id: key }).first();
-        if ((user === null || user === void 0 ? void 0 : user.tfa_secret) !== null) {
+        if (user?.tfa_secret !== null) {
             throw new exceptions_1.InvalidPayloadException('TFA Secret is already set for this user');
         }
         if (!otplib_1.authenticator.check(otp, secret)) {

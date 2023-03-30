@@ -11,7 +11,7 @@ const sanitizeQueryMiddleware = (req, _res, next) => {
     if (!req.query)
         return;
     req.sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)({
-        fields: req.query.fields || '*',
+        fields: req.query['fields'] || '*',
         ...req.query,
     }, req.accountability || null);
     Object.freeze(req.sanitizedQuery);

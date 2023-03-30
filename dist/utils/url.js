@@ -3,6 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Url = void 0;
 const url_1 = require("url");
 class Url {
+    protocol;
+    host;
+    port;
+    path;
+    query;
+    hash;
     constructor(url) {
         const parsedUrl = new url_1.URL(url, 'http://localhost');
         const isProtocolRelative = /^\/\//.test(url);
@@ -44,9 +50,8 @@ class Url {
         return this;
     }
     toString({ rootRelative } = { rootRelative: false }) {
-        var _a;
         const protocol = this.protocol !== null ? `${this.protocol}:` : '';
-        const host = (_a = this.host) !== null && _a !== void 0 ? _a : '';
+        const host = this.host ?? '';
         const port = this.port !== null ? `:${this.port}` : '';
         const origin = `${this.host !== null ? `${protocol}//` : ''}${host}${port}`;
         const path = this.path.length ? `/${this.path.join('/')}` : '';

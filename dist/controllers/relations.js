@@ -19,7 +19,7 @@ router.get('/', (0, async_handler_1.default)(async (req, res, next) => {
         schema: req.schema,
     });
     const relations = await service.readAll();
-    res.locals.payload = { data: relations || null };
+    res.locals['payload'] = { data: relations || null };
     return next();
 }), respond_1.respond);
 router.get('/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
@@ -27,8 +27,8 @@ router.get('/:collection', collection_exists_1.default, (0, async_handler_1.defa
         accountability: req.accountability,
         schema: req.schema,
     });
-    const relations = await service.readAll(req.params.collection);
-    res.locals.payload = { data: relations || null };
+    const relations = await service.readAll(req.params['collection']);
+    res.locals['payload'] = { data: relations || null };
     return next();
 }), respond_1.respond);
 router.get('/:collection/:field', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
@@ -36,8 +36,8 @@ router.get('/:collection/:field', collection_exists_1.default, (0, async_handler
         accountability: req.accountability,
         schema: req.schema,
     });
-    const relation = await service.readOne(req.params.collection, req.params.field);
-    res.locals.payload = { data: relation || null };
+    const relation = await service.readOne(req.params['collection'], req.params['field']);
+    res.locals['payload'] = { data: relation || null };
     return next();
 }), respond_1.respond);
 const newRelationSchema = joi_1.default.object({
@@ -63,7 +63,7 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
     await service.createOne(req.body);
     try {
         const createdRelation = await service.readOne(req.body.collection, req.body.field);
-        res.locals.payload = { data: createdRelation || null };
+        res.locals['payload'] = { data: createdRelation || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -93,10 +93,10 @@ router.patch('/:collection/:field', collection_exists_1.default, (0, async_handl
     if (error) {
         throw new exceptions_1.InvalidPayloadException(error.message);
     }
-    await service.updateOne(req.params.collection, req.params.field, req.body);
+    await service.updateOne(req.params['collection'], req.params['field'], req.body);
     try {
-        const updatedField = await service.readOne(req.params.collection, req.params.field);
-        res.locals.payload = { data: updatedField || null };
+        const updatedField = await service.readOne(req.params['collection'], req.params['field']);
+        res.locals['payload'] = { data: updatedField || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -106,12 +106,12 @@ router.patch('/:collection/:field', collection_exists_1.default, (0, async_handl
     }
     return next();
 }), respond_1.respond);
-router.delete('/:collection/:field', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
+router.delete('/:collection/:field', collection_exists_1.default, (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.RelationsService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.deleteOne(req.params.collection, req.params.field);
+    await service.deleteOne(req.params['collection'], req.params['field']);
     return next();
 }), respond_1.respond);
 exports.default = router;

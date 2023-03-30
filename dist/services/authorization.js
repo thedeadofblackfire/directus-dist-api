@@ -7,14 +7,18 @@ exports.AuthorizationService = void 0;
 const exceptions_1 = require("@directus/shared/exceptions");
 const utils_1 = require("@directus/shared/utils");
 const lodash_1 = require("lodash");
+const constants_1 = require("../constants");
 const database_1 = __importDefault(require("../database"));
 const exceptions_2 = require("../exceptions");
+const get_relation_info_1 = require("../utils/get-relation-info");
 const strip_function_1 = require("../utils/strip-function");
 const items_1 = require("./items");
 const payload_1 = require("./payload");
-const get_relation_info_1 = require("../utils/get-relation-info");
-const constants_1 = require("../constants");
 class AuthorizationService {
+    knex;
+    accountability;
+    payloadService;
+    schema;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
@@ -25,12 +29,11 @@ class AuthorizationService {
         });
     }
     async processAST(ast, action = 'read') {
-        var _a, _b, _c;
         const collectionsRequested = getCollectionsFromAST(ast);
-        const permissionsForCollections = (_c = (0, lodash_1.uniqWith)((_b = (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.permissions) === null || _b === void 0 ? void 0 : _b.filter((permission) => {
+        const permissionsForCollections = (0, lodash_1.uniqWith)(this.accountability?.permissions?.filter((permission) => {
             return (permission.action === action &&
                 collectionsRequested.map(({ collection }) => collection).includes(permission.collection));
-        }), (curr, prev) => curr.collection === prev.collection && curr.action === prev.action && curr.role === prev.role)) !== null && _c !== void 0 ? _c : [];
+        }), (curr, prev) => curr.collection === prev.collection && curr.action === prev.action && curr.role === prev.role) ?? [];
         // If the permissions don't match the collections, you don't have permission to read all of them
         const uniqueCollectionsRequestedCount = (0, lodash_1.uniq)(collectionsRequested.map(({ collection }) => collection)).length;
         if (uniqueCollectionsRequestedCount !== permissionsForCollections.length) {
@@ -75,15 +78,14 @@ class AuthorizationService {
             return collections;
         }
         function validateFields(ast) {
-            var _a, _b, _c;
             if (ast.type !== 'field' && ast.type !== 'functionField') {
                 if (ast.type === 'a2o') {
                     for (const [collection, children] of Object.entries(ast.children)) {
-                        checkFields(collection, children, (_b = (_a = ast.query) === null || _a === void 0 ? void 0 : _a[collection]) === null || _b === void 0 ? void 0 : _b.aggregate);
+                        checkFields(collection, children, ast.query?.[collection]?.aggregate);
                     }
                 }
                 else {
-                    checkFields(ast.name, ast.children, (_c = ast.query) === null || _c === void 0 ? void 0 : _c.aggregate);
+                    checkFields(ast.name, ast.children, ast.query?.aggregate);
                 }
             }
             function checkFields(collection, children, aggregate) {
@@ -117,12 +119,11 @@ class AuthorizationService {
             }
         }
         function validateFilterPermissions(ast, schema, action, accountability) {
-            var _a, _b, _c, _d, _e;
             let requiredFieldPermissions = {};
             if (ast.type !== 'field' && ast.type !== 'functionField') {
                 if (ast.type === 'a2o') {
                     for (const collection of Object.keys(ast.children)) {
-                        requiredFieldPermissions = mergeRequiredFieldPermissions(requiredFieldPermissions, extractRequiredFieldPermissions(collection, (_c = (_b = (_a = ast.query) === null || _a === void 0 ? void 0 : _a[collection]) === null || _b === void 0 ? void 0 : _b.filter) !== null && _c !== void 0 ? _c : {}));
+                        requiredFieldPermissions = mergeRequiredFieldPermissions(requiredFieldPermissions, extractRequiredFieldPermissions(collection, ast.query?.[collection]?.filter ?? {}));
                         for (const child of ast.children[collection]) {
                             const childPermissions = validateFilterPermissions(child, schema, action, accountability);
                             if (Object.keys(childPermissions).length > 0) {
@@ -136,7 +137,7 @@ class AuthorizationService {
                     }
                 }
                 else {
-                    requiredFieldPermissions = mergeRequiredFieldPermissions(requiredFieldPermissions, extractRequiredFieldPermissions(ast.name, (_e = (_d = ast.query) === null || _d === void 0 ? void 0 : _d.filter) !== null && _e !== void 0 ? _e : {}));
+                    requiredFieldPermissions = mergeRequiredFieldPermissions(requiredFieldPermissions, extractRequiredFieldPermissions(ast.name, ast.query?.filter ?? {}));
                     for (const child of ast.children) {
                         const childPermissions = validateFilterPermissions(child, schema, action, accountability);
                         if (Object.keys(childPermissions).length > 0) {
@@ -174,7 +175,7 @@ class AuthorizationService {
                         (result[collection] || (result[collection] = new Set())).add(filterKey);
                         // add virtual relation to the required permissions
                         const { relation } = (0, get_relation_info_1.getRelationInfo)([], collection, filterKey);
-                        if ((relation === null || relation === void 0 ? void 0 : relation.collection) && (relation === null || relation === void 0 ? void 0 : relation.field)) {
+                        if (relation?.collection && relation?.field) {
                             (result[relation.collection] || (result[relation.collection] = new Set())).add(relation.field);
                         }
                     }
@@ -189,9 +190,8 @@ class AuthorizationService {
                         }
                         else {
                             const relation = schema.relations.find((relation) => {
-                                var _a;
                                 return ((relation.collection === parentCollection && relation.field === parentField) ||
-                                    (relation.related_collection === parentCollection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === parentField));
+                                    (relation.related_collection === parentCollection && relation.meta?.one_field === parentField));
                             });
                             // Filter key not found in parent collection
                             if (!relation)
@@ -212,9 +212,8 @@ class AuthorizationService {
                         }
                         else {
                             const relation = schema.relations.find((relation) => {
-                                var _a;
                                 return ((relation.collection === parentCollection && relation.field === parentField) ||
-                                    (relation.related_collection === parentCollection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === parentField));
+                                    (relation.related_collection === parentCollection && relation.meta?.one_field === parentField));
                             });
                             // Filter key not found in parent collection
                             if (!relation)
@@ -260,19 +259,18 @@ class AuthorizationService {
                 return current;
             }
             function checkFieldPermissions(rootCollection, schema, action, requiredPermissions, aliasMap) {
-                var _a, _b;
-                if ((accountability === null || accountability === void 0 ? void 0 : accountability.admin) === true)
+                if (accountability?.admin === true)
                     return;
                 for (const collection of Object.keys(requiredPermissions)) {
-                    const permission = (_a = accountability === null || accountability === void 0 ? void 0 : accountability.permissions) === null || _a === void 0 ? void 0 : _a.find((permission) => permission.collection === collection && permission.action === 'read');
+                    const permission = accountability?.permissions?.find((permission) => permission.collection === collection && permission.action === 'read');
                     let allowedFields;
                     // Allow the filtering of top level ID for actions such as update and delete
                     if (action !== 'read' && collection === rootCollection) {
-                        const actionPermission = (_b = accountability === null || accountability === void 0 ? void 0 : accountability.permissions) === null || _b === void 0 ? void 0 : _b.find((permission) => permission.collection === collection && permission.action === action);
+                        const actionPermission = accountability?.permissions?.find((permission) => permission.collection === collection && permission.action === action);
                         if (!actionPermission || !actionPermission.fields) {
                             throw new exceptions_2.ForbiddenException();
                         }
-                        allowedFields = (permission === null || permission === void 0 ? void 0 : permission.fields)
+                        allowedFields = permission?.fields
                             ? [...permission.fields, schema.collections[collection].primary]
                             : [schema.collections[collection].primary];
                     }
@@ -292,7 +290,7 @@ class AuthorizationService {
                             continue;
                         const fieldName = (0, strip_function_1.stripFunction)(field);
                         let originalFieldName = fieldName;
-                        if (collection === rootCollection && (aliasMap === null || aliasMap === void 0 ? void 0 : aliasMap[fieldName])) {
+                        if (collection === rootCollection && aliasMap?.[fieldName]) {
                             originalFieldName = aliasMap[fieldName];
                         }
                         if (!allowedFields.includes(originalFieldName)) {
@@ -345,13 +343,12 @@ class AuthorizationService {
      * Checks if the provided payload matches the configured permissions, and adds the presets to the payload.
      */
     validatePayload(action, collection, data) {
-        var _a, _b, _c, _d, _e, _f, _g;
         const payload = (0, lodash_1.cloneDeep)(data);
         let permission;
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) === true) {
+        if (this.accountability?.admin === true) {
             permission = {
                 id: 0,
-                role: (_b = this.accountability) === null || _b === void 0 ? void 0 : _b.role,
+                role: this.accountability?.role,
                 collection,
                 action,
                 permissions: {},
@@ -361,7 +358,7 @@ class AuthorizationService {
             };
         }
         else {
-            permission = (_d = (_c = this.accountability) === null || _c === void 0 ? void 0 : _c.permissions) === null || _d === void 0 ? void 0 : _d.find((permission) => {
+            permission = this.accountability?.permissions?.find((permission) => {
                 return permission.collection === collection && permission.action === action;
             });
             if (!permission)
@@ -376,16 +373,16 @@ class AuthorizationService {
                 }
             }
         }
-        const preset = (_e = permission.presets) !== null && _e !== void 0 ? _e : {};
+        const preset = permission.presets ?? {};
         const payloadWithPresets = (0, lodash_1.merge)({}, preset, payload);
         const fieldValidationRules = Object.values(this.schema.collections[collection].fields)
             .map((field) => field.validation)
             .filter((v) => v);
-        const hasValidationRules = (0, lodash_1.isNil)(permission.validation) === false && Object.keys((_f = permission.validation) !== null && _f !== void 0 ? _f : {}).length > 0;
+        const hasValidationRules = (0, lodash_1.isNil)(permission.validation) === false && Object.keys(permission.validation ?? {}).length > 0;
         const hasFieldValidationRules = fieldValidationRules && fieldValidationRules.length > 0;
         const requiredColumns = [];
         for (const field of Object.values(this.schema.collections[collection].fields)) {
-            const specials = (_g = field === null || field === void 0 ? void 0 : field.special) !== null && _g !== void 0 ? _g : [];
+            const specials = field?.special ?? [];
             const hasGenerateSpecial = constants_1.GENERATE_SPECIAL.some((name) => specials.includes(name));
             const nullable = field.nullable || hasGenerateSpecial || field.generated;
             if (!nullable) {
@@ -427,8 +424,7 @@ class AuthorizationService {
         return payloadWithPresets;
     }
     async checkAccess(action, collection, pk) {
-        var _a;
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) === true)
+        if (this.accountability?.admin === true)
             return;
         const itemsService = new items_1.ItemsService(collection, {
             accountability: this.accountability,

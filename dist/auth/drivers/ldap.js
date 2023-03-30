@@ -45,18 +45,20 @@ const auth_1 = require("../auth");
 // 0x800000: PASSWORD_EXPIRED
 const INVALID_ACCOUNT_FLAGS = 0x800012;
 class LDAPAuthDriver extends auth_1.AuthDriver {
+    bindClient;
+    usersService;
+    config;
     constructor(options, config) {
-        var _a;
         super(options, config);
         const { bindDn, bindPassword, userDn, provider, clientUrl } = config;
         if (bindDn === undefined ||
             bindPassword === undefined ||
             !userDn ||
             !provider ||
-            (!clientUrl && !((_a = config.client) === null || _a === void 0 ? void 0 : _a.socketPath))) {
+            (!clientUrl && !config['client']?.socketPath)) {
             throw new exceptions_1.InvalidConfigException('Invalid provider config', { provider });
         }
-        const clientConfig = typeof config.client === 'object' ? config.client : {};
+        const clientConfig = typeof config['client'] === 'object' ? config['client'] : {};
         this.bindClient = ldapjs_1.default.createClient({ url: clientUrl, reconnect: true, ...clientConfig });
         this.bindClient.on('error', (err) => {
             logger_1.default.warn(err);
@@ -95,7 +97,7 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
                 });
                 res.on('end', (result) => {
                     // Handle edge case where authenticated bind user cannot read their own DN
-                    if ((result === null || result === void 0 ? void 0 : result.status) === 0) {
+                    if (result?.status === 0) {
                         reject(new exceptions_1.UnexpectedResponseException('Failed to find bind user record'));
                     }
                 });
@@ -104,9 +106,9 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
     }
     async fetchUserInfo(baseDn, filter, scope) {
         let { firstNameAttribute, lastNameAttribute, mailAttribute } = this.config;
-        firstNameAttribute !== null && firstNameAttribute !== void 0 ? firstNameAttribute : (firstNameAttribute = 'givenName');
-        lastNameAttribute !== null && lastNameAttribute !== void 0 ? lastNameAttribute : (lastNameAttribute = 'sn');
-        mailAttribute !== null && mailAttribute !== void 0 ? mailAttribute : (mailAttribute = 'mail');
+        firstNameAttribute ??= 'givenName';
+        lastNameAttribute ??= 'sn';
+        mailAttribute ??= 'mail';
         return new Promise((resolve, reject) => {
             // Search for the user in LDAP by filter
             this.bindClient.search(baseDn, {
@@ -119,15 +121,22 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
                     return;
                 }
                 res.on('searchEntry', ({ object }) => {
-                    var _a;
                     const user = {
-                        dn: object.dn,
-                        uid: getEntryValue(object.uid),
-                        firstName: getEntryValue(object[firstNameAttribute]),
-                        lastName: getEntryValue(object[lastNameAttribute]),
-                        email: getEntryValue(object[mailAttribute]),
-                        userAccountControl: Number((_a = getEntryValue(object.userAccountControl)) !== null && _a !== void 0 ? _a : 0),
+                        dn: object['dn'],
+                        userAccountControl: Number(getEntryValue(object['userAccountControl']) ?? 0),
                     };
+                    const firstName = getEntryValue(object[firstNameAttribute]);
+                    if (firstName)
+                        user.firstName = firstName;
+                    const lastName = getEntryValue(object[lastNameAttribute]);
+                    if (lastName)
+                        user.lastName = lastName;
+                    const email = getEntryValue(object[mailAttribute]);
+                    if (email)
+                        user.email = email;
+                    const uid = getEntryValue(object['uid']);
+                    if (uid)
+                        user.uid = uid;
                     resolve(user);
                 });
                 res.on('error', (err) => {
@@ -153,11 +162,11 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
                     return;
                 }
                 res.on('searchEntry', ({ object }) => {
-                    if (typeof object.cn === 'object') {
-                        userGroups = [...userGroups, ...object.cn];
+                    if (typeof object['cn'] === 'object') {
+                        userGroups = [...userGroups, ...object['cn']];
                     }
-                    else if (object.cn) {
-                        userGroups.push(object.cn);
+                    else if (object['cn']) {
+                        userGroups.push(object['cn']);
                     }
                 });
                 res.on('error', (err) => {
@@ -175,28 +184,27 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
             .from('directus_users')
             .orWhereRaw('LOWER(??) = ?', ['external_identifier', userDn.toLowerCase()])
             .first();
-        return user === null || user === void 0 ? void 0 : user.id;
+        return user?.id;
     }
     async getUserID(payload) {
-        var _a, _b, _c;
-        if (!payload.identifier) {
+        if (!payload['identifier']) {
             throw new exceptions_1.InvalidCredentialsException();
         }
         await this.validateBindClient();
         const { userDn, userScope, userAttribute, groupDn, groupScope, groupAttribute, defaultRoleId } = this.config;
         const userInfo = await this.fetchUserInfo(userDn, new ldapjs_1.EqualityFilter({
-            attribute: userAttribute !== null && userAttribute !== void 0 ? userAttribute : 'cn',
-            value: payload.identifier,
-        }), userScope !== null && userScope !== void 0 ? userScope : 'one');
-        if (!(userInfo === null || userInfo === void 0 ? void 0 : userInfo.dn)) {
+            attribute: userAttribute ?? 'cn',
+            value: payload['identifier'],
+        }), userScope ?? 'one');
+        if (!userInfo?.dn) {
             throw new exceptions_1.InvalidCredentialsException();
         }
         let userRole;
         if (groupDn) {
             const userGroups = await this.fetchUserGroups(groupDn, new ldapjs_1.EqualityFilter({
-                attribute: groupAttribute !== null && groupAttribute !== void 0 ? groupAttribute : 'member',
-                value: (groupAttribute === null || groupAttribute === void 0 ? void 0 : groupAttribute.toLowerCase()) === 'memberuid' && userInfo.uid ? userInfo.uid : userInfo.dn,
-            }), groupScope !== null && groupScope !== void 0 ? groupScope : 'one');
+                attribute: groupAttribute ?? 'member',
+                value: groupAttribute?.toLowerCase() === 'memberuid' && userInfo.uid ? userInfo.uid : userInfo.dn,
+            }), groupScope ?? 'one');
             if (userGroups.length) {
                 userRole = await this.knex
                     .select('id')
@@ -212,7 +220,7 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
         if (userId) {
             // Only sync roles if the AD groups are configured
             if (groupDn) {
-                await this.usersService.updateOne(userId, { role: (_b = (_a = userRole === null || userRole === void 0 ? void 0 : userRole.id) !== null && _a !== void 0 ? _a : defaultRoleId) !== null && _b !== void 0 ? _b : null });
+                await this.usersService.updateOne(userId, { role: userRole?.id ?? defaultRoleId ?? null });
             }
             return userId;
         }
@@ -221,12 +229,12 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
         }
         try {
             await this.usersService.createOne({
-                provider: this.config.provider,
+                provider: this.config['provider'],
                 first_name: userInfo.firstName,
                 last_name: userInfo.lastName,
                 email: userInfo.email,
                 external_identifier: userInfo.dn,
-                role: (_c = userRole === null || userRole === void 0 ? void 0 : userRole.id) !== null && _c !== void 0 ? _c : defaultRoleId,
+                role: userRole?.id ?? defaultRoleId,
             });
         }
         catch (e) {
@@ -243,9 +251,9 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
             throw new exceptions_1.InvalidCredentialsException();
         }
         return new Promise((resolve, reject) => {
-            const clientConfig = typeof this.config.client === 'object' ? this.config.client : {};
+            const clientConfig = typeof this.config['client'] === 'object' ? this.config['client'] : {};
             const client = ldapjs_1.default.createClient({
-                url: this.config.clientUrl,
+                url: this.config['clientUrl'],
                 ...clientConfig,
                 reconnect: false,
             });
@@ -264,12 +272,12 @@ class LDAPAuthDriver extends auth_1.AuthDriver {
         });
     }
     async login(user, payload) {
-        await this.verify(user, payload.password);
+        await this.verify(user, payload['password']);
     }
     async refresh(user) {
         await this.validateBindClient();
         const userInfo = await this.fetchUserInfo(user.external_identifier);
-        if ((userInfo === null || userInfo === void 0 ? void 0 : userInfo.userAccountControl) && userInfo.userAccountControl & INVALID_ACCOUNT_FLAGS) {
+        if (userInfo?.userAccountControl && userInfo.userAccountControl & INVALID_ACCOUNT_FLAGS) {
             throw new exceptions_1.InvalidCredentialsException();
         }
     }
@@ -298,13 +306,16 @@ function createLDAPAuthRouter(provider) {
         otp: joi_1.default.string(),
     }).unknown();
     router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
-        var _a, _b;
         const accountability = {
             ip: (0, get_ip_from_req_1.getIPFromReq)(req),
-            userAgent: req.get('user-agent'),
-            origin: req.get('origin'),
             role: null,
         };
+        const userAgent = req.get('user-agent');
+        if (userAgent)
+            accountability.userAgent = userAgent;
+        const origin = req.get('origin');
+        if (origin)
+            accountability.origin = origin;
         const authenticationService = new services_1.AuthenticationService({
             accountability: accountability,
             schema: req.schema,
@@ -314,23 +325,23 @@ function createLDAPAuthRouter(provider) {
             throw new exceptions_1.InvalidPayloadException(error.message);
         }
         const mode = req.body.mode || 'json';
-        const { accessToken, refreshToken, expires } = await authenticationService.login(provider, req.body, (_a = req.body) === null || _a === void 0 ? void 0 : _a.otp);
+        const { accessToken, refreshToken, expires } = await authenticationService.login(provider, req.body, req.body?.otp);
         const payload = {
             data: { access_token: accessToken, expires },
         };
         if (mode === 'json') {
-            payload.data.refresh_token = refreshToken;
+            payload['data']['refresh_token'] = refreshToken;
         }
         if (mode === 'cookie') {
-            res.cookie(env_1.default.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+            res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, {
                 httpOnly: true,
-                domain: env_1.default.REFRESH_TOKEN_COOKIE_DOMAIN,
-                maxAge: (0, get_milliseconds_1.getMilliseconds)(env_1.default.REFRESH_TOKEN_TTL),
-                secure: (_b = env_1.default.REFRESH_TOKEN_COOKIE_SECURE) !== null && _b !== void 0 ? _b : false,
-                sameSite: env_1.default.REFRESH_TOKEN_COOKIE_SAME_SITE || 'strict',
+                domain: env_1.default['REFRESH_TOKEN_COOKIE_DOMAIN'],
+                maxAge: (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL']),
+                secure: env_1.default['REFRESH_TOKEN_COOKIE_SECURE'] ?? false,
+                sameSite: env_1.default['REFRESH_TOKEN_COOKIE_SAME_SITE'] || 'strict',
             });
         }
-        res.locals.payload = payload;
+        res.locals['payload'] = payload;
         return next();
     }), respond_1.respond);
     return router;

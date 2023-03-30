@@ -2,8 +2,8 @@
  * I know this looks a little silly, but it allows us to explicitly differentiate between when we're
  * expecting an item vs any other generic object.
  */
-import { BaseException } from '@directus/shared/exceptions';
-import { EventContext } from '@directus/shared/types';
+import type { BaseException } from '@directus/shared/exceptions';
+import type { EventContext } from '@directus/shared/types';
 export type Item = Record<string, any>;
 export type PrimaryKey = string | number;
 export type Alterations = {
@@ -31,7 +31,7 @@ export type MutationOptions = {
     /**
      * Allow disabling the emitting of hooks. Useful if a custom hook is fired (like files.upload)
      */
-    emitEvents?: boolean;
+    emitEvents?: boolean | undefined;
     /**
      * To bypass the emitting of action events if emitEvents is enabled
      * Can be used to queue up the nested events from item service's create, update and delete

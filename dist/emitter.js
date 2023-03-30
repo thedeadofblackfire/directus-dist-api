@@ -7,6 +7,9 @@ exports.Emitter = void 0;
 const eventemitter2_1 = require("eventemitter2");
 const logger_1 = __importDefault(require("./logger"));
 class Emitter {
+    filterEmitter;
+    actionEmitter;
+    initEmitter;
     constructor() {
         const emitterOptions = {
             wildcard: true,

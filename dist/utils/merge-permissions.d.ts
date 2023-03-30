@@ -1,14 +1,14 @@
 /// <reference types="lodash" />
-import { Permission } from '@directus/shared/types';
+import type { Permission } from '@directus/shared/types';
 export declare function mergePermissions(strategy: 'and' | 'or', ...permissions: Permission[][]): Permission[];
 export declare function mergePermission(strategy: 'and' | 'or', currentPerm: Permission, newPerm: Permission): import("lodash").Omit<{
     permissions: import("@directus/shared/types").Filter | null;
     validation: import("@directus/shared/types").Filter | null;
     fields: string[] | null;
     presets: Record<string, any> | null;
-    id?: number | undefined;
+    id?: number;
     role: string | null;
     collection: string;
     action: import("@directus/shared/types").PermissionsAction;
-    system?: true | undefined;
+    system?: true;
 }, "id" | "system">;

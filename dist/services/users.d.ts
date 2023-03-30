@@ -1,11 +1,7 @@
-import { Knex } from 'knex';
-import { AbstractServiceOptions, Item, PrimaryKey, MutationOptions } from '../types';
-import { Query, SchemaOverview, Accountability } from '@directus/shared/types';
+import type { Query } from '@directus/shared/types';
+import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
 import { ItemsService } from './items';
 export declare class UsersService extends ItemsService {
-    knex: Knex;
-    accountability: Accountability | null;
-    schema: SchemaOverview;
     constructor(options: AbstractServiceOptions);
     /**
      * User email has to be unique case-insensitive. This is an additional check to make sure that

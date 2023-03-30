@@ -1,4 +1,4 @@
-import { ResizeOptions, Sharp } from 'sharp';
+import type { ResizeOptions, Sharp } from 'sharp';
 export declare const TransformationMethods: readonly ["toFormat", "jpeg", "png", "tiff", "webp", "resize", "extend", "extract", "trim", "rotate", "flip", "flop", "sharpen", "median", "blur", "flatten", "gamma", "negate", "normalise", "normalize", "clahe", "convolve", "threshold", "linear", "recomb", "modulate", "tint", "greyscale", "grayscale", "toColorspace", "toColourspace", "removeAlpha", "ensureAlpha", "extractChannel", "bandbool"];
 type AllowedSharpMethods = Pick<Sharp, (typeof TransformationMethods)[number]>;
 export type TransformationMap = {

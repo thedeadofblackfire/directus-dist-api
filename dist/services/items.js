@@ -20,6 +20,12 @@ const authorization_1 = require("./authorization");
 const index_1 = require("./index");
 const payload_1 = require("./payload");
 class ItemsService {
+    collection;
+    knex;
+    accountability;
+    eventScope;
+    schema;
+    cache;
     constructor(collection, options) {
         this.collection = collection;
         this.knex = options.knex || (0, database_1.default)();
@@ -72,7 +78,7 @@ class ItemsService {
             });
             // Run all hooks that are attached to this event so the end user has the chance to augment the
             // item that is about to be saved
-            const payloadAfterHooks = (opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false
+            const payloadAfterHooks = opts?.emitEvents !== false
                 ? await emitter_1.default.emitFilter(this.eventScope === 'items'
                     ? ['items.create', `${this.collection}.items.create`]
                     : `${this.eventScope}.create`, payload, {
@@ -86,7 +92,7 @@ class ItemsService {
             const payloadWithPresets = this.accountability
                 ? await authorizationService.validatePayload('create', this.collection, payloadAfterHooks)
                 : payloadAfterHooks;
-            if (opts === null || opts === void 0 ? void 0 : opts.preMutationException) {
+            if (opts?.preMutationException) {
                 throw opts.preMutationException;
             }
             const { payload: payloadWithM2O, revisions: revisionsM2O, nestedActionEvents: nestedActionEventsM2O, } = await payloadService.processM2O(payloadWithPresets, opts);
@@ -103,10 +109,10 @@ class ItemsService {
                     .then((result) => result[0]);
                 const returnedKey = typeof result === 'object' ? result[primaryKeyField] : result;
                 if (this.schema.collections[this.collection].fields[primaryKeyField].type === 'uuid') {
-                    primaryKey = (0, helpers_1.getHelpers)(trx).schema.formatUUID(primaryKey !== null && primaryKey !== void 0 ? primaryKey : returnedKey);
+                    primaryKey = (0, helpers_1.getHelpers)(trx).schema.formatUUID(primaryKey ?? returnedKey);
                 }
                 else {
-                    primaryKey = primaryKey !== null && primaryKey !== void 0 ? primaryKey : returnedKey;
+                    primaryKey = primaryKey ?? returnedKey;
                 }
             }
             catch (err) {
@@ -161,14 +167,14 @@ class ItemsService {
                     if (childrenRevisions.length > 0) {
                         await revisionsService.updateMany(childrenRevisions, { parent: revision });
                     }
-                    if (opts === null || opts === void 0 ? void 0 : opts.onRevisionCreate) {
+                    if (opts?.onRevisionCreate) {
                         opts.onRevisionCreate(revision);
                     }
                 }
             }
             return primaryKey;
         });
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             const actionEvent = {
                 event: this.eventScope === 'items'
                     ? ['items.create', `${this.collection}.items.create`]
@@ -184,14 +190,14 @@ class ItemsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+            if (opts?.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
                 emitter_1.default.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
             for (const nestedActionEvent of nestedActionEvents) {
-                if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+                if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
@@ -199,7 +205,7 @@ class ItemsService {
                 }
             }
         }
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKey;
@@ -226,9 +232,9 @@ class ItemsService {
             }
             return { primaryKeys, nestedActionEvents };
         });
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             for (const nestedActionEvent of nestedActionEvents) {
-                if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+                if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
@@ -236,7 +242,7 @@ class ItemsService {
                 }
             }
         }
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKeys;
@@ -245,7 +251,7 @@ class ItemsService {
      * Get items by query
      */
     async readByQuery(query, opts) {
-        const updatedQuery = (opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false
+        const updatedQuery = opts?.emitEvents !== false
             ? await emitter_1.default.emitFilter(this.eventScope === 'items'
                 ? ['items.query', `${this.collection}.items.query`]
                 : `${this.eventScope}.query`, query, {
@@ -261,7 +267,7 @@ class ItemsService {
             // By setting the permissions action, you can read items using the permissions for another
             // operation's permissions. This is used to dynamically check if you have update/delete
             // access to (a) certain item(s)
-            action: (opts === null || opts === void 0 ? void 0 : opts.permissionsAction) || 'read',
+            action: opts?.permissionsAction || 'read',
             knex: this.knex,
         });
         if (this.accountability && this.accountability.admin !== true) {
@@ -270,17 +276,17 @@ class ItemsService {
                 knex: this.knex,
                 schema: this.schema,
             });
-            ast = await authorizationService.processAST(ast, opts === null || opts === void 0 ? void 0 : opts.permissionsAction);
+            ast = await authorizationService.processAST(ast, opts?.permissionsAction);
         }
         const records = await (0, run_ast_1.default)(ast, this.schema, {
             knex: this.knex,
             // GraphQL requires relational keys to be returned regardless
-            stripNonRequested: (opts === null || opts === void 0 ? void 0 : opts.stripNonRequested) !== undefined ? opts.stripNonRequested : true,
+            stripNonRequested: opts?.stripNonRequested !== undefined ? opts.stripNonRequested : true,
         });
         if (records === null) {
             throw new exceptions_1.ForbiddenException();
         }
-        const filteredRecords = (opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false
+        const filteredRecords = opts?.emitEvents !== false
             ? await emitter_1.default.emitFilter(this.eventScope === 'items' ? ['items.read', `${this.collection}.items.read`] : `${this.eventScope}.read`, records, {
                 query: updatedQuery,
                 collection: this.collection,
@@ -290,7 +296,7 @@ class ItemsService {
                 accountability: this.accountability,
             })
             : records;
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             emitter_1.default.emitAction(this.eventScope === 'items' ? ['items.read', `${this.collection}.items.read`] : `${this.eventScope}.read`, {
                 payload: filteredRecords,
                 query: updatedQuery,
@@ -321,10 +327,9 @@ class ItemsService {
      * Get multiple items by primary keys
      */
     async readMany(keys, query = {}, opts) {
-        var _a;
         const primaryKeyField = this.schema.collections[this.collection].primary;
         (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, keys);
-        const filterWithKey = { _and: [{ [primaryKeyField]: { _in: keys } }, (_a = query.filter) !== null && _a !== void 0 ? _a : {}] };
+        const filterWithKey = { _and: [{ [primaryKeyField]: { _in: keys } }, query.filter ?? {}] };
         const queryWithKey = (0, lodash_1.assign)({}, query, { filter: filterWithKey });
         // Set query limit as the number of keys
         if (Array.isArray(keys) && keys.length > 0 && !queryWithKey.limit) {
@@ -376,7 +381,7 @@ class ItemsService {
             });
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
         }
@@ -401,7 +406,7 @@ class ItemsService {
         });
         // Run all hooks that are attached to this event so the end user has the chance to augment the
         // item that is about to be saved
-        const payloadAfterHooks = (opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false
+        const payloadAfterHooks = opts?.emitEvents !== false
             ? await emitter_1.default.emitFilter(this.eventScope === 'items'
                 ? ['items.update', `${this.collection}.items.update`]
                 : `${this.eventScope}.update`, payload, {
@@ -421,7 +426,7 @@ class ItemsService {
         const payloadWithPresets = this.accountability
             ? await authorizationService.validatePayload('update', this.collection, payloadAfterHooks)
             : payloadAfterHooks;
-        if (opts === null || opts === void 0 ? void 0 : opts.preMutationException) {
+        if (opts?.preMutationException) {
             throw opts.preMutationException;
         }
         await this.knex.transaction(async (trx) => {
@@ -485,7 +490,7 @@ class ItemsService {
                     const revisionIDs = await revisionsService.createMany(revisions);
                     for (let i = 0; i < revisionIDs.length; i++) {
                         const revisionID = revisionIDs[i];
-                        if (opts === null || opts === void 0 ? void 0 : opts.onRevisionCreate) {
+                        if (opts?.onRevisionCreate) {
                             opts.onRevisionCreate(revisionID);
                         }
                         if (i === 0) {
@@ -501,10 +506,10 @@ class ItemsService {
                 }
             }
         });
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             const actionEvent = {
                 event: this.eventScope === 'items'
                     ? ['items.update', `${this.collection}.items.update`]
@@ -520,14 +525,14 @@ class ItemsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+            if (opts?.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
                 emitter_1.default.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
             for (const nestedActionEvent of nestedActionEvents) {
-                if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+                if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
@@ -576,7 +581,7 @@ class ItemsService {
             }
             return primaryKeys;
         });
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKeys;
@@ -613,10 +618,10 @@ class ItemsService {
             });
             await authorizationService.checkAccess('delete', this.collection, keys);
         }
-        if (opts === null || opts === void 0 ? void 0 : opts.preMutationException) {
+        if (opts?.preMutationException) {
             throw opts.preMutationException;
         }
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             await emitter_1.default.emitFilter(this.eventScope === 'items' ? ['items.delete', `${this.collection}.items.delete`] : `${this.eventScope}.delete`, keys, {
                 collection: this.collection,
             }, {
@@ -643,10 +648,10 @@ class ItemsService {
                 })));
             }
         });
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             const actionEvent = {
                 event: this.eventScope === 'items'
                     ? ['items.delete', `${this.collection}.items.delete`]
@@ -662,7 +667,7 @@ class ItemsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+            if (opts?.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {

@@ -14,16 +14,20 @@ const logger_1 = __importDefault(require("../../logger"));
 const mailer_1 = __importDefault(require("../../mailer"));
 const url_1 = require("../../utils/url");
 const liquidEngine = new liquidjs_1.Liquid({
-    root: [path_1.default.resolve(env_1.default.EXTENSIONS_PATH, 'templates'), path_1.default.resolve(__dirname, 'templates')],
+    root: [path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'templates'), path_1.default.resolve(__dirname, 'templates')],
     extname: '.liquid',
 });
 class MailService {
+    schema;
+    accountability;
+    knex;
+    mailer;
     constructor(opts) {
         this.schema = opts.schema;
         this.accountability = opts.accountability || null;
-        this.knex = (opts === null || opts === void 0 ? void 0 : opts.knex) || (0, database_1.default)();
+        this.knex = opts?.knex || (0, database_1.default)();
         this.mailer = (0, mailer_1.default)();
-        if (env_1.default.EMAIL_VERIFY_SETUP) {
+        if (env_1.default['EMAIL_VERIFY_SETUP']) {
             this.mailer.verify((error) => {
                 if (error) {
                     logger_1.default.warn(`Email connection failed:`);
@@ -36,7 +40,7 @@ class MailService {
         const { template, ...emailOptions } = options;
         let { html } = options;
         const defaultTemplateData = await this.getDefaultTemplateData();
-        const from = `${defaultTemplateData.projectName} <${options.from || env_1.default.EMAIL_FROM}>`;
+        const from = `${defaultTemplateData.projectName} <${options.from || env_1.default['EMAIL_FROM']}>`;
         if (template) {
             let templateData = template.data;
             templateData = {
@@ -56,7 +60,7 @@ class MailService {
         return info;
     }
     async renderTemplate(template, variables) {
-        const customTemplatePath = path_1.default.resolve(env_1.default.EXTENSIONS_PATH, 'templates', template + '.liquid');
+        const customTemplatePath = path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'templates', template + '.liquid');
         const systemTemplatePath = path_1.default.join(__dirname, 'templates', template + '.liquid');
         const templatePath = (await fs_extra_1.default.pathExists(customTemplatePath)) ? customTemplatePath : systemTemplatePath;
         if ((await fs_extra_1.default.pathExists(templatePath)) === false) {
@@ -72,13 +76,13 @@ class MailService {
             .from('directus_settings')
             .first();
         return {
-            projectName: (projectInfo === null || projectInfo === void 0 ? void 0 : projectInfo.project_name) || 'Directus',
-            projectColor: (projectInfo === null || projectInfo === void 0 ? void 0 : projectInfo.project_color) || '#546e7a',
-            projectLogo: getProjectLogoURL(projectInfo === null || projectInfo === void 0 ? void 0 : projectInfo.project_logo),
-            projectUrl: (projectInfo === null || projectInfo === void 0 ? void 0 : projectInfo.project_url) || '',
+            projectName: projectInfo?.project_name || 'Directus',
+            projectColor: projectInfo?.project_color || '#546e7a',
+            projectLogo: getProjectLogoURL(projectInfo?.project_logo),
+            projectUrl: projectInfo?.project_url || '',
         };
         function getProjectLogoURL(logoID) {
-            const projectLogoUrl = new url_1.Url(env_1.default.PUBLIC_URL);
+            const projectLogoUrl = new url_1.Url(env_1.default['PUBLIC_URL']);
             if (logoID) {
                 projectLogoUrl.addPath('assets', logoID);
             }

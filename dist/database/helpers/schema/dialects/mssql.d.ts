@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import { SchemaHelper } from '../types';
 export declare class SchemaHelperMSSQL extends SchemaHelper {
     applyLimit(rootQuery: Knex.QueryBuilder, limit: number): void;

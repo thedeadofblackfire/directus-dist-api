@@ -1,2 +1,2 @@
-import { SQLiteError } from './types';
+import type { SQLiteError } from './types';
 export declare function extractError(error: SQLiteError): SQLiteError | Error;

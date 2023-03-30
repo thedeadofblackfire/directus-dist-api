@@ -32,14 +32,14 @@ const http = __importStar(require("http"));
 const https = __importStar(require("https"));
 const lodash_1 = require("lodash");
 const qs_1 = __importDefault(require("qs"));
+const update_check_1 = __importDefault(require("update-check"));
 const url_1 = __importDefault(require("url"));
+const package_json_1 = __importDefault(require("../package.json"));
 const app_1 = __importDefault(require("./app"));
 const database_1 = __importDefault(require("./database"));
+const emitter_1 = __importDefault(require("./emitter"));
 const env_1 = __importDefault(require("./env"));
 const logger_1 = __importDefault(require("./logger"));
-const emitter_1 = __importDefault(require("./emitter"));
-const update_check_1 = __importDefault(require("update-check"));
-const package_json_1 = __importDefault(require("../package.json"));
 const get_config_from_env_1 = require("./utils/get-config-from-env");
 async function createServer() {
     const server = http.createServer(await (0, app_1.default)());
@@ -47,12 +47,11 @@ async function createServer() {
     server.on('request', function (req, res) {
         const startTime = process.hrtime();
         const complete = (0, lodash_1.once)(function (finished) {
-            var _a, _b, _c, _d;
             const elapsedTime = process.hrtime(startTime);
             const elapsedNanoseconds = elapsedTime[0] * 1e9 + elapsedTime[1];
             const elapsedMilliseconds = elapsedNanoseconds / 1e6;
-            const previousIn = ((_a = req.socket._metrics) === null || _a === void 0 ? void 0 : _a.in) || 0;
-            const previousOut = ((_b = req.socket._metrics) === null || _b === void 0 ? void 0 : _b.out) || 0;
+            const previousIn = req.socket._metrics?.in || 0;
+            const previousOut = req.socket._metrics?.out || 0;
             const metrics = {
                 in: req.socket.bytesRead - previousIn,
                 out: req.socket.bytesWritten - previousOut,
@@ -85,13 +84,13 @@ async function createServer() {
                     size: metrics.out,
                     headers: res.getHeaders(),
                 },
-                ip: req.headers['x-forwarded-for'] || ((_c = req.socket) === null || _c === void 0 ? void 0 : _c.remoteAddress),
+                ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
                 duration: elapsedMilliseconds.toFixed(),
             };
             emitter_1.default.emitAction('response', info, {
                 database: (0, database_1.default)(),
                 schema: req.schema,
-                accountability: (_d = req.accountability) !== null && _d !== void 0 ? _d : null,
+                accountability: req.accountability ?? null,
             });
         });
         res.once('finish', complete.bind(null, true));
@@ -107,7 +106,7 @@ async function createServer() {
     (0, terminus_1.createTerminus)(server, terminusOptions);
     return server;
     async function beforeShutdown() {
-        if (env_1.default.NODE_ENV !== 'development') {
+        if (env_1.default['NODE_ENV'] !== 'development') {
             logger_1.default.info('Shutting down...');
         }
     }
@@ -122,7 +121,7 @@ async function createServer() {
             schema: null,
             accountability: null,
         });
-        if (env_1.default.NODE_ENV !== 'development') {
+        if (env_1.default['NODE_ENV'] !== 'development') {
             logger_1.default.info('Directus shut down OK. Bye bye!');
         }
     }
@@ -130,8 +129,8 @@ async function createServer() {
 exports.createServer = createServer;
 async function startServer() {
     const server = await createServer();
-    const host = env_1.default.HOST;
-    const port = env_1.default.PORT;
+    const host = env_1.default['HOST'];
+    const port = env_1.default['PORT'];
     server
         .listen(port, host, () => {
         (0, update_check_1.default)(package_json_1.default)
@@ -151,7 +150,7 @@ async function startServer() {
         });
     })
         .once('error', (err) => {
-        if ((err === null || err === void 0 ? void 0 : err.code) === 'EADDRINUSE') {
+        if (err?.code === 'EADDRINUSE') {
             logger_1.default.error(`Port ${port} is already in use`);
             process.exit(1);
         }

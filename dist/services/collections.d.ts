@@ -1,10 +1,10 @@
 import SchemaInspector from '@directus/schema';
-import { Knex } from 'knex';
-import Keyv from 'keyv';
-import { AbstractServiceOptions, Collection, CollectionMeta, MutationOptions } from '../types';
-import { Accountability, RawField, SchemaOverview } from '@directus/shared/types';
-import { Table } from 'knex-schema-inspector/dist/types/table';
+import type { Accountability, RawField, SchemaOverview } from '@directus/shared/types';
+import type Keyv from 'keyv';
+import type { Knex } from 'knex';
+import type { Table } from 'knex-schema-inspector/dist/types/table';
 import { Helpers } from '../database/helpers';
+import type { AbstractServiceOptions, Collection, CollectionMeta, MutationOptions } from '../types';
 export type RawCollection = {
     collection: string;
     fields?: RawField[];

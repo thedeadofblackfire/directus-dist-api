@@ -32,12 +32,20 @@ class FilesService extends items_1.ItemsService {
      * Upload a single new file to the configured storage adapter
      */
     async uploadOne(stream, data, primaryKey, opts) {
-        var _a, _b, _c, _d, _e, _f;
         const storage = await (0, storage_1.getStorage)();
-        const payload = (0, lodash_1.clone)(data);
+        let existingFile = {};
+        if (primaryKey !== undefined) {
+            existingFile =
+                (await this.knex
+                    .select('folder', 'filename_download')
+                    .from('directus_files')
+                    .where({ id: primaryKey })
+                    .first()) ?? {};
+        }
+        const payload = { ...existingFile, ...(0, lodash_1.clone)(data) };
         if ('folder' in payload === false) {
             const settings = await this.knex.select('storage_default_folder').from('directus_settings').first();
-            if (settings === null || settings === void 0 ? void 0 : settings.storage_default_folder) {
+            if (settings?.storage_default_folder) {
                 payload.folder = settings.storage_default_folder;
             }
         }
@@ -71,12 +79,12 @@ class FilesService extends items_1.ItemsService {
         if (['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff'].includes(payload.type)) {
             const stream = await storage.location(data.storage).read(payload.filename_disk);
             const { height, width, description, title, tags, metadata } = await this.getMetadata(stream);
-            (_a = payload.height) !== null && _a !== void 0 ? _a : (payload.height = height);
-            (_b = payload.width) !== null && _b !== void 0 ? _b : (payload.width = width);
-            (_c = payload.description) !== null && _c !== void 0 ? _c : (payload.description = description);
-            (_d = payload.title) !== null && _d !== void 0 ? _d : (payload.title = title);
-            (_e = payload.tags) !== null && _e !== void 0 ? _e : (payload.tags = tags);
-            (_f = payload.metadata) !== null && _f !== void 0 ? _f : (payload.metadata = metadata);
+            payload.height ??= height ?? null;
+            payload.width ??= width ?? null;
+            payload.description ??= description ?? null;
+            payload.title ??= title ?? null;
+            payload.tags ??= tags ?? null;
+            payload.metadata ??= metadata ?? null;
         }
         // We do this in a service without accountability. Even if you don't have update permissions to the file,
         // we still want to be able to set the extracted values from the file on create
@@ -85,10 +93,10 @@ class FilesService extends items_1.ItemsService {
             schema: this.schema,
         });
         await sudoService.updateOne(primaryKey, payload, { emitEvents: false });
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
-        if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false) {
+        if (opts?.emitEvents !== false) {
             emitter_1.default.emitAction('files.upload', {
                 payload,
                 key: primaryKey,
@@ -104,10 +112,9 @@ class FilesService extends items_1.ItemsService {
     /**
      * Extract metadata from a buffer's content
      */
-    async getMetadata(stream, allowList = env_1.default.FILE_METADATA_ALLOW_LIST) {
+    async getMetadata(stream, allowList = env_1.default['FILE_METADATA_ALLOW_LIST']) {
         return new Promise((resolve, reject) => {
             (0, promises_1.pipeline)(stream, (0, sharp_1.default)().metadata(async (err, sharpMetadata) => {
-                var _a, _b, _c, _d;
                 if (err) {
                     reject(err);
                     return;
@@ -169,16 +176,16 @@ class FilesService extends items_1.ItemsService {
                         logger_1.default.warn(err);
                     }
                 }
-                if (((_a = fullMetadata === null || fullMetadata === void 0 ? void 0 : fullMetadata.iptc) === null || _a === void 0 ? void 0 : _a.Caption) && typeof fullMetadata.iptc.Caption === 'string') {
-                    metadata.description = (_b = fullMetadata.iptc) === null || _b === void 0 ? void 0 : _b.Caption;
+                if (fullMetadata?.iptc?.['Caption'] && typeof fullMetadata.iptc['Caption'] === 'string') {
+                    metadata.description = fullMetadata.iptc?.['Caption'];
                 }
-                if (((_c = fullMetadata === null || fullMetadata === void 0 ? void 0 : fullMetadata.iptc) === null || _c === void 0 ? void 0 : _c.Headline) && typeof fullMetadata.iptc.Headline === 'string') {
-                    metadata.title = fullMetadata.iptc.Headline;
+                if (fullMetadata?.iptc?.['Headline'] && typeof fullMetadata.iptc['Headline'] === 'string') {
+                    metadata.title = fullMetadata.iptc['Headline'];
                 }
-                if ((_d = fullMetadata === null || fullMetadata === void 0 ? void 0 : fullMetadata.iptc) === null || _d === void 0 ? void 0 : _d.Keywords) {
-                    metadata.tags = fullMetadata.iptc.Keywords;
+                if (fullMetadata?.iptc?.['Keywords']) {
+                    metadata.tags = fullMetadata.iptc['Keywords'];
                 }
-                if (allowList === '*' || (allowList === null || allowList === void 0 ? void 0 : allowList[0]) === '*') {
+                if (allowList === '*' || allowList?.[0] === '*') {
                     metadata.metadata = fullMetadata;
                 }
                 else {
@@ -201,9 +208,8 @@ class FilesService extends items_1.ItemsService {
      * Import a single file from an external URL
      */
     async importOne(importURL, body) {
-        var _a, _b, _c;
-        const fileCreatePermissions = (_b = (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.permissions) === null || _b === void 0 ? void 0 : _b.find((permission) => permission.collection === 'directus_files' && permission.action === 'create');
-        if (this.accountability && ((_c = this.accountability) === null || _c === void 0 ? void 0 : _c.admin) !== true && !fileCreatePermissions) {
+        const fileCreatePermissions = this.accountability?.permissions?.find((permission) => permission.collection === 'directus_files' && permission.action === 'create');
+        if (this.accountability && this.accountability?.admin !== true && !fileCreatePermissions) {
             throw new exceptions_1.ForbiddenException();
         }
         let fileResponse;
@@ -223,7 +229,7 @@ class FilesService extends items_1.ItemsService {
         const filename = decodeURI(path_1.default.basename(parsedURL.pathname));
         const payload = {
             filename_download: filename,
-            storage: (0, utils_1.toArray)(env_1.default.STORAGE_LOCATIONS)[0],
+            storage: (0, utils_1.toArray)(env_1.default['STORAGE_LOCATIONS'])[0],
             type: fileResponse.headers['content-type'],
             title: (0, format_title_1.default)(filename),
             ...(body || {}),
@@ -259,13 +265,13 @@ class FilesService extends items_1.ItemsService {
         }
         await super.deleteMany(keys);
         for (const file of files) {
-            const disk = storage.location(file.storage);
+            const disk = storage.location(file['storage']);
             // Delete file + thumbnails
-            for await (const filepath of disk.list(file.id)) {
+            for await (const filepath of disk.list(file['id'])) {
                 await disk.delete(filepath);
             }
         }
-        if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return keys;

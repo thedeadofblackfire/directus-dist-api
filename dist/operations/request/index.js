@@ -9,11 +9,10 @@ const index_1 = require("../../request/index");
 exports.default = (0, utils_1.defineOperationApi)({
     id: 'request',
     handler: async ({ url, method, body, headers }) => {
-        var _a;
-        const customHeaders = (_a = headers === null || headers === void 0 ? void 0 : headers.reduce((acc, { header, value }) => {
+        const customHeaders = headers?.reduce((acc, { header, value }) => {
             acc[header] = value;
             return acc;
-        }, {})) !== null && _a !== void 0 ? _a : {};
+        }, {}) ?? {};
         if (!customHeaders['Content-Type'] && (typeof body === 'object' || (0, utils_1.isValidJSON)(body))) {
             customHeaders['Content-Type'] = 'application/json';
         }

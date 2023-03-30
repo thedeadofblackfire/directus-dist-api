@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebhooksService = void 0;
-const items_1 = require("./items");
 const messenger_1 = require("../messenger");
+const items_1 = require("./items");
 class WebhooksService extends items_1.ItemsService {
+    messenger;
     constructor(options) {
         super('directus_webhooks', options);
         this.messenger = (0, messenger_1.getMessenger)();

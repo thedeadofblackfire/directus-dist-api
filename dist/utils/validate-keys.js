@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateKeys = void 0;
-const exceptions_1 = require("../exceptions");
 const uuid_validate_1 = __importDefault(require("uuid-validate"));
+const exceptions_1 = require("../exceptions");
 /**
  * Validate keys based on its type
  */
@@ -16,7 +16,7 @@ function validateKeys(schema, collection, keyField, keys) {
         }
     }
     else {
-        const primaryKeyFieldType = schema.collections[collection].fields[keyField].type;
+        const primaryKeyFieldType = schema.collections[collection]?.fields[keyField]?.type;
         if (primaryKeyFieldType === 'uuid' && !(0, uuid_validate_1.default)(String(keys))) {
             throw new exceptions_1.ForbiddenException();
         }

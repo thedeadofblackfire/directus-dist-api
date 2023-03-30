@@ -13,7 +13,7 @@ const dynamic_import_1 = require("../../utils/dynamic-import");
 const format_title_1 = __importDefault(require("@directus/format-title"));
 async function run(database, direction, log = true) {
     let migrationFiles = await fs_extra_1.default.readdir(__dirname);
-    const customMigrationsPath = path_1.default.resolve(env_1.default.EXTENSIONS_PATH, 'migrations');
+    const customMigrationsPath = path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'migrations');
     let customMigrationFiles = ((await fs_extra_1.default.pathExists(customMigrationsPath)) && (await fs_extra_1.default.readdir(customMigrationsPath))) || [];
     migrationFiles = migrationFiles.filter((file) => /^[0-9]+[A-Z]-[^.]+\.(?:js|ts)$/.test(file));
     customMigrationFiles = customMigrationFiles.filter((file) => file.endsWith('.js'));

@@ -7,11 +7,11 @@ const knex_1 = __importDefault(require("knex"));
 const knex_mock_client_1 = require("knex-mock-client");
 const lodash_1 = require("lodash");
 const vitest_1 = require("vitest");
+const index_1 = require("../../src/database/index");
 const services_1 = require("../../src/services");
 const exceptions_1 = require("../exceptions");
 const items_utils_1 = require("../__utils__/items-utils");
 const schemas_1 = require("../__utils__/schemas");
-const index_1 = require("../../src/database/index");
 vitest_1.vi.mock('../env', async () => {
     const actual = (await vitest_1.vi.importActual('../env'));
     const MOCK_ENV = {
@@ -72,11 +72,11 @@ vitest_1.vi.mock('../cache', () => ({
         });
         (0, vitest_1.it)(`the returned UUID primary key for MS SQL should be uppercase`, async () => {
             vitest_1.vi.mocked(index_1.getDatabaseClient).mockReturnValue('mssql');
-            const table = schemas.system.tables[0];
+            const table = schemas['system'].tables[0];
             const itemsService = new services_1.ItemsService(table, {
                 knex: db,
                 accountability: { role: 'admin', admin: true },
-                schema: schemas.system.schema,
+                schema: schemas['system'].schema,
             });
             tracker.on.insert(table).responseOnce(item);
             const response = await itemsService.createOne(item, { emitEvents: false });

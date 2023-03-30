@@ -9,8 +9,8 @@ const env_1 = __importDefault(require("../env"));
 const logger_1 = __importDefault(require("../logger"));
 function getIPFromReq(req) {
     let ip = req.ip;
-    if (env_1.default.IP_CUSTOM_HEADER) {
-        const customIPHeaderValue = req.get(env_1.default.IP_CUSTOM_HEADER);
+    if (env_1.default['IP_CUSTOM_HEADER']) {
+        const customIPHeaderValue = req.get(env_1.default['IP_CUSTOM_HEADER']);
         if (typeof customIPHeaderValue === 'string' && (0, net_1.isIP)(customIPHeaderValue) !== 0) {
             ip = customIPHeaderValue;
         }

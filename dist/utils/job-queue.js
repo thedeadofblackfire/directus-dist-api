@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JobQueue = void 0;
 class JobQueue {
+    running;
+    jobs;
     constructor() {
         this.running = false;
         this.jobs = [];

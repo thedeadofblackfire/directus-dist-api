@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const get_column_path_1 = require("../../src/utils/get-column-path");
-const exceptions_1 = require("../../src/exceptions");
 const vitest_1 = require("vitest");
+const exceptions_1 = require("../../src/exceptions");
+const get_column_path_1 = require("../../src/utils/get-column-path");
 /*
 {
   path: [ 'author', 'role', 'name' ],

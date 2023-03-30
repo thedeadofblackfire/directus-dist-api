@@ -9,13 +9,12 @@ const url_1 = require("./url");
  * @param req Express request object
  */
 function shouldSkipCache(req) {
-    var _a, _b;
     const env = (0, env_1.getEnv)();
     // Always skip cache for requests coming from the data studio based on Referer header
-    const adminUrl = new url_1.Url(env.PUBLIC_URL).addPath('admin').toString();
-    if ((_a = req.get('Referer')) === null || _a === void 0 ? void 0 : _a.startsWith(adminUrl))
+    const adminUrl = new url_1.Url(env['PUBLIC_URL']).addPath('admin').toString();
+    if (req.get('Referer')?.startsWith(adminUrl))
         return true;
-    if (env.CACHE_SKIP_ALLOWED && ((_b = req.get('cache-control')) === null || _b === void 0 ? void 0 : _b.includes('no-store')))
+    if (env['CACHE_SKIP_ALLOWED'] && req.get('cache-control')?.includes('no-store'))
         return true;
     return false;
 }

@@ -27,6 +27,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AssetsService = void 0;
+const lodash_1 = require("lodash");
 const mime_types_1 = require("mime-types");
 const object_hash_1 = __importDefault(require("object-hash"));
 const path_1 = __importDefault(require("path"));
@@ -35,21 +36,22 @@ const uuid_validate_1 = __importDefault(require("uuid-validate"));
 const database_1 = __importDefault(require("../database"));
 const env_1 = __importDefault(require("../env"));
 const exceptions_1 = require("../exceptions");
+const service_unavailable_1 = require("../exceptions/service-unavailable");
 const logger_1 = __importDefault(require("../logger"));
 const storage_1 = require("../storage");
 const get_milliseconds_1 = require("../utils/get-milliseconds");
 const TransformationUtils = __importStar(require("../utils/transformations"));
 const authorization_1 = require("./authorization");
-const lodash_1 = require("lodash");
-const service_unavailable_1 = require("../exceptions/service-unavailable");
 class AssetsService {
+    knex;
+    accountability;
+    authorizationService;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
         this.authorizationService = new authorization_1.AuthorizationService(options);
     }
     async getAsset(id, transformation, range) {
-        var _a;
         const storage = await (0, storage_1.getStorage)();
         const publicSettings = await this.knex
             .select('project_logo', 'public_background', 'public_foreground')
@@ -64,7 +66,7 @@ class AssetsService {
         const isValidUUID = (0, uuid_validate_1.default)(id, 4);
         if (isValidUUID === false)
             throw new exceptions_1.ForbiddenException();
-        if (systemPublicKeys.includes(id) === false && ((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true) {
+        if (systemPublicKeys.includes(id) === false && this.accountability?.admin !== true) {
             await this.authorizationService.checkAccess('read', 'directus_files', id);
         }
         const file = (await this.knex.select('*').from('directus_files').where({ id }).first());
@@ -129,24 +131,24 @@ class AssetsService {
             const { width, height } = file;
             if (!width ||
                 !height ||
-                width > env_1.default.ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION ||
-                height > env_1.default.ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION) {
+                width > env_1.default['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION'] ||
+                height > env_1.default['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION']) {
                 throw new exceptions_1.IllegalAssetTransformation(`Image is too large to be transformed, or image size couldn't be determined.`);
             }
             const { queue, process } = sharp_1.default.counters();
-            if (queue + process > env_1.default.ASSETS_TRANSFORM_MAX_CONCURRENT) {
+            if (queue + process > env_1.default['ASSETS_TRANSFORM_MAX_CONCURRENT']) {
                 throw new service_unavailable_1.ServiceUnavailableException('Server too busy', {
                     service: 'files',
                 });
             }
             const readStream = await storage.location(file.storage).read(file.filename_disk, range);
             const transformer = (0, sharp_1.default)({
-                limitInputPixels: Math.pow(env_1.default.ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION, 2),
+                limitInputPixels: Math.pow(env_1.default['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION'], 2),
                 sequentialRead: true,
-                failOn: env_1.default.ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL,
+                failOn: env_1.default['ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL'],
             });
             transformer.timeout({
-                seconds: (0, lodash_1.clamp)(Math.round((0, get_milliseconds_1.getMilliseconds)(env_1.default.ASSETS_TRANSFORM_TIMEOUT, 0) / 1000), 1, 3600),
+                seconds: (0, lodash_1.clamp)(Math.round((0, get_milliseconds_1.getMilliseconds)(env_1.default['ASSETS_TRANSFORM_TIMEOUT'], 0) / 1000), 1, 3600),
             });
             if (transforms.find((transform) => transform[0] === 'rotate') === undefined)
                 transformer.rotate();

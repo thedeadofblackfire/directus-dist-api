@@ -1,9 +1,9 @@
-import { BaseException } from '@directus/shared/exceptions';
+import type { BaseException } from '@directus/shared/exceptions';
 import { Accountability, Filter, Query, SchemaOverview } from '@directus/shared/types';
 import { ArgumentNode, FormattedExecutionResult, FragmentDefinitionNode, GraphQLError, GraphQLResolveInfo, GraphQLSchema, SelectionNode } from 'graphql';
 import { ObjectTypeComposer, SchemaComposer } from 'graphql-compose';
-import { Knex } from 'knex';
-import { AbstractServiceOptions, GraphQLParams, Item } from '../../types';
+import type { Knex } from 'knex';
+import type { AbstractServiceOptions, GraphQLParams, Item } from '../../types';
 import { ItemsService } from '../items';
 export declare class GraphQLService {
     accountability: Accountability | null;
@@ -57,7 +57,7 @@ export declare class GraphQLService {
     /**
      * Replace functions from GraphQL format to Directus-Filter format
      */
-    replaceFuncs(filter?: Filter | null): null | undefined | Filter;
+    replaceFuncs(filter: Filter): Filter;
     /**
      * Convert Directus-Exception into a GraphQL format, so it can be returned by GraphQL properly.
      */

@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyAggregate = exports.applySearch = exports.applyFilter = exports.applyOffset = exports.applyLimit = exports.applySort = exports.generateAlias = void 0;
+const utils_1 = require("@directus/shared/utils");
 const lodash_1 = require("lodash");
 const uuid_validate_1 = __importDefault(require("uuid-validate"));
 const helpers_1 = require("../database/helpers");
@@ -11,7 +12,6 @@ const invalid_query_1 = require("../exceptions/invalid-query");
 const get_column_1 = require("./get-column");
 const get_column_path_1 = require("./get-column-path");
 const get_relation_info_1 = require("./get-relation-info");
-const utils_1 = require("@directus/shared/utils");
 const strip_function_1 = require("./strip-function");
 // @ts-ignore
 const non_secure_1 = require("nanoid/non-secure");
@@ -20,8 +20,7 @@ exports.generateAlias = (0, non_secure_1.customAlphabet)('abcdefghijklmnopqrstuv
  * Apply the Query to a given Knex query builder instance
  */
 function applyQuery(knex, collection, dbQuery, query, schema, options) {
-    var _a;
-    const aliasMap = (_a = options === null || options === void 0 ? void 0 : options.aliasMap) !== null && _a !== void 0 ? _a : Object.create(null);
+    const aliasMap = options?.aliasMap ?? Object.create(null);
     let hasMultiRelationalFilter = false;
     applyLimit(knex, dbQuery, query.limit);
     if (query.offset) {
@@ -30,7 +29,7 @@ function applyQuery(knex, collection, dbQuery, query, schema, options) {
     if (query.page && query.limit && query.limit !== -1) {
         applyOffset(knex, dbQuery, query.limit * (query.page - 1));
     }
-    if (query.sort && !(options === null || options === void 0 ? void 0 : options.isInnerQuery) && !(options === null || options === void 0 ? void 0 : options.hasMultiRelationalSort)) {
+    if (query.sort && !options?.isInnerQuery && !options?.hasMultiRelationalSort) {
         applySort(knex, schema, dbQuery, query.sort, collection, aliasMap);
     }
     if (query.search) {
@@ -54,7 +53,6 @@ function addJoin({ path, collection, aliasMap, rootQuery, schema, relations, kne
     followRelation(path);
     return hasMultiRelational;
     function followRelation(pathParts, parentCollection = collection, parentFields) {
-        var _a, _b, _c;
         /**
          * For A2M fields, the path can contain an optional collection scope <field>:<scope>
          */
@@ -64,12 +62,12 @@ function addJoin({ path, collection, aliasMap, rootQuery, schema, relations, kne
             return;
         }
         const existingAlias = parentFields
-            ? (_a = aliasMap[`${parentFields}.${pathParts[0]}`]) === null || _a === void 0 ? void 0 : _a.alias
-            : (_b = aliasMap[pathParts[0]]) === null || _b === void 0 ? void 0 : _b.alias;
+            ? aliasMap[`${parentFields}.${pathParts[0]}`]?.alias
+            : aliasMap[pathParts[0]]?.alias;
         if (!existingAlias) {
             const alias = (0, exports.generateAlias)();
             const aliasKey = parentFields ? `${parentFields}.${pathParts[0]}` : pathParts[0];
-            const aliasedParentCollection = ((_c = aliasMap[parentFields !== null && parentFields !== void 0 ? parentFields : '']) === null || _c === void 0 ? void 0 : _c.alias) || parentCollection;
+            const aliasedParentCollection = aliasMap[parentFields ?? '']?.alias || parentCollection;
             aliasMap[aliasKey] = { alias, collection: '' };
             if (relationType === 'm2o') {
                 rootQuery.leftJoin({ [alias]: relation.related_collection }, `${aliasedParentCollection}.${relation.field}`, `${alias}.${schema.collections[relation.related_collection].primary}`);
@@ -136,7 +134,7 @@ function applySort(knex, schema, rootQuery, rootSort, collection, aliasMap, retu
         if (column.length === 1) {
             const pathRoot = column[0].split(':')[0];
             const { relation, relationType } = (0, get_relation_info_1.getRelationInfo)(relations, collection, pathRoot);
-            if (!relation || ['m2o', 'a2o'].includes(relationType !== null && relationType !== void 0 ? relationType : '')) {
+            if (!relation || ['m2o', 'a2o'].includes(relationType ?? '')) {
                 return {
                     order,
                     column: returnRecords ? column[0] : (0, get_column_1.getColumn)(knex, collection, column[0], false, schema),
@@ -173,6 +171,7 @@ function applySort(knex, schema, rootQuery, rootSort, collection, aliasMap, retu
     // Clears the order if any, eg: from MSSQL offset
     rootQuery.clear('order');
     rootQuery.orderBy(sortRecords);
+    return undefined;
 }
 exports.applySort = applySort;
 function applyLimit(knex, rootQuery, limit) {
@@ -225,7 +224,6 @@ function applyFilter(knex, schema, rootQuery, rootFilter, collection, aliasMap) 
         }
     }
     function addWhereClauses(knex, dbQuery, filter, collection, logical = 'and') {
-        var _a;
         for (const [key, value] of Object.entries(filter)) {
             if (key === '_or' || key === '_and') {
                 // If the _or array contains an empty object (full permissions), we should short-circuit and ignore all other
@@ -267,7 +265,7 @@ function applyFilter(knex, schema, rootQuery, rootFilter, collection, aliasMap) 
                             .whereNotNull(column);
                         applyQuery(knex, relation.collection, subQueryKnex, { filter }, schema);
                     };
-                    const childKey = (_a = Object.keys(value)) === null || _a === void 0 ? void 0 : _a[0];
+                    const childKey = Object.keys(value)?.[0];
                     if (childKey === '_none') {
                         dbQuery[logical].whereNotIn(pkField, subQueryBuilder(Object.values(value)[0]));
                         continue;
@@ -340,7 +338,7 @@ function applyFilter(knex, schema, rootQuery, rootFilter, collection, aliasMap) 
             }
             if (operator === '_nempty' || (operator === '_empty' && compareValue === false)) {
                 dbQuery[logical].andWhere((query) => {
-                    query.whereNotNull(key).orWhere(key, '!=', '');
+                    query.whereNotNull(key).andWhere(key, '!=', '');
                 });
             }
             // The following fields however, require a value to be run. If no value is passed, we
@@ -364,7 +362,7 @@ function applyFilter(knex, schema, rootQuery, rootFilter, collection, aliasMap) 
             }
             // Cast filter value (compareValue) based on type of field being filtered against
             const [collection, field] = key.split('.');
-            const mappedCollection = originalCollectionName || collection;
+            const mappedCollection = (originalCollectionName || collection);
             if (mappedCollection in schema.collections && field in schema.collections[mappedCollection].fields) {
                 const type = schema.collections[mappedCollection].fields[field].type;
                 if (['date', 'dateTime', 'time', 'timestamp'].includes(type)) {

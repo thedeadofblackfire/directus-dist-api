@@ -190,9 +190,8 @@ const scenarios = [
                 headers: scenario.input.headers,
                 accountability: scenario.input.accountability,
                 get: vitest_1.vi.fn().mockImplementation((header) => {
-                    var _a;
                     const matchingKey = Object.keys(scenario.input.headers).find((key) => key.toLowerCase() === header);
-                    return matchingKey ? (_a = scenario.input.headers) === null || _a === void 0 ? void 0 : _a[matchingKey] : undefined;
+                    return matchingKey ? scenario.input.headers?.[matchingKey] : undefined;
                 }),
             };
             factoryEnv = scenario.input.env;

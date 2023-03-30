@@ -17,6 +17,7 @@ const StreamArray_1 = __importDefault(require("stream-json/streamers/StreamArray
 const strip_bom_stream_1 = __importDefault(require("strip-bom-stream"));
 const tmp_promise_1 = require("tmp-promise");
 const database_1 = __importDefault(require("../database"));
+const emitter_1 = __importDefault(require("../emitter"));
 const env_1 = __importDefault(require("../env"));
 const exceptions_1 = require("../exceptions");
 const logger_1 = __importDefault(require("../logger"));
@@ -24,20 +25,21 @@ const get_date_formatted_1 = require("../utils/get-date-formatted");
 const files_1 = require("./files");
 const items_1 = require("./items");
 const notifications_1 = require("./notifications");
-const emitter_1 = __importDefault(require("../emitter"));
 class ImportService {
+    knex;
+    accountability;
+    schema;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
         this.schema = options.schema;
     }
     async import(collection, mimetype, stream) {
-        var _a, _b, _c, _d, _e, _f;
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true && collection.startsWith('directus_'))
+        if (this.accountability?.admin !== true && collection.startsWith('directus_'))
             throw new exceptions_1.ForbiddenException();
-        const createPermissions = (_c = (_b = this.accountability) === null || _b === void 0 ? void 0 : _b.permissions) === null || _c === void 0 ? void 0 : _c.find((permission) => permission.collection === collection && permission.action === 'create');
-        const updatePermissions = (_e = (_d = this.accountability) === null || _d === void 0 ? void 0 : _d.permissions) === null || _e === void 0 ? void 0 : _e.find((permission) => permission.collection === collection && permission.action === 'update');
-        if (((_f = this.accountability) === null || _f === void 0 ? void 0 : _f.admin) !== true && (!createPermissions || !updatePermissions)) {
+        const createPermissions = this.accountability?.permissions?.find((permission) => permission.collection === collection && permission.action === 'create');
+        const updatePermissions = this.accountability?.permissions?.find((permission) => permission.collection === collection && permission.action === 'update');
+        if (this.accountability?.admin !== true && (!createPermissions || !updatePermissions)) {
             throw new exceptions_1.ForbiddenException();
         }
         switch (mimetype) {
@@ -144,6 +146,9 @@ class ImportService {
 }
 exports.ImportService = ImportService;
 class ExportService {
+    knex;
+    accountability;
+    schema;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
@@ -155,7 +160,6 @@ class ExportService {
      * FilesService upload method.
      */
     async exportToFile(collection, query, format, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         try {
             const mimeTypes = {
                 csv: 'text/csv',
@@ -166,7 +170,6 @@ class ExportService {
             const database = (0, database_1.default)();
             const { path, cleanup } = await (0, tmp_promise_1.file)();
             await database.transaction(async (trx) => {
-                var _a;
                 const service = new items_1.ItemsService(collection, {
                     accountability: this.accountability,
                     schema: this.schema,
@@ -179,20 +182,20 @@ class ExportService {
                         count: ['*'],
                     },
                 })
-                    .then((result) => { var _a, _b; return Number((_b = (_a = result === null || result === void 0 ? void 0 : result[0]) === null || _a === void 0 ? void 0 : _a.count) !== null && _b !== void 0 ? _b : 0); });
+                    .then((result) => Number(result?.[0]?.['count'] ?? 0));
                 const count = query.limit ? Math.min(totalCount, query.limit) : totalCount;
-                const requestedLimit = (_a = query.limit) !== null && _a !== void 0 ? _a : -1;
-                const batchesRequired = Math.ceil(count / env_1.default.EXPORT_BATCH_SIZE);
+                const requestedLimit = query.limit ?? -1;
+                const batchesRequired = Math.ceil(count / env_1.default['EXPORT_BATCH_SIZE']);
                 let readCount = 0;
                 for (let batch = 0; batch < batchesRequired; batch++) {
-                    let limit = env_1.default.EXPORT_BATCH_SIZE;
-                    if (requestedLimit > 0 && env_1.default.EXPORT_BATCH_SIZE > requestedLimit - readCount) {
+                    let limit = env_1.default['EXPORT_BATCH_SIZE'];
+                    if (requestedLimit > 0 && env_1.default['EXPORT_BATCH_SIZE'] > requestedLimit - readCount) {
                         limit = requestedLimit - readCount;
                     }
                     const result = await service.readByQuery({
                         ...query,
                         limit,
-                        offset: batch * env_1.default.EXPORT_BATCH_SIZE,
+                        offset: batch * env_1.default['EXPORT_BATCH_SIZE'],
                     });
                     readCount += result.length;
                     if (result.length) {
@@ -207,18 +210,18 @@ class ExportService {
                 accountability: this.accountability,
                 schema: this.schema,
             });
-            const storage = (0, utils_1.toArray)(env_1.default.STORAGE_LOCATIONS)[0];
+            const storage = (0, utils_1.toArray)(env_1.default['STORAGE_LOCATIONS'])[0];
             const title = `export-${collection}-${(0, get_date_formatted_1.getDateFormatted)()}`;
             const filename = `${title}.${format}`;
             const fileWithDefaults = {
-                ...((_a = options === null || options === void 0 ? void 0 : options.file) !== null && _a !== void 0 ? _a : {}),
-                title: (_c = (_b = options === null || options === void 0 ? void 0 : options.file) === null || _b === void 0 ? void 0 : _b.title) !== null && _c !== void 0 ? _c : title,
-                filename_download: (_e = (_d = options === null || options === void 0 ? void 0 : options.file) === null || _d === void 0 ? void 0 : _d.filename_download) !== null && _e !== void 0 ? _e : filename,
-                storage: (_g = (_f = options === null || options === void 0 ? void 0 : options.file) === null || _f === void 0 ? void 0 : _f.storage) !== null && _g !== void 0 ? _g : storage,
+                ...(options?.file ?? {}),
+                title: options?.file?.title ?? title,
+                filename_download: options?.file?.filename_download ?? filename,
+                storage: options?.file?.storage ?? storage,
                 type: mimeTypes[format],
             };
             const savedFile = await filesService.uploadOne((0, fs_extra_1.createReadStream)(path), fileWithDefaults);
-            if ((_h = this.accountability) === null || _h === void 0 ? void 0 : _h.user) {
+            if (this.accountability?.user) {
                 const notificationsService = new notifications_1.NotificationsService({
                     accountability: this.accountability,
                     schema: this.schema,
@@ -235,7 +238,7 @@ class ExportService {
         }
         catch (err) {
             logger_1.default.error(err, `Couldn't export ${collection}: ${err.message}`);
-            if ((_j = this.accountability) === null || _j === void 0 ? void 0 : _j.user) {
+            if (this.accountability?.user) {
                 const notificationsService = new notifications_1.NotificationsService({
                     accountability: this.accountability,
                     schema: this.schema,
@@ -255,9 +258,9 @@ class ExportService {
     transform(input, format, options) {
         if (format === 'json') {
             let string = JSON.stringify(input || null, null, '\t');
-            if ((options === null || options === void 0 ? void 0 : options.includeHeader) === false)
+            if (options?.includeHeader === false)
                 string = string.split('\n').slice(1).join('\n');
-            if ((options === null || options === void 0 ? void 0 : options.includeFooter) === false) {
+            if (options?.includeFooter === false) {
                 const lines = string.split('\n');
                 string = lines.slice(0, lines.length - 1).join('\n');
                 string += ',\n';
@@ -266,9 +269,9 @@ class ExportService {
         }
         if (format === 'xml') {
             let string = (0, js2xmlparser_1.parse)('data', input);
-            if ((options === null || options === void 0 ? void 0 : options.includeHeader) === false)
+            if (options?.includeHeader === false)
                 string = string.split('\n').slice(2).join('\n');
-            if ((options === null || options === void 0 ? void 0 : options.includeFooter) === false) {
+            if (options?.includeFooter === false) {
                 const lines = string.split('\n');
                 string = lines.slice(0, lines.length - 1).join('\n');
                 string += '\n';
@@ -280,10 +283,10 @@ class ExportService {
                 return '';
             const parser = new json2csv_1.Parser({
                 transforms: [json2csv_1.transforms.flatten({ separator: '.' })],
-                header: (options === null || options === void 0 ? void 0 : options.includeHeader) !== false,
+                header: options?.includeHeader !== false,
             });
             let string = parser.parse(input);
-            if ((options === null || options === void 0 ? void 0 : options.includeHeader) === false) {
+            if (options?.includeHeader === false) {
                 string = '\n' + string;
             }
             return string;

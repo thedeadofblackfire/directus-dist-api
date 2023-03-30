@@ -4,28 +4,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createLocalAuthRouter = exports.LocalAuthDriver = void 0;
-const express_1 = require("express");
 const argon2_1 = __importDefault(require("argon2"));
+const express_1 = require("express");
 const joi_1 = __importDefault(require("joi"));
-const auth_1 = require("../auth");
+const perf_hooks_1 = require("perf_hooks");
+const constants_1 = require("../../constants");
+const env_1 = __importDefault(require("../../env"));
 const exceptions_1 = require("../../exceptions");
+const respond_1 = require("../../middleware/respond");
 const services_1 = require("../../services");
 const async_handler_1 = __importDefault(require("../../utils/async-handler"));
-const env_1 = __importDefault(require("../../env"));
-const respond_1 = require("../../middleware/respond");
-const constants_1 = require("../../constants");
 const get_ip_from_req_1 = require("../../utils/get-ip-from-req");
-const perf_hooks_1 = require("perf_hooks");
 const stall_1 = require("../../utils/stall");
+const auth_1 = require("../auth");
 class LocalAuthDriver extends auth_1.AuthDriver {
     async getUserID(payload) {
-        if (!payload.email) {
+        if (!payload['email']) {
             throw new exceptions_1.InvalidCredentialsException();
         }
         const user = await this.knex
             .select('id')
             .from('directus_users')
-            .whereRaw('LOWER(??) = ?', ['email', payload.email.toLowerCase()])
+            .whereRaw('LOWER(??) = ?', ['email', payload['email'].toLowerCase()])
             .first();
         if (!user) {
             throw new exceptions_1.InvalidCredentialsException();
@@ -38,7 +38,7 @@ class LocalAuthDriver extends auth_1.AuthDriver {
         }
     }
     async login(user, payload) {
-        await this.verify(user, payload.password);
+        await this.verify(user, payload['password']);
     }
 }
 exports.LocalAuthDriver = LocalAuthDriver;
@@ -51,15 +51,18 @@ function createLocalAuthRouter(provider) {
         otp: joi_1.default.string(),
     }).unknown();
     router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
-        var _a;
-        const STALL_TIME = env_1.default.LOGIN_STALL_TIME;
+        const STALL_TIME = env_1.default['LOGIN_STALL_TIME'];
         const timeStart = perf_hooks_1.performance.now();
         const accountability = {
             ip: (0, get_ip_from_req_1.getIPFromReq)(req),
-            userAgent: req.get('user-agent'),
-            origin: req.get('origin'),
             role: null,
         };
+        const userAgent = req.get('user-agent');
+        if (userAgent)
+            accountability.userAgent = userAgent;
+        const origin = req.get('origin');
+        if (origin)
+            accountability.origin = origin;
         const authenticationService = new services_1.AuthenticationService({
             accountability: accountability,
             schema: req.schema,
@@ -70,17 +73,17 @@ function createLocalAuthRouter(provider) {
             throw new exceptions_1.InvalidPayloadException(error.message);
         }
         const mode = req.body.mode || 'json';
-        const { accessToken, refreshToken, expires } = await authenticationService.login(provider, req.body, (_a = req.body) === null || _a === void 0 ? void 0 : _a.otp);
+        const { accessToken, refreshToken, expires } = await authenticationService.login(provider, req.body, req.body?.otp);
         const payload = {
             data: { access_token: accessToken, expires },
         };
         if (mode === 'json') {
-            payload.data.refresh_token = refreshToken;
+            payload['data']['refresh_token'] = refreshToken;
         }
         if (mode === 'cookie') {
-            res.cookie(env_1.default.REFRESH_TOKEN_COOKIE_NAME, refreshToken, constants_1.COOKIE_OPTIONS);
+            res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, constants_1.COOKIE_OPTIONS);
         }
-        res.locals.payload = payload;
+        res.locals['payload'] = payload;
         return next();
     }), respond_1.respond);
     return router;

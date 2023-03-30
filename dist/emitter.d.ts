@@ -1,4 +1,4 @@
-import { ActionHandler, EventContext, FilterHandler, InitHandler } from '@directus/shared/types';
+import type { ActionHandler, EventContext, FilterHandler, InitHandler } from '@directus/shared/types';
 export declare class Emitter {
     private filterEmitter;
     private actionEmitter;

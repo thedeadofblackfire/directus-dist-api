@@ -9,12 +9,12 @@ const ioredis_1 = __importDefault(require("ioredis"));
 const env_1 = __importDefault(require("./env"));
 const get_config_from_env_1 = require("./utils/get-config-from-env");
 class MessengerMemory {
+    handlers;
     constructor() {
         this.handlers = {};
     }
     publish(channel, payload) {
-        var _a, _b;
-        (_b = (_a = this.handlers)[channel]) === null || _b === void 0 ? void 0 : _b.call(_a, payload);
+        this.handlers[channel]?.(payload);
     }
     subscribe(channel, callback) {
         this.handlers[channel] = callback;
@@ -25,12 +25,14 @@ class MessengerMemory {
 }
 exports.MessengerMemory = MessengerMemory;
 class MessengerRedis {
+    namespace;
+    pub;
+    sub;
     constructor() {
-        var _a, _b, _c;
         const config = (0, get_config_from_env_1.getConfigFromEnv)('MESSENGER_REDIS');
-        this.pub = new ioredis_1.default((_a = env_1.default.MESSENGER_REDIS) !== null && _a !== void 0 ? _a : config);
-        this.sub = new ioredis_1.default((_b = env_1.default.MESSENGER_REDIS) !== null && _b !== void 0 ? _b : config);
-        this.namespace = (_c = env_1.default.MESSENGER_NAMESPACE) !== null && _c !== void 0 ? _c : 'directus';
+        this.pub = new ioredis_1.default(env_1.default['MESSENGER_REDIS'] ?? config);
+        this.sub = new ioredis_1.default(env_1.default['MESSENGER_REDIS'] ?? config);
+        this.namespace = env_1.default['MESSENGER_NAMESPACE'] ?? 'directus';
     }
     publish(channel, payload) {
         this.pub.publish(`${this.namespace}:${channel}`, JSON.stringify(payload));
@@ -53,7 +55,7 @@ let messenger;
 function getMessenger() {
     if (messenger)
         return messenger;
-    if (env_1.default.MESSENGER_STORE === 'redis') {
+    if (env_1.default['MESSENGER_STORE'] === 'redis') {
         messenger = new MessengerRedis();
     }
     else {

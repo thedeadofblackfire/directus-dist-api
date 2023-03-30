@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Client } from 'openid-client';
 import { UsersService } from '../../services';
-import { AuthDriverOptions, User } from '../../types';
+import type { AuthDriverOptions, User } from '../../types';
 import { LocalAuthDriver } from './local';
 export declare class OpenIDAuthDriver extends LocalAuthDriver {
     client: Promise<Client>;

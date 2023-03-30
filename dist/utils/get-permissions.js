@@ -11,18 +11,18 @@ const cache_1 = require("../cache");
 const database_1 = __importDefault(require("../database"));
 const app_access_permissions_1 = require("../database/system-data/app-access-permissions");
 const env_1 = __importDefault(require("../env"));
+const logger_1 = __importDefault(require("../logger"));
 const roles_1 = require("../services/roles");
 const users_1 = require("../services/users");
 const merge_permissions_1 = require("../utils/merge-permissions");
 const merge_permissions_for_share_1 = require("./merge-permissions-for-share");
-const logger_1 = __importDefault(require("../logger"));
 async function getPermissions(accountability, schema) {
     const database = (0, database_1.default)();
     const { cache } = (0, cache_1.getCache)();
     let permissions = [];
     const { user, role, app, admin, share_scope } = accountability;
     const cacheKey = `permissions-${(0, object_hash_1.default)({ user, role, app, admin, share_scope })}`;
-    if (cache && env_1.default.CACHE_PERMISSIONS !== false) {
+    if (cache && env_1.default['CACHE_PERMISSIONS'] !== false) {
         let cachedPermissions;
         try {
             cachedPermissions = await (0, cache_1.getSystemCache)(cacheKey);
@@ -31,20 +31,20 @@ async function getPermissions(accountability, schema) {
             logger_1.default.warn(err, `[cache] Couldn't read key ${cacheKey}. ${err.message}`);
         }
         if (cachedPermissions) {
-            if (!cachedPermissions.containDynamicData) {
-                return processPermissions(accountability, cachedPermissions.permissions, {});
+            if (!cachedPermissions['containDynamicData']) {
+                return processPermissions(accountability, cachedPermissions['permissions'], {});
             }
-            const cachedFilterContext = await (0, cache_1.getCacheValue)(cache, `filterContext-${(0, object_hash_1.default)({ user, role, permissions: cachedPermissions.permissions })}`);
+            const cachedFilterContext = await (0, cache_1.getCacheValue)(cache, `filterContext-${(0, object_hash_1.default)({ user, role, permissions: cachedPermissions['permissions'] })}`);
             if (cachedFilterContext) {
-                return processPermissions(accountability, cachedPermissions.permissions, cachedFilterContext);
+                return processPermissions(accountability, cachedPermissions['permissions'], cachedFilterContext);
             }
             else {
-                const { permissions: parsedPermissions, requiredPermissionData, containDynamicData, } = parsePermissions(cachedPermissions.permissions);
+                const { permissions: parsedPermissions, requiredPermissionData, containDynamicData, } = parsePermissions(cachedPermissions['permissions']);
                 permissions = parsedPermissions;
                 const filterContext = containDynamicData
                     ? await getFilterContext(schema, accountability, requiredPermissionData)
                     : {};
-                if (containDynamicData && env_1.default.CACHE_ENABLED !== false) {
+                if (containDynamicData && env_1.default['CACHE_ENABLED'] !== false) {
                     await (0, cache_1.setCacheValue)(cache, `filterContext-${(0, object_hash_1.default)({ user, role, permissions })}`, filterContext);
                 }
                 return processPermissions(accountability, permissions, filterContext);
@@ -71,9 +71,9 @@ async function getPermissions(accountability, schema) {
         const filterContext = containDynamicData
             ? await getFilterContext(schema, accountability, requiredPermissionData)
             : {};
-        if (cache && env_1.default.CACHE_PERMISSIONS !== false) {
+        if (cache && env_1.default['CACHE_PERMISSIONS'] !== false) {
             await (0, cache_1.setSystemCache)(cacheKey, { permissions, containDynamicData });
-            if (containDynamicData && env_1.default.CACHE_ENABLED !== false) {
+            if (containDynamicData && env_1.default['CACHE_ENABLED'] !== false) {
                 await (0, cache_1.setCacheValue)(cache, `filterContext-${(0, object_hash_1.default)({ user, role, permissions })}`, filterContext);
             }
         }
@@ -137,12 +137,12 @@ async function getFilterContext(schema, accountability, requiredPermissionData) 
     const rolesService = new roles_1.RolesService({ schema });
     const filterContext = {};
     if (accountability.user && requiredPermissionData.$CURRENT_USER.length > 0) {
-        filterContext.$CURRENT_USER = await usersService.readOne(accountability.user, {
+        filterContext['$CURRENT_USER'] = await usersService.readOne(accountability.user, {
             fields: requiredPermissionData.$CURRENT_USER,
         });
     }
     if (accountability.role && requiredPermissionData.$CURRENT_ROLE.length > 0) {
-        filterContext.$CURRENT_ROLE = await rolesService.readOne(accountability.role, {
+        filterContext['$CURRENT_ROLE'] = await rolesService.readOne(accountability.role, {
             fields: requiredPermissionData.$CURRENT_ROLE,
         });
     }

@@ -10,56 +10,56 @@ const logger_1 = __importDefault(require("../logger"));
 const types_1 = require("../types");
 function sanitizeQuery(rawQuery, accountability) {
     const query = {};
-    if (rawQuery.limit !== undefined) {
-        const limit = sanitizeLimit(rawQuery.limit);
+    if (rawQuery['limit'] !== undefined) {
+        const limit = sanitizeLimit(rawQuery['limit']);
         if (typeof limit === 'number') {
             query.limit = limit;
         }
     }
-    if (rawQuery.fields) {
-        query.fields = sanitizeFields(rawQuery.fields);
+    if (rawQuery['fields']) {
+        query.fields = sanitizeFields(rawQuery['fields']);
     }
-    if (rawQuery.groupBy) {
-        query.group = sanitizeFields(rawQuery.groupBy);
+    if (rawQuery['groupBy']) {
+        query.group = sanitizeFields(rawQuery['groupBy']);
     }
-    if (rawQuery.aggregate) {
-        query.aggregate = sanitizeAggregate(rawQuery.aggregate);
+    if (rawQuery['aggregate']) {
+        query.aggregate = sanitizeAggregate(rawQuery['aggregate']);
     }
-    if (rawQuery.sort) {
-        query.sort = sanitizeSort(rawQuery.sort);
+    if (rawQuery['sort']) {
+        query.sort = sanitizeSort(rawQuery['sort']);
     }
-    if (rawQuery.filter) {
-        query.filter = sanitizeFilter(rawQuery.filter, accountability || null);
+    if (rawQuery['filter']) {
+        query.filter = sanitizeFilter(rawQuery['filter'], accountability || null);
     }
-    if (rawQuery.offset) {
-        query.offset = sanitizeOffset(rawQuery.offset);
+    if (rawQuery['offset']) {
+        query.offset = sanitizeOffset(rawQuery['offset']);
     }
-    if (rawQuery.page) {
-        query.page = sanitizePage(rawQuery.page);
+    if (rawQuery['page']) {
+        query.page = sanitizePage(rawQuery['page']);
     }
-    if (rawQuery.meta) {
-        query.meta = sanitizeMeta(rawQuery.meta);
+    if (rawQuery['meta']) {
+        query.meta = sanitizeMeta(rawQuery['meta']);
     }
-    if (rawQuery.search && typeof rawQuery.search === 'string') {
-        query.search = rawQuery.search;
+    if (rawQuery['search'] && typeof rawQuery['search'] === 'string') {
+        query.search = rawQuery['search'];
     }
-    if (rawQuery.export) {
-        query.export = rawQuery.export;
+    if (rawQuery['export']) {
+        query.export = rawQuery['export'];
     }
-    if (rawQuery.deep) {
+    if (rawQuery['deep']) {
         if (!query.deep)
             query.deep = {};
-        query.deep = sanitizeDeep(rawQuery.deep, accountability);
+        query.deep = sanitizeDeep(rawQuery['deep'], accountability);
     }
-    if (rawQuery.alias) {
-        query.alias = sanitizeAlias(rawQuery.alias);
+    if (rawQuery['alias']) {
+        query.alias = sanitizeAlias(rawQuery['alias']);
     }
     return query;
 }
 exports.sanitizeQuery = sanitizeQuery;
 function sanitizeFields(rawFields) {
     if (!rawFields)
-        return;
+        return null;
     let fields = [];
     if (typeof rawFields === 'string')
         fields = rawFields.split(',');

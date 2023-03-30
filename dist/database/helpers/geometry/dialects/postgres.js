@@ -8,8 +8,7 @@ class GeometryHelperPostgres extends types_1.GeometryHelper {
         return res.length > 0;
     }
     createColumn(table, field) {
-        var _a;
-        const type = (_a = field.type.split('.')[1]) !== null && _a !== void 0 ? _a : 'geometry';
+        const type = field.type.split('.')[1] ?? 'geometry';
         return table.specificType(field.field, `geometry(${type}, 4326)`);
     }
     _intersects_bbox(key, geojson) {

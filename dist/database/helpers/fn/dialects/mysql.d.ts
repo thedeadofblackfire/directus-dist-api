@@ -1,5 +1,5 @@
+import type { Knex } from 'knex';
 import { FnHelper, FnHelperOptions } from '../types';
-import { Knex } from 'knex';
 export declare class FnHelperMySQL extends FnHelper {
     year(table: string, column: string): Knex.Raw;
     month(table: string, column: string): Knex.Raw;

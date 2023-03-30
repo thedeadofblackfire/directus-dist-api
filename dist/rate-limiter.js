@@ -9,7 +9,7 @@ const rate_limiter_flexible_1 = require("rate-limiter-flexible");
 const env_1 = __importDefault(require("./env"));
 const get_config_from_env_1 = require("./utils/get-config-from-env");
 function createRateLimiter(configPrefix = 'RATE_LIMITER', configOverrides) {
-    switch (env_1.default.RATE_LIMITER_STORE) {
+    switch (env_1.default['RATE_LIMITER_STORE']) {
         case 'redis':
             return new rate_limiter_flexible_1.RateLimiterRedis(getConfig('redis', configPrefix, configOverrides));
         case 'memcache':

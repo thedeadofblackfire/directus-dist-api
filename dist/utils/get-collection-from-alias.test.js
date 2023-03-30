@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const get_collection_from_alias_1 = require("./get-collection-from-alias");
 const vitest_1 = require("vitest");
+const get_collection_from_alias_1 = require("./get-collection-from-alias");
 (0, vitest_1.it)('Returns the correct collection', () => {
     const aliasMap = {
         author: { alias: 'aaaaa', collection: 'directus_users' },

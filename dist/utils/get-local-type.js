@@ -100,7 +100,7 @@ function getLocalType(column, field) {
         return 'alias';
     const dataType = column.data_type.toLowerCase();
     const type = localTypeMap[dataType.split('(')[0]];
-    const special = field === null || field === void 0 ? void 0 : field.special;
+    const special = field?.special;
     if (special) {
         if (special.includes('cast-json'))
             return 'json';
@@ -114,7 +114,7 @@ function getLocalType(column, field) {
             return 'timestamp';
         if (special.includes('cast-datetime'))
             return 'dateTime';
-        if (type === null || type === void 0 ? void 0 : type.startsWith('geometry')) {
+        if (type?.startsWith('geometry')) {
             return special[0] || 'geometry';
         }
     }
@@ -126,6 +126,6 @@ function getLocalType(column, field) {
     if (column.data_type === 'nvarchar' && column.max_length === -1) {
         return 'text';
     }
-    return type !== null && type !== void 0 ? type : 'unknown';
+    return type ?? 'unknown';
 }
 exports.default = getLocalType;

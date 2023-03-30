@@ -1,4 +1,4 @@
-import { Filter } from '@directus/shared/types';
+import type { Filter } from '@directus/shared/types';
 type Options = {
     filter: Filter;
 };

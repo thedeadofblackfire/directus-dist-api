@@ -3,18 +3,17 @@
  * Generate an AST based on a given collection and query
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+const constants_1 = require("@directus/shared/constants");
 const lodash_1 = require("lodash");
 const get_relation_type_1 = require("../utils/get-relation-type");
-const constants_1 = require("@directus/shared/constants");
 async function getASTFromQuery(collection, query, schema, options) {
-    var _a, _b, _c, _d, _e;
     query = (0, lodash_1.cloneDeep)(query);
-    const accountability = options === null || options === void 0 ? void 0 : options.accountability;
-    const action = (options === null || options === void 0 ? void 0 : options.action) || 'read';
+    const accountability = options?.accountability;
+    const action = options?.action || 'read';
     const permissions = accountability && accountability.admin !== true
-        ? (_b = (_a = accountability === null || accountability === void 0 ? void 0 : accountability.permissions) === null || _a === void 0 ? void 0 : _a.filter((permission) => {
+        ? accountability?.permissions?.filter((permission) => {
             return permission.action === action;
-        })) !== null && _b !== void 0 ? _b : []
+        }) ?? []
         : null;
     const ast = {
         type: 'root',
@@ -49,24 +48,23 @@ async function getASTFromQuery(collection, query, schema, options) {
         // We'll default to the primary key for the standard sort output
         let sortField = schema.collections[collection].primary;
         // If a custom manual sort field is configured, use that
-        if ((_c = schema.collections[collection]) === null || _c === void 0 ? void 0 : _c.sortField) {
+        if (schema.collections[collection]?.sortField) {
             sortField = schema.collections[collection].sortField;
         }
         // When group by is used, default to the first column provided in the group by clause
-        if ((_d = query.group) === null || _d === void 0 ? void 0 : _d[0]) {
+        if (query.group?.[0]) {
             sortField = query.group[0];
         }
         query.sort = [sortField];
     }
     // When no group by is supplied, but an aggregate function is used, only a single row will be
     // returned. In those cases, we'll ignore the sort field altogether
-    if (query.aggregate && Object.keys(query.aggregate).length && !((_e = query.group) === null || _e === void 0 ? void 0 : _e[0])) {
+    if (query.aggregate && Object.keys(query.aggregate).length && !query.group?.[0]) {
         delete query.sort;
     }
     ast.children = await parseFields(collection, fields, deep);
     return ast;
     async function parseFields(parentCollection, fields, deep) {
-        var _a, _b;
         if (!fields)
             return [];
         fields = await convertWildcards(parentCollection, fields);
@@ -85,7 +83,7 @@ async function getASTFromQuery(collection, query, schema, options) {
             const isRelational = name.includes('.') ||
                 // We'll always treat top level o2m fields as a related item. This is an alias field, otherwise it won't return
                 // anything
-                !!schema.relations.find((relation) => { var _a; return relation.related_collection === parentCollection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === name; });
+                !!schema.relations.find((relation) => relation.related_collection === parentCollection && relation.meta?.one_field === name);
             if (isRelational) {
                 // field is relational
                 const parts = fieldKey.split('.');
@@ -123,7 +121,7 @@ async function getASTFromQuery(collection, query, schema, options) {
                     const columnName = fieldKey.match(constants_1.REGEX_BETWEEN_PARENS)[1];
                     const foundField = schema.collections[parentCollection].fields[columnName];
                     if (foundField && foundField.type === 'alias') {
-                        const foundRelation = schema.relations.find((relation) => { var _a; return relation.related_collection === parentCollection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === columnName; });
+                        const foundRelation = schema.relations.find((relation) => relation.related_collection === parentCollection && relation.meta?.one_field === columnName);
                         if (foundRelation) {
                             children.push({
                                 type: 'functionField',
@@ -173,8 +171,8 @@ async function getASTFromQuery(collection, query, schema, options) {
                     relation: relation,
                 };
                 for (const relatedCollection of allowedCollections) {
-                    child.children[relatedCollection] = await parseFields(relatedCollection, Array.isArray(nestedFields) ? nestedFields : nestedFields[relatedCollection] || [], deep === null || deep === void 0 ? void 0 : deep[`${fieldKey}:${relatedCollection}`]);
-                    child.query[relatedCollection] = getDeepQuery((deep === null || deep === void 0 ? void 0 : deep[`${fieldKey}:${relatedCollection}`]) || {});
+                    child.children[relatedCollection] = await parseFields(relatedCollection, Array.isArray(nestedFields) ? nestedFields : nestedFields[relatedCollection] || [], deep?.[`${fieldKey}:${relatedCollection}`]);
+                    child.query[relatedCollection] = getDeepQuery(deep?.[`${fieldKey}:${relatedCollection}`] || {});
                     child.relatedKey[relatedCollection] = schema.collections[relatedCollection].primary;
                 }
             }
@@ -183,7 +181,7 @@ async function getASTFromQuery(collection, query, schema, options) {
                     continue;
                 }
                 // update query alias for children parseFields
-                const deepAlias = (_a = getDeepQuery((deep === null || deep === void 0 ? void 0 : deep[fieldKey]) || {})) === null || _a === void 0 ? void 0 : _a.alias;
+                const deepAlias = getDeepQuery(deep?.[fieldKey] || {})?.['alias'];
                 if (!(0, lodash_1.isEmpty)(deepAlias))
                     query.alias = deepAlias;
                 child = {
@@ -193,11 +191,11 @@ async function getASTFromQuery(collection, query, schema, options) {
                     parentKey: schema.collections[parentCollection].primary,
                     relatedKey: schema.collections[relatedCollection].primary,
                     relation: relation,
-                    query: getDeepQuery((deep === null || deep === void 0 ? void 0 : deep[fieldKey]) || {}),
-                    children: await parseFields(relatedCollection, nestedFields, (deep === null || deep === void 0 ? void 0 : deep[fieldKey]) || {}),
+                    query: getDeepQuery(deep?.[fieldKey] || {}),
+                    children: await parseFields(relatedCollection, nestedFields, deep?.[fieldKey] || {}),
                 };
                 if (relationType === 'o2m' && !child.query.sort) {
-                    child.query.sort = [((_b = relation.meta) === null || _b === void 0 ? void 0 : _b.sort_field) || schema.collections[relation.collection].primary];
+                    child.query.sort = [relation.meta?.sort_field || schema.collections[relation.collection].primary];
                 }
             }
             if (child) {
@@ -214,12 +212,11 @@ async function getASTFromQuery(collection, query, schema, options) {
         });
     }
     async function convertWildcards(parentCollection, fields) {
-        var _a, _b, _c;
         fields = (0, lodash_1.cloneDeep)(fields);
         const fieldsInCollection = Object.entries(schema.collections[parentCollection].fields).map(([name]) => name);
         let allowedFields = fieldsInCollection;
         if (permissions) {
-            const permittedFields = (_a = permissions.find((permission) => parentCollection === permission.collection)) === null || _a === void 0 ? void 0 : _a.fields;
+            const permittedFields = permissions.find((permission) => parentCollection === permission.collection)?.fields;
             if (permittedFields !== undefined)
                 allowedFields = permittedFields;
         }
@@ -233,7 +230,7 @@ async function getASTFromQuery(collection, query, schema, options) {
             if (fieldKey.includes('*') === false)
                 continue;
             if (fieldKey === '*') {
-                const aliases = Object.keys((_b = query.alias) !== null && _b !== void 0 ? _b : {});
+                const aliases = Object.keys(query.alias ?? {});
                 // Set to all fields in collection
                 if (allowedFields.includes('*')) {
                     fields.splice(index, 1, ...fieldsInCollection, ...aliases);
@@ -254,13 +251,12 @@ async function getASTFromQuery(collection, query, schema, options) {
                     ? schema.relations
                         .filter((relation) => relation.collection === parentCollection || relation.related_collection === parentCollection)
                         .map((relation) => {
-                        var _a;
                         const isMany = relation.collection === parentCollection;
-                        return isMany ? relation.field : (_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field;
+                        return isMany ? relation.field : relation.meta?.one_field;
                     })
                     : allowedFields.filter((fieldKey) => !!getRelation(parentCollection, fieldKey));
                 const nonRelationalFields = allowedFields.filter((fieldKey) => relationalFields.includes(fieldKey) === false);
-                const aliasFields = Object.keys((_c = query.alias) !== null && _c !== void 0 ? _c : {}).map((fieldKey) => {
+                const aliasFields = Object.keys(query.alias ?? {}).map((fieldKey) => {
                     const name = query.alias[fieldKey];
                     if (relationalFields.includes(name)) {
                         return `${fieldKey}.${parts.slice(1).join('.')}`;
@@ -280,21 +276,19 @@ async function getASTFromQuery(collection, query, schema, options) {
     }
     function getRelation(collection, field) {
         const relation = schema.relations.find((relation) => {
-            var _a;
             return ((relation.collection === collection && relation.field === field) ||
-                (relation.related_collection === collection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === field));
+                (relation.related_collection === collection && relation.meta?.one_field === field));
         });
         return relation;
     }
     function getRelatedCollection(collection, field) {
-        var _a;
         const relation = getRelation(collection, field);
         if (!relation)
             return null;
         if (relation.collection === collection && relation.field === field) {
             return relation.related_collection || null;
         }
-        if (relation.related_collection === collection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === field) {
+        if (relation.related_collection === collection && relation.meta?.one_field === field) {
             return relation.collection || null;
         }
         return null;
@@ -302,5 +296,5 @@ async function getASTFromQuery(collection, query, schema, options) {
 }
 exports.default = getASTFromQuery;
 function getDeepQuery(query) {
-    return (0, lodash_1.mapKeys)((0, lodash_1.omitBy)(query, (value, key) => key.startsWith('_') === false), (value, key) => key.substring(1));
+    return (0, lodash_1.mapKeys)((0, lodash_1.omitBy)(query, (_value, key) => key.startsWith('_') === false), (_value, key) => key.substring(1));
 }

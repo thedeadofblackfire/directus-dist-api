@@ -8,9 +8,8 @@ const env_1 = __importDefault(require("../env"));
 const logger_1 = __importDefault(require("../logger"));
 const get_local_type_1 = __importDefault(require("./get-local-type"));
 function getDefaultValue(column) {
-    var _a;
     const type = (0, get_local_type_1.default)(column);
-    const defaultValue = (_a = column.default_value) !== null && _a !== void 0 ? _a : null;
+    const defaultValue = column.default_value ?? null;
     if (defaultValue === null)
         return null;
     if (defaultValue === '0000-00-00 00:00:00')
@@ -53,7 +52,7 @@ function castToObject(value) {
             return (0, utils_1.parseJSON)(value);
         }
         catch (err) {
-            if (env_1.default.NODE_ENV === 'development') {
+            if (env_1.default['NODE_ENV'] === 'development') {
                 logger_1.default.error(err);
             }
             return value;

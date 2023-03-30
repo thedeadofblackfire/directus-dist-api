@@ -1,5 +1,5 @@
-import { OperationRaw } from '@directus/shared/types';
-import { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
+import type { OperationRaw } from '@directus/shared/types';
+import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
 import { ItemsService } from './items';
 export declare class OperationsService extends ItemsService<OperationRaw> {
     constructor(options: AbstractServiceOptions);

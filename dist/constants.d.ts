@@ -1,5 +1,5 @@
-import { CookieOptions } from 'express';
-import { TransformationParams } from './types';
+import type { CookieOptions } from 'express';
+import type { TransformationParams } from './types';
 export declare const SYSTEM_ASSET_ALLOW_LIST: TransformationParams[];
 export declare const ASSET_TRANSFORM_QUERY_KEYS: string[];
 export declare const FILTER_VARIABLES: string[];
@@ -10,3 +10,4 @@ export declare const GENERATE_SPECIAL: string[];
 export declare const UUID_REGEX = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 export declare const COOKIE_OPTIONS: CookieOptions;
 export declare const OAS_REQUIRED_SCHEMAS: string[];
+export declare const REDACT_TEXT = "--redact--";

@@ -53,7 +53,6 @@ function mergePermissionsForShare(currentPermissions, accountability, schema) {
 }
 exports.mergePermissionsForShare = mergePermissionsForShare;
 function traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, currentCollection, parentCollections = [], path = []) {
-    var _a, _b, _c;
     const permissions = [];
     // If there's already a permissions rule for the collection we're currently checking, we'll shortcircuit.
     // This prevents infinite loop in recursive relationships, like articles->related_articles->articles, or
@@ -82,7 +81,7 @@ function traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, currentCo
             });
             permissions.push(...traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, relation.collection, [...parentCollections, currentCollection], [...path, relation.field]));
         }
-        if (type === 'a2o' && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_allowed_collections)) {
+        if (type === 'a2o' && relation.meta?.one_allowed_collections) {
             for (const collection of relation.meta.one_allowed_collections) {
                 permissions.push({
                     collection,
@@ -95,8 +94,8 @@ function traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, currentCo
                 collection: relation.related_collection,
                 permissions: getFilterForPath(type, [...path, `$FOLLOW(${relation.collection},${relation.field})`], rootItemPrimaryKeyField, rootItemPrimaryKey),
             });
-            if ((_b = relation.meta) === null || _b === void 0 ? void 0 : _b.one_field) {
-                permissions.push(...traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, relation.related_collection, [...parentCollections, currentCollection], [...path, (_c = relation.meta) === null || _c === void 0 ? void 0 : _c.one_field]));
+            if (relation.meta?.one_field) {
+                permissions.push(...traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, relation.related_collection, [...parentCollections, currentCollection], [...path, relation.meta?.one_field]));
             }
         }
     }

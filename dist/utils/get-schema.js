@@ -18,13 +18,13 @@ const services_1 = require("../services");
 const get_default_value_1 = __importDefault(require("./get-default-value"));
 const get_local_type_1 = __importDefault(require("./get-local-type"));
 async function getSchema(options) {
-    const database = (options === null || options === void 0 ? void 0 : options.database) || (0, database_1.default)();
+    const database = options?.database || (0, database_1.default)();
     const schemaInspector = (0, schema_1.default)(database);
     let result;
-    if (!(options === null || options === void 0 ? void 0 : options.bypassCache) && env_1.default.CACHE_SCHEMA !== false) {
+    if (!options?.bypassCache && env_1.default['CACHE_SCHEMA'] !== false) {
         let cachedSchema;
         try {
-            cachedSchema = (await (0, cache_1.getSystemCache)('schema'));
+            cachedSchema = await (0, cache_1.getSchemaCache)();
         }
         catch (err) {
             logger_1.default.warn(err, `[schema-cache] Couldn't retrieve cache. ${err}`);
@@ -35,7 +35,7 @@ async function getSchema(options) {
         else {
             result = await getDatabaseSchema(database, schemaInspector);
             try {
-                await (0, cache_1.setSystemCache)('schema', result);
+                await (0, cache_1.setSchemaCache)(result);
             }
             catch (err) {
                 logger_1.default.warn(err, `[schema-cache] Couldn't save cache. ${err}`);
@@ -49,7 +49,6 @@ async function getSchema(options) {
 }
 exports.getSchema = getSchema;
 async function getDatabaseSchema(database, schemaInspector) {
-    var _a, _b, _c, _d, _e, _f;
     const result = {
         collections: {},
         relations: [],
@@ -63,7 +62,7 @@ async function getDatabaseSchema(database, schemaInspector) {
     ];
     //console.log('systemCollectionRows', systemCollectionRows.length);
     for (const [collection, info] of Object.entries(schemaOverview)) {
-        if ((0, utils_1.toArray)(env_1.default.DB_EXCLUDE_TABLES).includes(collection)) {
+        if ((0, utils_1.toArray)(env_1.default['DB_EXCLUDE_TABLES']).includes(collection)) {
             logger_1.default.trace(`Collection "${collection}" is configured to be excluded and will be ignored`);
             continue;
         }
@@ -79,17 +78,16 @@ async function getDatabaseSchema(database, schemaInspector) {
         result.collections[collection] = {
             collection,
             primary: info.primary,
-            singleton: (collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.singleton) === true || (collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.singleton) === 'true' || (collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.singleton) === 1,
-            note: (collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.note) || null,
-            sortField: (collectionMeta === null || collectionMeta === void 0 ? void 0 : collectionMeta.sort_field) || null,
+            singleton: collectionMeta?.singleton === true || collectionMeta?.singleton === 'true' || collectionMeta?.singleton === 1,
+            note: collectionMeta?.note || null,
+            sortField: collectionMeta?.sort_field || null,
             accountability: collectionMeta ? collectionMeta.accountability : 'all',
-            fields: (0, lodash_1.mapValues)(schemaOverview[collection].columns, (column) => {
-                var _a, _b, _c;
+            fields: (0, lodash_1.mapValues)(schemaOverview[collection]?.columns, (column) => {
                 return {
                     field: column.column_name,
-                    defaultValue: (_a = (0, get_default_value_1.default)(column)) !== null && _a !== void 0 ? _a : null,
-                    nullable: (_b = column.is_nullable) !== null && _b !== void 0 ? _b : true,
-                    generated: (_c = column.is_generated) !== null && _c !== void 0 ? _c : false,
+                    defaultValue: (0, get_default_value_1.default)(column) ?? null,
+                    nullable: column.is_nullable ?? true,
+                    generated: column.is_generated ?? false,
                     type: (0, get_local_type_1.default)(column),
                     dbType: column.data_type,
                     precision: column.numeric_precision || null,
@@ -112,28 +110,28 @@ async function getDatabaseSchema(database, schemaInspector) {
     for (const field of fields) {
         if (!result.collections[field.collection])
             continue;
-        const existing = result.collections[field.collection].fields[field.field];
-        const column = schemaOverview[field.collection].columns[field.field];
+        const existing = result.collections[field.collection]?.fields[field.field];
+        const column = schemaOverview[field.collection]?.columns[field.field];
         const special = field.special ? (0, utils_1.toArray)(field.special) : [];
         if (constants_1.ALIAS_TYPES.some((type) => special.includes(type)) === false && !existing)
             continue;
         const type = (existing && (0, get_local_type_1.default)(column, { special })) || 'alias';
-        let validation = (_a = field.validation) !== null && _a !== void 0 ? _a : null;
+        let validation = field.validation ?? null;
         if (validation && typeof validation === 'string')
             validation = (0, utils_1.parseJSON)(validation);
         result.collections[field.collection].fields[field.field] = {
             field: field.field,
-            defaultValue: (_b = existing === null || existing === void 0 ? void 0 : existing.defaultValue) !== null && _b !== void 0 ? _b : null,
-            nullable: (_c = existing === null || existing === void 0 ? void 0 : existing.nullable) !== null && _c !== void 0 ? _c : true,
-            generated: (_d = existing === null || existing === void 0 ? void 0 : existing.generated) !== null && _d !== void 0 ? _d : false,
+            defaultValue: existing?.defaultValue ?? null,
+            nullable: existing?.nullable ?? true,
+            generated: existing?.generated ?? false,
             type: type,
-            dbType: (existing === null || existing === void 0 ? void 0 : existing.dbType) || null,
-            precision: (existing === null || existing === void 0 ? void 0 : existing.precision) || null,
-            scale: (existing === null || existing === void 0 ? void 0 : existing.scale) || null,
+            dbType: existing?.dbType || null,
+            precision: existing?.precision || null,
+            scale: existing?.scale || null,
             special: special,
             note: field.note,
-            alias: (_e = existing === null || existing === void 0 ? void 0 : existing.alias) !== null && _e !== void 0 ? _e : true,
-            validation: (_f = validation) !== null && _f !== void 0 ? _f : null,
+            alias: existing?.alias ?? true,
+            validation: validation ?? null,
         };
     }
     const relationsService = new services_1.RelationsService({ knex: database, schema: result });

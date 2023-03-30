@@ -308,7 +308,7 @@ function refreshEnv() {
 }
 exports.refreshEnv = refreshEnv;
 function processConfiguration() {
-    const configPath = path_1.default.resolve(process.env.CONFIG_PATH || defaults.CONFIG_PATH);
+    const configPath = path_1.default.resolve(process.env['CONFIG_PATH'] || defaults['CONFIG_PATH']);
     if (fs_1.default.existsSync(configPath) === false)
         return {};
     const fileExt = path_1.default.extname(configPath).toLowerCase();

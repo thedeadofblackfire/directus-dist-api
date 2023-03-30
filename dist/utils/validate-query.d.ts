@@ -1,2 +1,2 @@
-import { Query } from '@directus/shared/types';
+import type { Query } from '@directus/shared/types';
 export declare function validateQuery(query: Query): Query;

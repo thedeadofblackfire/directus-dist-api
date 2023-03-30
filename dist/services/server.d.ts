@@ -1,6 +1,6 @@
-import { Knex } from 'knex';
-import { AbstractServiceOptions } from '../types';
-import { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
+import type { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { AbstractServiceOptions } from '../types';
 import { SettingsService } from './settings';
 export declare class ServerService {
     knex: Knex;

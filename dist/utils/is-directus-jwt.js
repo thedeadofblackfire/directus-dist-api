@@ -11,7 +11,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 function isDirectusJWT(string) {
     try {
         const payload = jsonwebtoken_1.default.decode(string, { json: true });
-        if ((payload === null || payload === void 0 ? void 0 : payload.iss) !== 'directus')
+        if (payload?.iss !== 'directus')
             return false;
         return true;
     }

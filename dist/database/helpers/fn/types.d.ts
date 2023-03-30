@@ -1,13 +1,12 @@
-import { Query, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
+import type { Query, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
 import { DatabaseHelper } from '../types';
 export type FnHelperOptions = {
-    type?: string;
-    query?: Query;
-    originalCollectionName?: string;
+    type: string | undefined;
+    query: Query | undefined;
+    originalCollectionName: string | undefined;
 };
 export declare abstract class FnHelper extends DatabaseHelper {
-    protected knex: Knex;
     protected schema: SchemaOverview;
     constructor(knex: Knex, schema: SchemaOverview);
     abstract year(table: string, column: string, options?: FnHelperOptions): Knex.Raw;

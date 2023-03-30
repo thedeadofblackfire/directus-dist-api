@@ -1,5 +1,5 @@
-import { AbstractServiceOptions, MutationOptions, PrimaryKey } from '../types';
-import { Query } from '@directus/shared/types';
+import type { Query } from '@directus/shared/types';
+import type { AbstractServiceOptions, MutationOptions, PrimaryKey } from '../types';
 import { ItemsService } from './items';
 export declare class RolesService extends ItemsService {
     constructor(options: AbstractServiceOptions);

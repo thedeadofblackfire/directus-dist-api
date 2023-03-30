@@ -1,2 +1,2 @@
-import { MySQLError } from './types';
+import type { MySQLError } from './types';
 export declare function extractError(error: MySQLError): MySQLError | Error;

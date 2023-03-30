@@ -30,11 +30,11 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
     try {
         if (Array.isArray(req.body)) {
             const items = await service.readMany(savedKeys, req.sanitizedQuery);
-            res.locals.payload = { data: items };
+            res.locals['payload'] = { data: items };
         }
         else {
             const item = await service.readOne(savedKeys[0], req.sanitizedQuery);
-            res.locals.payload = { data: item };
+            res.locals['payload'] = { data: item };
         }
     }
     catch (error) {
@@ -56,7 +56,7 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     });
     const records = await service.readByQuery(req.sanitizedQuery);
     const meta = await metaService.getMetaForQuery(req.collection, req.sanitizedQuery);
-    res.locals.payload = { data: records || null, meta };
+    res.locals['payload'] = { data: records || null, meta };
     return next();
 });
 router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
@@ -66,8 +66,8 @@ router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const record = await service.readOne(req.params.pk, req.sanitizedQuery);
-    res.locals.payload = { data: record || null };
+    const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
+    res.locals['payload'] = { data: record || null };
     return next();
 }), respond_1.respond);
 router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handler_1.default)(async (req, res, next) => {
@@ -85,7 +85,7 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
     }
     try {
         const result = await service.readMany(keys, req.sanitizedQuery);
-        res.locals.payload = { data: result };
+        res.locals['payload'] = { data: result };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -100,10 +100,10 @@ router.patch('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const primaryKey = await service.updateOne(req.params.pk, req.body);
+    const primaryKey = await service.updateOne(req.params['pk'], req.body);
     try {
         const item = await service.readOne(primaryKey, req.sanitizedQuery);
-        res.locals.payload = { data: item || null };
+        res.locals['payload'] = { data: item || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -113,7 +113,7 @@ router.patch('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
     }
     return next();
 }), respond_1.respond);
-router.delete('/', (0, async_handler_1.default)(async (req, res, next) => {
+router.delete('/', (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.WebhooksService({
         accountability: req.accountability,
         schema: req.schema,
@@ -130,12 +130,12 @@ router.delete('/', (0, async_handler_1.default)(async (req, res, next) => {
     }
     return next();
 }), respond_1.respond);
-router.delete('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
+router.delete('/:pk', (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.WebhooksService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.deleteOne(req.params.pk);
+    await service.deleteOne(req.params['pk']);
     return next();
 }), respond_1.respond);
 exports.default = router;

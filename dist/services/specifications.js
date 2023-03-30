@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SpecificationService = void 0;
 const specs_1 = __importDefault(require("@directus/specs"));
 const lodash_1 = require("lodash");
-// @ts-ignore
 const package_json_1 = require("../../package.json");
+const constants_1 = require("../constants");
 const database_1 = __importDefault(require("../database"));
 const env_1 = __importDefault(require("../env"));
 const get_relation_type_1 = require("../utils/get-relation-type");
@@ -15,10 +15,17 @@ const collections_1 = require("./collections");
 const fields_1 = require("./fields");
 const graphql_1 = require("./graphql");
 const relations_1 = require("./relations");
-const constants_1 = require("../constants");
 // @ts-ignore
 const format_title_1 = __importDefault(require("@directus/format-title"));
 class SpecificationService {
+    accountability;
+    knex;
+    schema;
+    fieldsService;
+    collectionsService;
+    relationsService;
+    oas;
+    graphql;
     constructor(options) {
         this.accountability = options.accountability || null;
         this.knex = options.knex || (0, database_1.default)();
@@ -36,93 +43,13 @@ class SpecificationService {
 }
 exports.SpecificationService = SpecificationService;
 class OASSpecsService {
+    accountability;
+    knex;
+    schema;
+    fieldsService;
+    collectionsService;
+    relationsService;
     constructor(options, { fieldsService, collectionsService, relationsService, }) {
-        this.fieldTypes = {
-            alias: {
-                type: 'string',
-            },
-            bigInteger: {
-                type: 'integer',
-                format: 'int64',
-            },
-            binary: {
-                type: 'string',
-                format: 'binary',
-            },
-            boolean: {
-                type: 'boolean',
-            },
-            csv: {
-                type: 'array',
-                items: {
-                    type: 'string',
-                },
-            },
-            date: {
-                type: 'string',
-                format: 'date',
-            },
-            dateTime: {
-                type: 'string',
-                format: 'date-time',
-            },
-            decimal: {
-                type: 'number',
-            },
-            float: {
-                type: 'number',
-                format: 'float',
-            },
-            hash: {
-                type: 'string',
-            },
-            integer: {
-                type: 'integer',
-            },
-            json: {},
-            string: {
-                type: 'string',
-            },
-            text: {
-                type: 'string',
-            },
-            time: {
-                type: 'string',
-                format: 'time',
-            },
-            timestamp: {
-                type: 'string',
-                format: 'timestamp',
-            },
-            unknown: {
-                type: undefined,
-            },
-            uuid: {
-                type: 'string',
-                format: 'uuid',
-            },
-            geometry: {
-                type: 'object',
-            },
-            'geometry.Point': {
-                type: 'object',
-            },
-            'geometry.LineString': {
-                type: 'object',
-            },
-            'geometry.Polygon': {
-                type: 'object',
-            },
-            'geometry.MultiPoint': {
-                type: 'object',
-            },
-            'geometry.MultiLineString': {
-                type: 'object',
-            },
-            'geometry.MultiPolygon': {
-                type: 'object',
-            },
-        };
         this.accountability = options.accountability || null;
         this.knex = options.knex || (0, database_1.default)();
         this.schema = options.schema;
@@ -131,11 +58,10 @@ class OASSpecsService {
         this.relationsService = relationsService;
     }
     async generate() {
-        var _a, _b;
         const collections = await this.collectionsService.readByQuery();
         const fields = await this.fieldsService.readAll();
         const relations = (await this.relationsService.readAll());
-        const permissions = (_b = (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.permissions) !== null && _b !== void 0 ? _b : [];
+        const permissions = this.accountability?.permissions ?? [];
         const tags = await this.generateTags(collections);
         const paths = await this.generatePaths(permissions, tags);
         const components = await this.generateComponents(collections, fields, relations, tags);
@@ -148,18 +74,19 @@ class OASSpecsService {
             },
             servers: [
                 {
-                    url: env_1.default.PUBLIC_URL,
+                    url: env_1.default['PUBLIC_URL'],
                     description: 'Your current Directus instance.',
                 },
             ],
-            tags,
             paths,
-            components,
         };
+        if (tags)
+            spec.tags = tags;
+        if (components)
+            spec.components = components;
         return spec;
     }
     async generateTags(collections) {
-        var _a;
         const systemTags = (0, lodash_1.cloneDeep)(specs_1.default.tags);
         const tags = [];
         // System tags that don't have an associated collection are always readable to the user
@@ -180,18 +107,20 @@ class OASSpecsService {
                 }
             }
             else {
-                tags.push({
+                const tag = {
                     name: 'Items' + (0, format_title_1.default)(collection.collection).replace(/ /g, ''),
-                    description: ((_a = collection.meta) === null || _a === void 0 ? void 0 : _a.note) || undefined,
                     'x-collection': collection.collection,
-                });
+                };
+                if (collection.meta?.note) {
+                    tag.description = collection.meta.note;
+                }
+                tags.push(tag);
             }
         }
         // Filter out the generic Items information
         return tags.filter((tag) => tag.name !== 'Items');
     }
     async generatePaths(permissions, tags) {
-        var _a, _b, _c, _d, _e;
         const paths = {};
         if (!tags)
             return paths;
@@ -200,11 +129,11 @@ class OASSpecsService {
             if (isSystem) {
                 for (const [path, pathItem] of Object.entries(specs_1.default.paths)) {
                     for (const [method, operation] of Object.entries(pathItem)) {
-                        if ((_a = operation.tags) === null || _a === void 0 ? void 0 : _a.includes(tag.name)) {
+                        if (operation.tags?.includes(tag.name)) {
                             if (!paths[path]) {
                                 paths[path] = {};
                             }
-                            const hasPermission = ((_b = this.accountability) === null || _b === void 0 ? void 0 : _b.admin) === true ||
+                            const hasPermission = this.accountability?.admin === true ||
                                 'x-collection' in tag === false ||
                                 !!permissions.find((permission) => permission.collection === tag['x-collection'] &&
                                     permission.action === this.getActionForMethod(method));
@@ -212,7 +141,7 @@ class OASSpecsService {
                                 if ('parameters' in pathItem) {
                                     paths[path][method] = {
                                         ...operation,
-                                        parameters: [...((_c = pathItem.parameters) !== null && _c !== void 0 ? _c : []), ...((_d = operation === null || operation === void 0 ? void 0 : operation.parameters) !== null && _d !== void 0 ? _d : [])],
+                                        parameters: [...(pathItem.parameters ?? []), ...(operation?.parameters ?? [])],
                                     };
                                 }
                                 else {
@@ -228,7 +157,7 @@ class OASSpecsService {
                 const detailBase = (0, lodash_1.cloneDeep)(specs_1.default.paths['/items/{collection}/{id}']);
                 const collection = tag['x-collection'];
                 for (const method of ['post', 'get', 'patch', 'delete']) {
-                    const hasPermission = ((_e = this.accountability) === null || _e === void 0 ? void 0 : _e.admin) === true ||
+                    const hasPermission = this.accountability?.admin === true ||
                         !!permissions.find((permission) => permission.collection === collection && permission.action === this.getActionForMethod(method));
                     if (hasPermission) {
                         if (!paths[`/items/${collection}`])
@@ -239,7 +168,7 @@ class OASSpecsService {
                             paths[`/items/${collection}`][method] = (0, lodash_1.mergeWith)((0, lodash_1.cloneDeep)(listBase[method]), {
                                 description: listBase[method].description.replace('item', collection + ' item'),
                                 tags: [tag.name],
-                                parameters: 'parameters' in listBase ? this.filterCollectionFromParams(listBase['parameters']) : [],
+                                parameters: 'parameters' in listBase ? this.filterCollectionFromParams(listBase.parameters) : [],
                                 operationId: `${this.getActionForMethod(method)}${tag.name}`,
                                 requestBody: ['get', 'delete'].includes(method)
                                     ? undefined
@@ -284,6 +213,7 @@ class OASSpecsService {
                             }, (obj, src) => {
                                 if (Array.isArray(obj))
                                     return obj.concat(src);
+                                return undefined;
                             });
                         }
                         if (detailBase[method]) {
@@ -291,7 +221,7 @@ class OASSpecsService {
                                 description: detailBase[method].description.replace('item', collection + ' item'),
                                 tags: [tag.name],
                                 operationId: `${this.getActionForMethod(method)}Single${tag.name}`,
-                                parameters: 'parameters' in detailBase ? this.filterCollectionFromParams(detailBase['parameters']) : [],
+                                parameters: 'parameters' in detailBase ? this.filterCollectionFromParams(detailBase.parameters) : [],
                                 requestBody: ['get', 'delete'].includes(method)
                                     ? undefined
                                     : {
@@ -323,6 +253,7 @@ class OASSpecsService {
                             }, (obj, src) => {
                                 if (Array.isArray(obj))
                                     return obj.concat(src);
+                                return undefined;
                             });
                         }
                     }
@@ -332,13 +263,12 @@ class OASSpecsService {
         return paths;
     }
     async generateComponents(collections, fields, relations, tags) {
-        var _a;
         let components = (0, lodash_1.cloneDeep)(specs_1.default.components);
         if (!components)
             components = {};
         components.schemas = {};
         // Always includes the schemas with these names
-        if (((_a = specs_1.default.components) === null || _a === void 0 ? void 0 : _a.schemas) !== null) {
+        if (specs_1.default.components?.schemas !== null) {
             for (const schemaName of constants_1.OAS_REQUIRED_SCHEMAS) {
                 if (specs_1.default.components.schemas[schemaName] !== null) {
                     components.schemas[schemaName] = (0, lodash_1.cloneDeep)(specs_1.default.components.schemas[schemaName]);
@@ -377,7 +307,7 @@ class OASSpecsService {
         return components;
     }
     filterCollectionFromParams(parameters) {
-        return parameters.filter((param) => (param === null || param === void 0 ? void 0 : param.$ref) !== '#/components/parameters/Collection');
+        return parameters.filter((param) => param?.$ref !== '#/components/parameters/Collection');
     }
     getActionForMethod(method) {
         switch (method) {
@@ -393,16 +323,15 @@ class OASSpecsService {
         }
     }
     generateField(field, relations, tags, fields) {
-        var _a, _b;
-        let propertyObject = {
-            nullable: (_a = field.schema) === null || _a === void 0 ? void 0 : _a.is_nullable,
-            description: ((_b = field.meta) === null || _b === void 0 ? void 0 : _b.note) || undefined,
-        };
-        const relation = relations.find((relation) => {
-            var _a;
-            return (relation.collection === field.collection && relation.field === field.field) ||
-                (relation.related_collection === field.collection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === field.field);
-        });
+        let propertyObject = {};
+        if (field.schema && 'is_nullable' in field.schema) {
+            propertyObject.nullable = field.schema.is_nullable;
+        }
+        if (field.meta?.note) {
+            propertyObject.description = field.meta.note;
+        }
+        const relation = relations.find((relation) => (relation.collection === field.collection && relation.field === field.field) ||
+            (relation.related_collection === field.collection && relation.meta?.one_field === field.field));
         if (!relation) {
             propertyObject = {
                 ...propertyObject,
@@ -417,7 +346,7 @@ class OASSpecsService {
             });
             if (relationType === 'm2o') {
                 const relatedTag = tags.find((tag) => tag['x-collection'] === relation.related_collection);
-                const relatedPrimaryKeyField = fields.find((field) => { var _a; return field.collection === relation.related_collection && ((_a = field.schema) === null || _a === void 0 ? void 0 : _a.is_primary_key); });
+                const relatedPrimaryKeyField = fields.find((field) => field.collection === relation.related_collection && field.schema?.is_primary_key);
                 if (!relatedTag || !relatedPrimaryKeyField)
                     return propertyObject;
                 propertyObject.oneOf = [
@@ -431,7 +360,7 @@ class OASSpecsService {
             }
             else if (relationType === 'o2m') {
                 const relatedTag = tags.find((tag) => tag['x-collection'] === relation.collection);
-                const relatedPrimaryKeyField = fields.find((field) => { var _a; return field.collection === relation.collection && ((_a = field.schema) === null || _a === void 0 ? void 0 : _a.is_primary_key); });
+                const relatedPrimaryKeyField = fields.find((field) => field.collection === relation.collection && field.schema?.is_primary_key);
                 if (!relatedTag || !relatedPrimaryKeyField)
                     return propertyObject;
                 propertyObject.type = 'array';
@@ -463,8 +392,97 @@ class OASSpecsService {
         }
         return propertyObject;
     }
+    fieldTypes = {
+        alias: {
+            type: 'string',
+        },
+        bigInteger: {
+            type: 'integer',
+            format: 'int64',
+        },
+        binary: {
+            type: 'string',
+            format: 'binary',
+        },
+        boolean: {
+            type: 'boolean',
+        },
+        csv: {
+            type: 'array',
+            items: {
+                type: 'string',
+            },
+        },
+        date: {
+            type: 'string',
+            format: 'date',
+        },
+        dateTime: {
+            type: 'string',
+            format: 'date-time',
+        },
+        decimal: {
+            type: 'number',
+        },
+        float: {
+            type: 'number',
+            format: 'float',
+        },
+        hash: {
+            type: 'string',
+        },
+        integer: {
+            type: 'integer',
+        },
+        json: {},
+        string: {
+            type: 'string',
+        },
+        text: {
+            type: 'string',
+        },
+        time: {
+            type: 'string',
+            format: 'time',
+        },
+        timestamp: {
+            type: 'string',
+            format: 'timestamp',
+        },
+        unknown: {},
+        uuid: {
+            type: 'string',
+            format: 'uuid',
+        },
+        geometry: {
+            type: 'object',
+        },
+        'geometry.Point': {
+            type: 'object',
+        },
+        'geometry.LineString': {
+            type: 'object',
+        },
+        'geometry.Polygon': {
+            type: 'object',
+        },
+        'geometry.MultiPoint': {
+            type: 'object',
+        },
+        'geometry.MultiLineString': {
+            type: 'object',
+        },
+        'geometry.MultiPolygon': {
+            type: 'object',
+        },
+    };
 }
 class GraphQLSpecsService {
+    accountability;
+    knex;
+    schema;
+    items;
+    system;
     constructor(options) {
         this.accountability = options.accountability || null;
         this.knex = options.knex || (0, database_1.default)();

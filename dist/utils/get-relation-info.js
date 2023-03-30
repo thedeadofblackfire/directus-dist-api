@@ -9,7 +9,6 @@ function checkImplicitRelation(field) {
     return null;
 }
 function getRelationInfo(relations, collection, field) {
-    var _a;
     if (field.startsWith('$FOLLOW') && field.length > 500) {
         throw new Error(`Implicit $FOLLOW statement is too big to parse. Got: "${field.substring(500)}..."`);
     }
@@ -40,11 +39,10 @@ function getRelationInfo(relations, collection, field) {
             return { relation, relationType: 'o2a' };
         }
     }
-    const relation = (_a = relations.find((relation) => {
-        var _a;
+    const relation = relations.find((relation) => {
         return ((relation.collection === collection && relation.field === field) ||
-            (relation.related_collection === collection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === field));
-    })) !== null && _a !== void 0 ? _a : null;
+            (relation.related_collection === collection && relation.meta?.one_field === field));
+    }) ?? null;
     const relationType = relation ? (0, get_relation_type_1.getRelationType)({ relation, collection, field }) : null;
     return { relation, relationType };
 }

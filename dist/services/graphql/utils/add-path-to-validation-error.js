@@ -3,8 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addPathToValidationError = void 0;
 const graphql_1 = require("graphql");
 function addPathToValidationError(validationError) {
-    var _a, _b, _c;
-    const token = (_c = (_b = (_a = validationError.nodes) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.loc) === null || _c === void 0 ? void 0 : _c.startToken;
+    const token = validationError.nodes?.[0]?.loc?.startToken;
     if (!token)
         return validationError;
     let prev = token;

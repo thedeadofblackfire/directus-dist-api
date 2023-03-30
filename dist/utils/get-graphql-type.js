@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGraphQLType = void 0;
 const graphql_1 = require("graphql");
 const graphql_compose_1 = require("graphql-compose");
+const bigint_1 = require("../services/graphql/types/bigint");
 const date_1 = require("../services/graphql/types/date");
 const geojson_1 = require("../services/graphql/types/geojson");
 const hash_1 = require("../services/graphql/types/hash");
-const bigint_1 = require("../services/graphql/types/bigint");
 function getGraphQLType(localType, special) {
     if (special.includes('conceal')) {
         return hash_1.GraphQLHash;

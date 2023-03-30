@@ -18,7 +18,7 @@ class RolesService extends items_1.ItemsService {
             .whereNotIn('id', excludeKeys)
             .andWhere({ admin_access: true })
             .first();
-        const otherAdminRolesCount = +((otherAdminRoles === null || otherAdminRoles === void 0 ? void 0 : otherAdminRoles.count) || 0);
+        const otherAdminRolesCount = +(otherAdminRoles?.count || 0);
         if (otherAdminRolesCount === 0)
             throw new exceptions_1.UnprocessableEntityException(`You can't delete the last admin role.`);
     }
@@ -29,10 +29,10 @@ class RolesService extends items_1.ItemsService {
         // The users that will now be in this new non-admin role
         let userKeys = [];
         if (Array.isArray(users)) {
-            userKeys = users.map((user) => (typeof user === 'string' ? user : user.id)).filter((id) => id);
+            userKeys = users.map((user) => (typeof user === 'string' ? user : user['id'])).filter((id) => id);
         }
         else {
-            userKeys = users.update.map((user) => user.id).filter((id) => id);
+            userKeys = users.update.map((user) => user['id']).filter((id) => id);
         }
         const usersThatWereInRoleBefore = (await this.knex.select('id').from('directus_users').where('role', '=', key)).map((user) => user.id);
         const usersThatAreRemoved = usersThatWereInRoleBefore.filter((id) => Array.isArray(users) ? userKeys.includes(id) === false : users.delete.includes(id) === true);
@@ -49,7 +49,7 @@ class RolesService extends items_1.ItemsService {
             .andWhere({ 'directus_roles.admin_access': true })
             .leftJoin('directus_roles', 'directus_users.role', 'directus_roles.id')
             .first();
-        const otherAdminUsersCount = +((otherAdminUsers === null || otherAdminUsers === void 0 ? void 0 : otherAdminUsers.count) || 0);
+        const otherAdminUsersCount = +(otherAdminUsers?.count || 0);
         if (otherAdminUsersCount === 0) {
             throw new exceptions_1.UnprocessableEntityException(`You can't remove the last admin user from the admin role.`);
         }
@@ -58,7 +58,7 @@ class RolesService extends items_1.ItemsService {
     async updateOne(key, data, opts) {
         try {
             if ('users' in data) {
-                await this.checkForOtherAdminUsers(key, data.users);
+                await this.checkForOtherAdminUsers(key, data['users']);
             }
         }
         catch (err) {
@@ -69,7 +69,7 @@ class RolesService extends items_1.ItemsService {
     async updateBatch(data, opts) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const keys = data.map((item) => item[primaryKeyField]);
-        const setsToNoAdmin = data.some((item) => item.admin_access === false);
+        const setsToNoAdmin = data.some((item) => item['admin_access'] === false);
         try {
             if (setsToNoAdmin) {
                 await this.checkForOtherAdminRoles(keys);
@@ -82,7 +82,7 @@ class RolesService extends items_1.ItemsService {
     }
     async updateMany(keys, data, opts) {
         try {
-            if ('admin_access' in data && data.admin_access === false) {
+            if ('admin_access' in data && data['admin_access'] === false) {
                 await this.checkForOtherAdminRoles(keys);
             }
         }

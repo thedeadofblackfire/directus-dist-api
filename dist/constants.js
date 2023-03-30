@@ -2,9 +2,8 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OAS_REQUIRED_SCHEMAS = exports.COOKIE_OPTIONS = exports.UUID_REGEX = exports.GENERATE_SPECIAL = exports.COLUMN_TRANSFORMS = exports.DEFAULT_AUTH_PROVIDER = exports.ALIAS_TYPES = exports.FILTER_VARIABLES = exports.ASSET_TRANSFORM_QUERY_KEYS = exports.SYSTEM_ASSET_ALLOW_LIST = void 0;
+exports.REDACT_TEXT = exports.OAS_REQUIRED_SCHEMAS = exports.COOKIE_OPTIONS = exports.UUID_REGEX = exports.GENERATE_SPECIAL = exports.COLUMN_TRANSFORMS = exports.DEFAULT_AUTH_PROVIDER = exports.ALIAS_TYPES = exports.FILTER_VARIABLES = exports.ASSET_TRANSFORM_QUERY_KEYS = exports.SYSTEM_ASSET_ALLOW_LIST = void 0;
 const env_1 = __importDefault(require("./env"));
 const get_milliseconds_1 = require("./utils/get-milliseconds");
 exports.SYSTEM_ASSET_ALLOW_LIST = [
@@ -51,9 +50,10 @@ exports.GENERATE_SPECIAL = ['uuid', 'date-created', 'role-created', 'user-create
 exports.UUID_REGEX = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 exports.COOKIE_OPTIONS = {
     httpOnly: true,
-    domain: env_1.default.REFRESH_TOKEN_COOKIE_DOMAIN,
-    maxAge: (0, get_milliseconds_1.getMilliseconds)(env_1.default.REFRESH_TOKEN_TTL),
-    secure: (_a = env_1.default.REFRESH_TOKEN_COOKIE_SECURE) !== null && _a !== void 0 ? _a : false,
-    sameSite: env_1.default.REFRESH_TOKEN_COOKIE_SAME_SITE || 'strict',
+    domain: env_1.default['REFRESH_TOKEN_COOKIE_DOMAIN'],
+    maxAge: (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL']),
+    secure: env_1.default['REFRESH_TOKEN_COOKIE_SECURE'] ?? false,
+    sameSite: env_1.default['REFRESH_TOKEN_COOKIE_SAME_SITE'] || 'strict',
 };
 exports.OAS_REQUIRED_SCHEMAS = ['Diff', 'Schema', 'Query', 'x-metadata'];
+exports.REDACT_TEXT = '--redact--';

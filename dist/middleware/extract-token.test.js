@@ -3,9 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const vitest_1 = require("vitest");
 const extract_token_1 = __importDefault(require("../../src/middleware/extract-token"));
 require("../../src/types/express.d.ts");
-const vitest_1 = require("vitest");
 let mockRequest;
 let mockResponse;
 const nextFunction = vitest_1.vi.fn();

@@ -1,2 +1,2 @@
-import { Request } from 'express';
+import type { Request } from 'express';
 export declare function getCacheKey(req: Request): string;

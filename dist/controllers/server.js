@@ -15,7 +15,7 @@ router.get('/specs/oas', (0, async_handler_1.default)(async (req, res, next) => 
         accountability: req.accountability,
         schema: req.schema,
     });
-    res.locals.payload = await service.oas.generate();
+    res.locals['payload'] = await service.oas.generate();
     return next();
 }), respond_1.respond);
 router.get('/specs/graphql/:scope?', (0, async_handler_1.default)(async (req, res) => {
@@ -27,12 +27,12 @@ router.get('/specs/graphql/:scope?', (0, async_handler_1.default)(async (req, re
         accountability: req.accountability,
         schema: req.schema,
     });
-    const scope = req.params.scope || 'items';
+    const scope = req.params['scope'] || 'items';
     if (['items', 'system'].includes(scope) === false)
         throw new exceptions_1.RouteNotFoundException(req.path);
     const info = await serverService.serverInfo();
     const result = await service.graphql.generate(scope);
-    const filename = info.project.project_name + '_' + (0, date_fns_1.format)(new Date(), 'yyyy-MM-dd') + '.graphql';
+    const filename = info['project'].project_name + '_' + (0, date_fns_1.format)(new Date(), 'yyyy-MM-dd') + '.graphql';
     res.attachment(filename);
     res.send(result);
 }));
@@ -42,7 +42,7 @@ router.get('/info', (0, async_handler_1.default)(async (req, res, next) => {
         schema: req.schema,
     });
     const data = await service.serverInfo();
-    res.locals.payload = { data };
+    res.locals['payload'] = { data };
     return next();
 }), respond_1.respond);
 router.get('/health', (0, async_handler_1.default)(async (req, res, next) => {
@@ -52,10 +52,10 @@ router.get('/health', (0, async_handler_1.default)(async (req, res, next) => {
     });
     const data = await service.health();
     res.setHeader('Content-Type', 'application/health+json');
-    if (data.status === 'error')
+    if (data['status'] === 'error')
         res.status(503);
-    res.locals.payload = data;
-    res.locals.cache = false;
+    res.locals['payload'] = data;
+    res.locals['cache'] = false;
     return next();
 }), respond_1.respond);
 exports.default = router;

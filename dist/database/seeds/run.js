@@ -21,7 +21,6 @@ async function runSeed(database) {
         const yamlRaw = await fs_extra_1.default.readFile(path_1.default.resolve(__dirname, tableSeedFile), 'utf8');
         const seedData = js_yaml_1.default.load(yamlRaw);
         await database.schema.createTable(seedData.table, (tableBuilder) => {
-            var _a;
             for (const [columnName, columnInfo] of Object.entries(seedData.columns)) {
                 let column;
                 if (columnInfo.type === 'alias' || columnInfo.type === 'unknown')
@@ -38,7 +37,7 @@ async function runSeed(database) {
                 else if (columnInfo.type === 'hash') {
                     column = tableBuilder.string(columnName, 255);
                 }
-                else if ((_a = columnInfo.type) === null || _a === void 0 ? void 0 : _a.startsWith('geometry')) {
+                else if (columnInfo.type?.startsWith('geometry')) {
                     column = helpers.st.createColumn(tableBuilder, { field: columnName, type: columnInfo.type });
                 }
                 else {

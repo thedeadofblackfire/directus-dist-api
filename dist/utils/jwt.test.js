@@ -3,10 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const jwt_1 = require("../../src/utils/jwt");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const exceptions_1 = require("../../src/exceptions");
 const vitest_1 = require("vitest");
+const exceptions_1 = require("../../src/exceptions");
+const jwt_1 = require("../../src/utils/jwt");
 const payload = { role: null, app_access: false, admin_access: false };
 const secret = 'test-secret';
 const options = { issuer: 'directus' };

@@ -27,10 +27,9 @@ exports.default = (0, utils_1.defineOperationApi)({
         });
         const messageString = message ? (0, utils_1.optionToString)(message) : null;
         const payload = (0, utils_1.toArray)(recipient).map((userId) => {
-            var _a;
             return {
                 recipient: userId,
-                sender: (_a = customAccountability === null || customAccountability === void 0 ? void 0 : customAccountability.user) !== null && _a !== void 0 ? _a : null,
+                sender: customAccountability?.user ?? null,
                 subject,
                 message: messageString,
             };

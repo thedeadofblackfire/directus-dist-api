@@ -29,28 +29,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getExtensionManager = void 0;
 const constants_1 = require("@directus/shared/constants");
 const sharedExceptions = __importStar(require("@directus/shared/exceptions"));
+const utils_1 = require("@directus/shared/utils");
 const node_1 = require("@directus/shared/utils/node");
+const plugin_alias_1 = __importDefault(require("@rollup/plugin-alias"));
+const plugin_virtual_1 = __importDefault(require("@rollup/plugin-virtual"));
+const chokidar_1 = __importDefault(require("chokidar"));
 const express_1 = __importStar(require("express"));
 const fs_extra_1 = __importDefault(require("fs-extra"));
+const globby_1 = __importDefault(require("globby"));
+const lodash_1 = require("lodash");
+const node_cron_1 = require("node-cron");
 const path_1 = __importDefault(require("path"));
+const rollup_1 = require("rollup");
 const database_1 = __importDefault(require("./database"));
 const emitter_1 = __importStar(require("./emitter"));
 const env_1 = __importDefault(require("./env"));
 const exceptions = __importStar(require("./exceptions"));
-const logger_1 = __importDefault(require("./logger"));
-const dynamic_import_1 = require("./utils/dynamic-import");
-const get_schema_1 = require("./utils/get-schema");
-const utils_1 = require("@directus/shared/utils");
-const plugin_alias_1 = __importDefault(require("@rollup/plugin-alias"));
-const plugin_virtual_1 = __importDefault(require("@rollup/plugin-virtual"));
-const chokidar_1 = __importDefault(require("chokidar"));
-const globby_1 = __importDefault(require("globby"));
-const lodash_1 = require("lodash");
-const node_cron_1 = require("node-cron");
-const rollup_1 = require("rollup");
 const flows_1 = require("./flows");
+const logger_1 = __importDefault(require("./logger"));
 const services = __importStar(require("./services"));
+const dynamic_import_1 = require("./utils/dynamic-import");
 const get_module_default_1 = __importDefault(require("./utils/get-module-default"));
+const get_schema_1 = require("./utils/get-schema");
 const job_queue_1 = require("./utils/job-queue");
 const url_1 = require("./utils/url");
 let extensionManager;
@@ -64,18 +64,22 @@ function getExtensionManager() {
 exports.getExtensionManager = getExtensionManager;
 const defaultOptions = {
     schedule: true,
-    watch: env_1.default.EXTENSIONS_AUTO_RELOAD && env_1.default.NODE_ENV !== 'development',
+    watch: env_1.default['EXTENSIONS_AUTO_RELOAD'] && env_1.default['NODE_ENV'] !== 'development',
 };
 class ExtensionManager {
+    isLoaded = false;
+    options;
+    extensions = [];
+    appExtensions = null;
+    apiExtensions = [];
+    apiEmitter;
+    hookEvents = [];
+    endpointRouter;
+    hookEmbedsHead = [];
+    hookEmbedsBody = [];
+    reloadQueue;
+    watcher = null;
     constructor() {
-        this.isLoaded = false;
-        this.extensions = [];
-        this.appExtensions = null;
-        this.apiExtensions = [];
-        this.hookEvents = [];
-        this.hookEmbedsHead = [];
-        this.hookEmbedsBody = [];
-        this.watcher = null;
         this.options = defaultOptions;
         this.apiEmitter = new emitter_1.Emitter();
         this.endpointRouter = (0, express_1.Router)();
@@ -140,17 +144,23 @@ class ExtensionManager {
                 name: extension.name,
                 type: extension.type,
                 local: extension.local,
-                host: extension.host,
-                version: extension.version,
+                entries: [],
             };
+            if (extension.host)
+                extensionInfo.host = extension.host;
+            if (extension.version)
+                extensionInfo.version = extension.version;
             if (extension.type === 'bundle') {
-                return {
-                    ...extensionInfo,
+                const bundleExtensionInfo = {
+                    name: extensionInfo.name,
+                    type: 'bundle',
+                    local: extensionInfo.local,
                     entries: extension.entries.map((entry) => ({
                         name: entry.name,
                         type: entry.type,
                     })),
                 };
+                return bundleExtensionInfo;
             }
             else {
                 return extensionInfo;
@@ -179,7 +189,7 @@ class ExtensionManager {
     }
     async load() {
         try {
-            await (0, node_1.ensureExtensionDirs)(env_1.default.EXTENSIONS_PATH, constants_1.NESTED_EXTENSION_TYPES);
+            await (0, node_1.ensureExtensionDirs)(env_1.default['EXTENSIONS_PATH'], constants_1.NESTED_EXTENSION_TYPES);
             this.extensions = await this.getExtensions();
         }
         catch (err) {
@@ -190,7 +200,7 @@ class ExtensionManager {
         await this.registerEndpoints();
         await this.registerOperations();
         await this.registerBundles();
-        if (env_1.default.SERVE_APP) {
+        if (env_1.default['SERVE_APP']) {
             this.appExtensions = await this.generateExtensionBundle();
         }
         this.isLoaded = true;
@@ -198,7 +208,7 @@ class ExtensionManager {
     async unload() {
         this.unregisterApiExtensions();
         this.apiEmitter.offAll();
-        if (env_1.default.SERVE_APP) {
+        if (env_1.default['SERVE_APP']) {
             this.appExtensions = null;
         }
         this.isLoaded = false;
@@ -207,7 +217,7 @@ class ExtensionManager {
         if (!this.watcher) {
             logger_1.default.info('Watching extensions for changes...');
             const localExtensionPaths = constants_1.NESTED_EXTENSION_TYPES.flatMap((type) => {
-                const typeDir = path_1.default.posix.join((0, node_1.pathToRelativeUrl)(env_1.default.EXTENSIONS_PATH), (0, utils_1.pluralize)(type));
+                const typeDir = path_1.default.posix.join((0, node_1.pathToRelativeUrl)(env_1.default['EXTENSIONS_PATH']), (0, utils_1.pluralize)(type));
                 if ((0, utils_1.isIn)(type, constants_1.HYBRID_EXTENSION_TYPES)) {
                     return [path_1.default.posix.join(typeDir, '*', 'app.js'), path_1.default.posix.join(typeDir, '*', 'api.js')];
                 }
@@ -246,10 +256,10 @@ class ExtensionManager {
         }
     }
     async getExtensions() {
-        const packageExtensions = await (0, node_1.getPackageExtensions)(env_1.default.PACKAGE_FILE_LOCATION);
-        const localPackageExtensions = await (0, node_1.resolvePackageExtensions)(env_1.default.EXTENSIONS_PATH);
-        const localExtensions = await (0, node_1.getLocalExtensions)(env_1.default.EXTENSIONS_PATH);
-        return [...packageExtensions, ...localPackageExtensions, ...localExtensions].filter((extension) => env_1.default.SERVE_APP || constants_1.APP_EXTENSION_TYPES.includes(extension.type) === false);
+        const packageExtensions = await (0, node_1.getPackageExtensions)(env_1.default['PACKAGE_FILE_LOCATION']);
+        const localPackageExtensions = await (0, node_1.resolvePackageExtensions)(env_1.default['EXTENSIONS_PATH']);
+        const localExtensions = await (0, node_1.getLocalExtensions)(env_1.default['EXTENSIONS_PATH']);
+        return [...packageExtensions, ...localPackageExtensions, ...localExtensions].filter((extension) => env_1.default['SERVE_APP'] || constants_1.APP_EXTENSION_TYPES.includes(extension.type) === false);
     }
     async generateExtensionBundle() {
         const sharedDepsMapping = await this.getSharedDepsMapping(constants_1.APP_SHARED_DEPS);
@@ -282,7 +292,7 @@ class ExtensionManager {
             const depRegex = new RegExp(`${(0, lodash_1.escapeRegExp)(dep.replace(/\//g, '_'))}\\.[0-9a-f]{8}\\.entry\\.js`);
             const depName = appDir.find((file) => depRegex.test(file));
             if (depName) {
-                const depUrl = new url_1.Url(env_1.default.PUBLIC_URL).addPath('admin', 'assets', depName);
+                const depUrl = new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'assets', depName);
                 depsMapping[dep] = depUrl.toString({ rootRelative: true });
             }
             else {

@@ -1,5 +1,5 @@
-import { SchemaOverview } from '@directus/shared/types';
-import { PrimaryKey } from '../types';
+import type { SchemaOverview } from '@directus/shared/types';
+import type { PrimaryKey } from '../types';
 /**
  * Validate keys based on its type
  */

@@ -10,12 +10,13 @@ const lodash_1 = require("lodash");
  * @returns Reduced schema
  */
 function reduceSchema(schema, permissions, actions = ['create', 'read', 'update', 'delete']) {
-    var _a, _b, _c;
     const reduced = {
         collections: {},
         relations: [],
     };
-    const allowedFieldsInCollection = (_a = permissions === null || permissions === void 0 ? void 0 : permissions.filter((permission) => actions.includes(permission.action)).reduce((acc, permission) => {
+    const allowedFieldsInCollection = permissions
+        ?.filter((permission) => actions.includes(permission.action))
+        .reduce((acc, permission) => {
         if (!acc[permission.collection]) {
             acc[permission.collection] = [];
         }
@@ -23,20 +24,20 @@ function reduceSchema(schema, permissions, actions = ['create', 'read', 'update'
             acc[permission.collection] = (0, lodash_1.uniq)([...acc[permission.collection], ...permission.fields]);
         }
         return acc;
-    }, {})) !== null && _a !== void 0 ? _a : {};
+    }, {}) ?? {};
     for (const [collectionName, collection] of Object.entries(schema.collections)) {
-        if (!(permissions === null || permissions === void 0 ? void 0 : permissions.some((permission) => permission.collection === collectionName && actions.includes(permission.action)))) {
+        if (!permissions?.some((permission) => permission.collection === collectionName && actions.includes(permission.action))) {
             continue;
         }
         const fields = {};
         for (const [fieldName, field] of Object.entries(schema.collections[collectionName].fields)) {
-            if (!((_b = allowedFieldsInCollection[collectionName]) === null || _b === void 0 ? void 0 : _b.includes('*')) &&
-                !((_c = allowedFieldsInCollection[collectionName]) === null || _c === void 0 ? void 0 : _c.includes(fieldName))) {
+            if (!allowedFieldsInCollection[collectionName]?.includes('*') &&
+                !allowedFieldsInCollection[collectionName]?.includes(fieldName)) {
                 continue;
             }
-            const o2mRelation = schema.relations.find((relation) => { var _a; return relation.related_collection === collectionName && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field) === fieldName; });
+            const o2mRelation = schema.relations.find((relation) => relation.related_collection === collectionName && relation.meta?.one_field === fieldName);
             if (o2mRelation &&
-                !(permissions === null || permissions === void 0 ? void 0 : permissions.some((permission) => permission.collection === o2mRelation.collection && actions.includes(permission.action)))) {
+                !permissions?.some((permission) => permission.collection === o2mRelation.collection && actions.includes(permission.action))) {
                 continue;
             }
             fields[fieldName] = field;
@@ -47,7 +48,6 @@ function reduceSchema(schema, permissions, actions = ['create', 'read', 'update'
         };
     }
     reduced.relations = schema.relations.filter((relation) => {
-        var _a, _b, _c;
         let collectionsAllowed = true;
         let fieldsAllowed = true;
         if (Object.keys(allowedFieldsInCollection).includes(relation.collection) === false) {
@@ -56,23 +56,23 @@ function reduceSchema(schema, permissions, actions = ['create', 'read', 'update'
         if (relation.related_collection &&
             (Object.keys(allowedFieldsInCollection).includes(relation.related_collection) === false ||
                 // Ignore legacy permissions with an empty fields array
-                allowedFieldsInCollection[relation.related_collection].length === 0)) {
+                allowedFieldsInCollection[relation.related_collection]?.length === 0)) {
             collectionsAllowed = false;
         }
-        if (((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_allowed_collections) &&
+        if (relation.meta?.one_allowed_collections &&
             relation.meta.one_allowed_collections.every((collection) => Object.keys(allowedFieldsInCollection).includes(collection)) === false) {
             collectionsAllowed = false;
         }
         if (!allowedFieldsInCollection[relation.collection] ||
-            (allowedFieldsInCollection[relation.collection].includes('*') === false &&
-                allowedFieldsInCollection[relation.collection].includes(relation.field) === false)) {
+            (allowedFieldsInCollection[relation.collection]?.includes('*') === false &&
+                allowedFieldsInCollection[relation.collection]?.includes(relation.field) === false)) {
             fieldsAllowed = false;
         }
         if (relation.related_collection &&
-            ((_b = relation.meta) === null || _b === void 0 ? void 0 : _b.one_field) &&
+            relation.meta?.one_field &&
             (!allowedFieldsInCollection[relation.related_collection] ||
-                (allowedFieldsInCollection[relation.related_collection].includes('*') === false &&
-                    allowedFieldsInCollection[relation.related_collection].includes((_c = relation.meta) === null || _c === void 0 ? void 0 : _c.one_field) === false))) {
+                (allowedFieldsInCollection[relation.related_collection]?.includes('*') === false &&
+                    allowedFieldsInCollection[relation.related_collection]?.includes(relation.meta?.one_field) === false))) {
             fieldsAllowed = false;
         }
         return collectionsAllowed && fieldsAllowed;

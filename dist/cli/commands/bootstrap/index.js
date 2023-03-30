@@ -26,13 +26,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const database_1 = __importStar(require("../../../database"));
 const run_1 = __importDefault(require("../../../database/migrations/run"));
 const run_2 = __importDefault(require("../../../database/seeds/run"));
 const env_1 = __importDefault(require("../../../env"));
 const logger_1 = __importDefault(require("../../../logger"));
-const get_schema_1 = require("../../../utils/get-schema");
 const services_1 = require("../../../services");
-const database_1 = __importStar(require("../../../database"));
+const get_schema_1 = require("../../../utils/get-schema");
 const defaults_1 = require("../../utils/defaults");
 async function bootstrap({ skipAdminInit }) {
     logger_1.default.info('Initializing bootstrap...');
@@ -50,9 +50,9 @@ async function bootstrap({ skipAdminInit }) {
         else {
             logger_1.default.info('Skipping creation of default Admin user and role...');
         }
-        if (env_1.default.PROJECT_NAME && typeof env_1.default.PROJECT_NAME === 'string' && env_1.default.PROJECT_NAME.length > 0) {
+        if (env_1.default['PROJECT_NAME'] && typeof env_1.default['PROJECT_NAME'] === 'string' && env_1.default['PROJECT_NAME'].length > 0) {
             const settingsService = new services_1.SettingsService({ schema });
-            await settingsService.upsertSingleton({ project_name: env_1.default.PROJECT_NAME });
+            await settingsService.upsertSingleton({ project_name: env_1.default['PROJECT_NAME'] });
         }
     }
     else {
@@ -75,6 +75,7 @@ async function waitForDatabase(database) {
     }
     // This will throw and exit the process if the database is not available
     await (0, database_1.validateDatabaseConnection)(database);
+    return database;
 }
 async function createDefaultAdmin(schema) {
     const { nanoid } = await import('nanoid');
@@ -83,12 +84,12 @@ async function createDefaultAdmin(schema) {
     const role = await rolesService.createOne(defaults_1.defaultAdminRole);
     logger_1.default.info('Adding first admin user...');
     const usersService = new services_1.UsersService({ schema });
-    let adminEmail = env_1.default.ADMIN_EMAIL;
+    let adminEmail = env_1.default['ADMIN_EMAIL'];
     if (!adminEmail) {
         logger_1.default.info('No admin email provided. Defaulting to "admin@example.com"');
         adminEmail = 'admin@example.com';
     }
-    let adminPassword = env_1.default.ADMIN_PASSWORD;
+    let adminPassword = env_1.default['ADMIN_PASSWORD'];
     if (!adminPassword) {
         adminPassword = nanoid(12);
         logger_1.default.info(`No admin password provided. Defaulting to "${adminPassword}"`);

@@ -4,22 +4,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersService = void 0;
+const exceptions_1 = require("@directus/shared/exceptions");
+const utils_1 = require("@directus/shared/utils");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const lodash_1 = require("lodash");
+const perf_hooks_1 = require("perf_hooks");
 const database_1 = __importDefault(require("../database"));
 const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("@directus/shared/exceptions");
 const exceptions_2 = require("../exceptions");
 const record_not_unique_1 = require("../exceptions/database/record-not-unique");
 const is_url_allowed_1 = __importDefault(require("../utils/is-url-allowed"));
-const utils_1 = require("@directus/shared/utils");
+const stall_1 = require("../utils/stall");
 const url_1 = require("../utils/url");
 const items_1 = require("./items");
 const mail_1 = require("./mail");
 const settings_1 = require("./settings");
-const stall_1 = require("../utils/stall");
-const perf_hooks_1 = require("perf_hooks");
-const utils_2 = require("@directus/shared/utils");
 class UsersService extends items_1.ItemsService {
     constructor(options) {
         super('directus_users', options);
@@ -96,7 +95,7 @@ class UsersService extends items_1.ItemsService {
             .andWhere({ 'directus_roles.admin_access': true })
             .leftJoin('directus_roles', 'directus_users.role', 'directus_roles.id')
             .first();
-        const otherAdminUsersCount = +((otherAdminUsers === null || otherAdminUsers === void 0 ? void 0 : otherAdminUsers.count) || 0);
+        const otherAdminUsersCount = +(otherAdminUsers?.count || 0);
         if (otherAdminUsersCount === 0) {
             throw new exceptions_2.UnprocessableEntityException(`You can't remove the last admin user from the role.`);
         }
@@ -113,7 +112,7 @@ class UsersService extends items_1.ItemsService {
             .andWhere({ 'directus_users.status': 'active' })
             .leftJoin('directus_roles', 'directus_users.role', 'directus_roles.id')
             .first();
-        const otherAdminUsersCount = +((otherAdminUsers === null || otherAdminUsers === void 0 ? void 0 : otherAdminUsers.count) || 0);
+        const otherAdminUsersCount = +(otherAdminUsers?.count || 0);
         if (otherAdminUsersCount === 0) {
             throw new exceptions_2.UnprocessableEntityException(`You can't change the active status of the last admin user.`);
         }
@@ -129,8 +128,8 @@ class UsersService extends items_1.ItemsService {
      * Create multiple new users
      */
     async createMany(data, opts) {
-        const emails = data.map((payload) => payload.email).filter((email) => email);
-        const passwords = data.map((payload) => payload.password).filter((password) => password);
+        const emails = data['map']((payload) => payload['email']).filter((email) => email);
+        const passwords = data['map']((payload) => payload['password']).filter((password) => password);
         try {
             if (emails.length) {
                 await this.checkUniqueEmails(emails);
@@ -179,46 +178,45 @@ class UsersService extends items_1.ItemsService {
      * Update many users by primary key
      */
     async updateMany(keys, data, opts) {
-        var _a, _b;
         try {
-            if (data.role) {
-                // data.role will be an object with id with GraphQL mutations
-                const roleId = (_b = (_a = data.role) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : data.role;
+            if (data['role']) {
+                // data['role'] will be an object with id with GraphQL mutations
+                const roleId = data['role']?.id ?? data['role'];
                 const newRole = await this.knex.select('admin_access').from('directus_roles').where('id', roleId).first();
-                if (!(newRole === null || newRole === void 0 ? void 0 : newRole.admin_access)) {
+                if (!newRole?.admin_access) {
                     await this.checkRemainingAdminExistence(keys);
                 }
             }
-            if (data.status !== undefined && data.status !== 'active') {
+            if (data['status'] !== undefined && data['status'] !== 'active') {
                 await this.checkRemainingActiveAdmin(keys);
             }
-            if (data.email) {
+            if (data['email']) {
                 if (keys.length > 1) {
                     throw new record_not_unique_1.RecordNotUniqueException('email', {
                         collection: 'directus_users',
                         field: 'email',
-                        invalid: data.email,
+                        invalid: data['email'],
                     });
                 }
-                await this.checkUniqueEmails([data.email], keys[0]);
+                await this.checkUniqueEmails([data['email']], keys[0]);
             }
-            if (data.password) {
-                await this.checkPasswordPolicy([data.password]);
+            if (data['password']) {
+                await this.checkPasswordPolicy([data['password']]);
             }
-            if (data.tfa_secret !== undefined) {
+            if (data['tfa_secret'] !== undefined) {
                 throw new exceptions_2.InvalidPayloadException(`You can't change the "tfa_secret" value manually.`);
             }
-            if (data.provider !== undefined) {
+            if (data['provider'] !== undefined) {
                 if (this.accountability && this.accountability.admin !== true) {
                     throw new exceptions_2.InvalidPayloadException(`You can't change the "provider" value manually.`);
                 }
-                data.auth_data = null;
+                data['auth_data'] = null;
             }
-            if (data.external_identifier !== undefined) {
+            if (data['external_identifier'] !== undefined) {
                 if (this.accountability && this.accountability.admin !== true) {
                     throw new exceptions_2.InvalidPayloadException(`You can't change the "external_identifier" value manually.`);
                 }
-                data.auth_data = null;
+                data['auth_data'] = null;
             }
         }
         catch (err) {
@@ -265,7 +263,7 @@ class UsersService extends items_1.ItemsService {
     async inviteUser(email, role, url, subject) {
         const opts = {};
         try {
-            if (url && (0, is_url_allowed_1.default)(url, env_1.default.USER_INVITE_URL_ALLOW_LIST) === false) {
+            if (url && (0, is_url_allowed_1.default)(url, env_1.default['USER_INVITE_URL_ALLOW_LIST']) === false) {
                 throw new exceptions_2.InvalidPayloadException(`Url "${url}" can't be used to invite users.`);
             }
         }
@@ -279,9 +277,9 @@ class UsersService extends items_1.ItemsService {
         });
         for (const email of emails) {
             const payload = { email, scope: 'invite' };
-            const token = jsonwebtoken_1.default.sign(payload, env_1.default.SECRET, { expiresIn: '7d', issuer: 'directus' });
-            const subjectLine = subject !== null && subject !== void 0 ? subject : "You've been invited";
-            const inviteURL = url ? new url_1.Url(url) : new url_1.Url(env_1.default.PUBLIC_URL).addPath('admin', 'accept-invite');
+            const token = jsonwebtoken_1.default.sign(payload, env_1.default['SECRET'], { expiresIn: '7d', issuer: 'directus' });
+            const subjectLine = subject ?? "You've been invited";
+            const inviteURL = url ? new url_1.Url(url) : new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'accept-invite');
             inviteURL.setQuery('token', token);
             // Create user first to verify uniqueness
             await this.createOne({ email, role, status: 'invited' }, opts);
@@ -299,11 +297,11 @@ class UsersService extends items_1.ItemsService {
         }
     }
     async acceptInvite(token, password) {
-        const { email, scope } = jsonwebtoken_1.default.verify(token, env_1.default.SECRET, { issuer: 'directus' });
+        const { email, scope } = jsonwebtoken_1.default.verify(token, env_1.default['SECRET'], { issuer: 'directus' });
         if (scope !== 'invite')
             throw new exceptions_2.ForbiddenException();
         const user = await this.knex.select('id', 'status').from('directus_users').where({ email }).first();
-        if ((user === null || user === void 0 ? void 0 : user.status) !== 'invited') {
+        if (user?.status !== 'invited') {
             throw new exceptions_2.InvalidPayloadException(`Email address ${email} hasn't been invited.`);
         }
         // Allow unauthenticated update
@@ -321,11 +319,11 @@ class UsersService extends items_1.ItemsService {
             .from('directus_users')
             .whereRaw('LOWER(??) = ?', ['email', email.toLowerCase()])
             .first();
-        if ((user === null || user === void 0 ? void 0 : user.status) !== 'active') {
+        if (user?.status !== 'active') {
             await (0, stall_1.stall)(STALL_TIME, timeStart);
             throw new exceptions_2.ForbiddenException();
         }
-        if (url && (0, is_url_allowed_1.default)(url, env_1.default.PASSWORD_RESET_URL_ALLOW_LIST) === false) {
+        if (url && (0, is_url_allowed_1.default)(url, env_1.default['PASSWORD_RESET_URL_ALLOW_LIST']) === false) {
             throw new exceptions_2.InvalidPayloadException(`Url "${url}" can't be used to reset passwords.`);
         }
         const mailService = new mail_1.MailService({
@@ -333,11 +331,11 @@ class UsersService extends items_1.ItemsService {
             knex: this.knex,
             accountability: this.accountability,
         });
-        const payload = { email, scope: 'password-reset', hash: (0, utils_2.getSimpleHash)('' + user.password) };
-        const token = jsonwebtoken_1.default.sign(payload, env_1.default.SECRET, { expiresIn: '1d', issuer: 'directus' });
+        const payload = { email, scope: 'password-reset', hash: (0, utils_1.getSimpleHash)('' + user.password) };
+        const token = jsonwebtoken_1.default.sign(payload, env_1.default['SECRET'], { expiresIn: '1d', issuer: 'directus' });
         const acceptURL = url
             ? new url_1.Url(url).setQuery('token', token).toString()
-            : new url_1.Url(env_1.default.PUBLIC_URL).addPath('admin', 'reset-password').setQuery('token', token);
+            : new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'reset-password').setQuery('token', token);
         const subjectLine = subject ? subject : 'Password Reset Request';
         await mailService.send({
             to: email,
@@ -353,8 +351,7 @@ class UsersService extends items_1.ItemsService {
         await (0, stall_1.stall)(STALL_TIME, timeStart);
     }
     async resetPassword(token, password) {
-        var _a;
-        const { email, scope, hash } = jsonwebtoken_1.default.verify(token, env_1.default.SECRET, { issuer: 'directus' });
+        const { email, scope, hash } = jsonwebtoken_1.default.verify(token, env_1.default['SECRET'], { issuer: 'directus' });
         if (scope !== 'password-reset' || !hash)
             throw new exceptions_2.ForbiddenException();
         const opts = {};
@@ -365,7 +362,7 @@ class UsersService extends items_1.ItemsService {
             opts.preMutationException = err;
         }
         const user = await this.knex.select('id', 'status', 'password').from('directus_users').where({ email }).first();
-        if ((user === null || user === void 0 ? void 0 : user.status) !== 'active' || hash !== (0, utils_2.getSimpleHash)('' + user.password)) {
+        if (user?.status !== 'active' || hash !== (0, utils_1.getSimpleHash)('' + user.password)) {
             throw new exceptions_2.ForbiddenException();
         }
         // Allow unauthenticated update
@@ -373,7 +370,7 @@ class UsersService extends items_1.ItemsService {
             knex: this.knex,
             schema: this.schema,
             accountability: {
-                ...((_a = this.accountability) !== null && _a !== void 0 ? _a : { role: null }),
+                ...(this.accountability ?? { role: null }),
                 admin: true, // We need to skip permissions checks for the update call below
             },
         });

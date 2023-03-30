@@ -7,7 +7,7 @@ exports.getAuthProviders = void 0;
 const utils_1 = require("@directus/shared/utils");
 const env_1 = __importDefault(require("../env"));
 function getAuthProviders() {
-    return (0, utils_1.toArray)(env_1.default.AUTH_PROVIDERS)
+    return (0, utils_1.toArray)(env_1.default['AUTH_PROVIDERS'])
         .filter((provider) => provider && env_1.default[`AUTH_${provider.toUpperCase()}_DRIVER`])
         .map((provider) => ({
         name: provider,

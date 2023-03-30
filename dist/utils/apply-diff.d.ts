@@ -1,7 +1,7 @@
-import { SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
-import { Snapshot, SnapshotDiff, SnapshotField } from '../types';
+import type { SchemaOverview } from '@directus/shared/types';
 import { Diff } from 'deep-diff';
+import type { Knex } from 'knex';
+import { Snapshot, SnapshotDiff, SnapshotField } from '../types';
 export declare function applyDiff(currentSnapshot: Snapshot, snapshotDiff: SnapshotDiff, options?: {
     database?: Knex;
     schema?: SchemaOverview;

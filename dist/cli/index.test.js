@@ -3,9 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const index_1 = require("./index");
 const path_1 = __importDefault(require("path"));
 const vitest_1 = require("vitest");
+const index_1 = require("./index");
 vitest_1.vi.mock('../../src/env', async () => {
     const actual = (await vitest_1.vi.importActual('../../src/env'));
     const MOCK_ENV = {

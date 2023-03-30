@@ -17,27 +17,24 @@ const generate_hash_1 = require("../utils/generate-hash");
 const sanitize_query_1 = require("../utils/sanitize-query");
 const router = (0, express_1.Router)();
 router.get('/random/string', (0, async_handler_1.default)(async (req, res) => {
-    var _a;
     const { nanoid } = await import('nanoid');
-    if (req.query && req.query.length && Number(req.query.length) > 500)
+    if (req.query && req.query['length'] && Number(req.query['length']) > 500)
         throw new exceptions_1.InvalidQueryException(`"length" can't be more than 500 characters`);
-    const string = nanoid(((_a = req.query) === null || _a === void 0 ? void 0 : _a.length) ? Number(req.query.length) : 32);
+    const string = nanoid(req.query?.['length'] ? Number(req.query['length']) : 32);
     return res.json({ data: string });
 }));
 router.post('/hash/generate', (0, async_handler_1.default)(async (req, res) => {
-    var _a;
-    if (!((_a = req.body) === null || _a === void 0 ? void 0 : _a.string)) {
+    if (!req.body?.string) {
         throw new exceptions_1.InvalidPayloadException(`"string" is required`);
     }
     const hash = await (0, generate_hash_1.generateHash)(req.body.string);
     return res.json({ data: hash });
 }));
 router.post('/hash/verify', (0, async_handler_1.default)(async (req, res) => {
-    var _a, _b;
-    if (!((_a = req.body) === null || _a === void 0 ? void 0 : _a.string)) {
+    if (!req.body?.string) {
         throw new exceptions_1.InvalidPayloadException(`"string" is required`);
     }
-    if (!((_b = req.body) === null || _b === void 0 ? void 0 : _b.hash)) {
+    if (!req.body?.hash) {
         throw new exceptions_1.InvalidPayloadException(`"hash" is required`);
     }
     const result = await argon2_1.default.verify(req.body.hash, req.body.string);
@@ -58,12 +55,12 @@ router.post('/sort/:collection', collection_exists_1.default, (0, async_handler_
     await service.sort(req.collection, req.body);
     return res.status(200).end();
 }));
-router.post('/revert/:revision', (0, async_handler_1.default)(async (req, res, next) => {
+router.post('/revert/:revision', (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.RevisionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.revert(req.params.revision);
+    await service.revert(req.params['revision']);
     next();
 }), respond_1.respond);
 router.post('/import/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
@@ -86,7 +83,7 @@ router.post('/import/:collection', collection_exists_1.default, (0, async_handle
     const busboy = (0, busboy_1.default)({ headers });
     busboy.on('file', async (_fieldname, fileStream, { mimeType }) => {
         try {
-            await service.import(req.params.collection, mimeType, fileStream);
+            await service.import(req.params['collection'], mimeType, fileStream);
         }
         catch (err) {
             return next(err);
@@ -96,8 +93,7 @@ router.post('/import/:collection', collection_exists_1.default, (0, async_handle
     busboy.on('error', (err) => next(err));
     req.pipe(busboy);
 }));
-router.post('/export/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
-    var _a;
+router.post('/export/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, _res, next) => {
     if (!req.body.query) {
         throw new exceptions_1.InvalidPayloadException(`"query" is required.`);
     }
@@ -108,16 +104,15 @@ router.post('/export/:collection', collection_exists_1.default, (0, async_handle
         accountability: req.accountability,
         schema: req.schema,
     });
-    const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, (_a = req.accountability) !== null && _a !== void 0 ? _a : null);
+    const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability ?? null);
     // We're not awaiting this, as it's supposed to run async in the background
-    service.exportToFile(req.params.collection, sanitizedQuery, req.body.format, {
+    service.exportToFile(req.params['collection'], sanitizedQuery, req.body.format, {
         file: req.body.file,
     });
     return next();
 }), respond_1.respond);
 router.post('/cache/clear', (0, async_handler_1.default)(async (req, res) => {
-    var _a;
-    if (((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true) {
+    if (req.accountability?.admin !== true) {
         throw new exceptions_1.ForbiddenException();
     }
     await (0, cache_1.flushCaches)(true);

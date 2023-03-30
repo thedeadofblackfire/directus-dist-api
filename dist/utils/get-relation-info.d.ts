@@ -1,4 +1,4 @@
-import { Relation } from '@directus/shared/types';
+import type { Relation } from '@directus/shared/types';
 type RelationInfo = {
     relation: Relation | null;
     relationType: string | null;

@@ -17,7 +17,7 @@ router.get('/', (0, async_handler_1.default)(async (req, res, next) => {
         schema: req.schema,
     });
     const records = await service.readSingleton(req.sanitizedQuery);
-    res.locals.payload = { data: records || null };
+    res.locals['payload'] = { data: records || null };
     return next();
 }), respond_1.respond);
 router.patch('/', (0, async_handler_1.default)(async (req, res, next) => {
@@ -28,7 +28,7 @@ router.patch('/', (0, async_handler_1.default)(async (req, res, next) => {
     await service.upsertSingleton(req.body);
     try {
         const record = await service.readSingleton(req.sanitizedQuery);
-        res.locals.payload = { data: record || null };
+        res.locals['payload'] = { data: record || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {

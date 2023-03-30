@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const get_relation_type_1 = require("../../src/utils/get-relation-type");
 const vitest_1 = require("vitest");
+const get_relation_type_1 = require("../../src/utils/get-relation-type");
 (0, vitest_1.test)('Returns null if no relation object is included', () => {
     const result = (0, get_relation_type_1.getRelationType)({ relation: null, collection: null, field: 'test' });
     (0, vitest_1.expect)(result).toBe(null);

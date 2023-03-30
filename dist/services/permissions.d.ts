@@ -1,7 +1,7 @@
+import type { PermissionsAction, Query } from '@directus/shared/types';
+import type Keyv from 'keyv';
 import { ItemsService, QueryOptions } from '../services/items';
-import { AbstractServiceOptions, Item, PrimaryKey, MutationOptions } from '../types';
-import { Query, PermissionsAction } from '@directus/shared/types';
-import Keyv from 'keyv';
+import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
 export declare class PermissionsService extends ItemsService {
     systemCache: Keyv<any>;
     constructor(options: AbstractServiceOptions);

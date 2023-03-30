@@ -14,7 +14,7 @@ async function up(knex) {
         .select('id', 'many_collection', 'many_field', 'one_collection')
         .from('directus_relations');
     const constraintsToAdd = relations.filter((relation) => {
-        const exists = !!foreignKeys.find((fk) => fk.table === (relation === null || relation === void 0 ? void 0 : relation.many_collection) && fk.column === (relation === null || relation === void 0 ? void 0 : relation.many_field));
+        const exists = !!foreignKeys.find((fk) => fk.table === relation?.many_collection && fk.column === relation?.many_field);
         return exists === false;
     });
     const corruptedRelations = [];

@@ -49,7 +49,6 @@ const applyJoiSchema = joi_1.default.object({
  * @returns True if the diff can be applied (valid & not empty).
  */
 function validateApplyDiff(applyDiff, currentSnapshotWithHash) {
-    var _a, _b, _c, _d, _e, _f;
     const { error } = applyJoiSchema.validate(applyDiff);
     if (error)
         throw new index_1.InvalidPayloadException(error.message);
@@ -64,13 +63,13 @@ function validateApplyDiff(applyDiff, currentSnapshotWithHash) {
         return true;
     for (const diffCollection of applyDiff.diff.collections) {
         const collection = diffCollection.collection;
-        if (((_a = diffCollection.diff[0]) === null || _a === void 0 ? void 0 : _a.kind) === snapshot_1.DiffKind.NEW) {
+        if (diffCollection.diff[0]?.kind === snapshot_1.DiffKind.NEW) {
             const existingCollection = currentSnapshotWithHash.collections.find((c) => c.collection === diffCollection.collection);
             if (existingCollection) {
                 throw new index_1.InvalidPayloadException(`Provided diff is trying to create collection "${collection}" but it already exists. Please generate a new diff and try again.`);
             }
         }
-        else if (((_b = diffCollection.diff[0]) === null || _b === void 0 ? void 0 : _b.kind) === snapshot_1.DiffKind.DELETE) {
+        else if (diffCollection.diff[0]?.kind === snapshot_1.DiffKind.DELETE) {
             const existingCollection = currentSnapshotWithHash.collections.find((c) => c.collection === diffCollection.collection);
             if (!existingCollection) {
                 throw new index_1.InvalidPayloadException(`Provided diff is trying to delete collection "${collection}" but it does not exist. Please generate a new diff and try again.`);
@@ -79,13 +78,13 @@ function validateApplyDiff(applyDiff, currentSnapshotWithHash) {
     }
     for (const diffField of applyDiff.diff.fields) {
         const field = `${diffField.collection}.${diffField.field}`;
-        if (((_c = diffField.diff[0]) === null || _c === void 0 ? void 0 : _c.kind) === snapshot_1.DiffKind.NEW) {
+        if (diffField.diff[0]?.kind === snapshot_1.DiffKind.NEW) {
             const existingField = currentSnapshotWithHash.fields.find((f) => f.collection === diffField.collection && f.field === diffField.field);
             if (existingField) {
                 throw new index_1.InvalidPayloadException(`Provided diff is trying to create field "${field}" but it already exists. Please generate a new diff and try again.`);
             }
         }
-        else if (((_d = diffField.diff[0]) === null || _d === void 0 ? void 0 : _d.kind) === snapshot_1.DiffKind.DELETE) {
+        else if (diffField.diff[0]?.kind === snapshot_1.DiffKind.DELETE) {
             const existingField = currentSnapshotWithHash.fields.find((f) => f.collection === diffField.collection && f.field === diffField.field);
             if (!existingField) {
                 throw new index_1.InvalidPayloadException(`Provided diff is trying to delete field "${field}" but it does not exist. Please generate a new diff and try again.`);
@@ -96,13 +95,13 @@ function validateApplyDiff(applyDiff, currentSnapshotWithHash) {
         let relation = `${diffRelation.collection}.${diffRelation.field}`;
         if (diffRelation.related_collection)
             relation += `-> ${diffRelation.related_collection}`;
-        if (((_e = diffRelation.diff[0]) === null || _e === void 0 ? void 0 : _e.kind) === snapshot_1.DiffKind.NEW) {
+        if (diffRelation.diff[0]?.kind === snapshot_1.DiffKind.NEW) {
             const existingRelation = currentSnapshotWithHash.relations.find((r) => r.collection === diffRelation.collection && r.field === diffRelation.field);
             if (existingRelation) {
                 throw new index_1.InvalidPayloadException(`Provided diff is trying to create relation "${relation}" but it already exists. Please generate a new diff and try again.`);
             }
         }
-        else if (((_f = diffRelation.diff[0]) === null || _f === void 0 ? void 0 : _f.kind) === snapshot_1.DiffKind.DELETE) {
+        else if (diffRelation.diff[0]?.kind === snapshot_1.DiffKind.DELETE) {
             const existingRelation = currentSnapshotWithHash.relations.find((r) => r.collection === diffRelation.collection && r.field === diffRelation.field);
             if (!existingRelation) {
                 throw new index_1.InvalidPayloadException(`Provided diff is trying to delete relation "${relation}" but it does not exist. Please generate a new diff and try again.`);

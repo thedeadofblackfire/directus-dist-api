@@ -1,11 +1,11 @@
-import { Knex } from 'knex';
-import { SchemaOverview, Relation, RelationMeta, Accountability } from '@directus/shared/types';
+import SchemaInspector from '@directus/schema';
+import type { Accountability, Relation, RelationMeta, SchemaOverview } from '@directus/shared/types';
+import type Keyv from 'keyv';
+import type { Knex } from 'knex';
+import { Helpers } from '../database/helpers';
+import type { AbstractServiceOptions, MutationOptions } from '../types';
 import { ItemsService, QueryOptions } from './items';
 import { PermissionsService } from './permissions';
-import SchemaInspector from '@directus/schema';
-import Keyv from 'keyv';
-import { AbstractServiceOptions, MutationOptions } from '../types';
-import { Helpers } from '../database/helpers';
 export declare class RelationsService {
     knex: Knex;
     permissionsService: PermissionsService;

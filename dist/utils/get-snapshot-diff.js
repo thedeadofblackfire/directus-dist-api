@@ -27,9 +27,8 @@ function getSnapshotDiff(current, after) {
         ].filter((obj) => Array.isArray(obj.diff)), 'collection'),
         fields: (0, lodash_1.orderBy)([
             ...current.fields.map((currentField) => {
-                var _a, _b;
                 const afterField = after.fields.find((afterField) => afterField.collection === currentField.collection && afterField.field === currentField.field);
-                const isAutoIncrementPrimaryKey = !!((_a = currentField.schema) === null || _a === void 0 ? void 0 : _a.is_primary_key) && !!((_b = currentField.schema) === null || _b === void 0 ? void 0 : _b.has_auto_increment);
+                const isAutoIncrementPrimaryKey = !!currentField.schema?.is_primary_key && !!currentField.schema?.has_auto_increment;
                 return {
                     collection: currentField.collection,
                     field: currentField.field,
@@ -74,7 +73,7 @@ function getSnapshotDiff(current, after) {
      * When you delete a collection, we don't have to individually drop all the fields/relations as well
      */
     const deletedCollections = diffedSnapshot.collections
-        .filter((collection) => { var _a; return ((_a = collection.diff) === null || _a === void 0 ? void 0 : _a[0].kind) === types_1.DiffKind.DELETE; })
+        .filter((collection) => collection.diff?.[0]?.kind === types_1.DiffKind.DELETE)
         .map(({ collection }) => collection);
     diffedSnapshot.fields = diffedSnapshot.fields.filter((field) => deletedCollections.includes(field.collection) === false);
     diffedSnapshot.relations = diffedSnapshot.relations.filter((relation) => deletedCollections.includes(relation.collection) === false);

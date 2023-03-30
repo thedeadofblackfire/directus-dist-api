@@ -33,7 +33,6 @@ class Client_PG extends knex_mock_client_1.MockClient {
                 });
                 (0, vitest_1.describe)('schema', () => {
                     (0, vitest_1.it)('returns untyped schema for json fields', async () => {
-                        var _a;
                         vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'readByQuery').mockResolvedValue([
                             {
                                 collection: 'test_table',
@@ -149,7 +148,7 @@ class Client_PG extends knex_mock_client_1.MockClient {
                         ]);
                         vitest_1.vi.spyOn(services_1.RelationsService.prototype, 'readAll').mockResolvedValue([]);
                         const spec = await service.oas.generate();
-                        (0, vitest_1.expect)((_a = spec.components) === null || _a === void 0 ? void 0 : _a.schemas).toMatchInlineSnapshot(`
+                        (0, vitest_1.expect)(spec.components?.schemas).toMatchInlineSnapshot(`
 							{
 							  "Diff": {
 							    "properties": {
@@ -227,11 +226,9 @@ class Client_PG extends knex_mock_client_1.MockClient {
 							  "ItemsTestTable": {
 							    "properties": {
 							      "blob": {
-							        "description": undefined,
 							        "nullable": true,
 							      },
 							      "id": {
-							        "description": undefined,
 							        "nullable": false,
 							        "type": "integer",
 							      },

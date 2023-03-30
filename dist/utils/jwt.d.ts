@@ -1,2 +1,2 @@
-import { DirectusTokenPayload } from '../types';
+import type { DirectusTokenPayload } from '../types';
 export declare function verifyAccessJWT(token: string, secret: string): DirectusTokenPayload;

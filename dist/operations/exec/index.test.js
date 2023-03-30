@@ -80,7 +80,24 @@ const index_1 = __importDefault(require("./index"));
         },
     })).resolves.toEqual({ result: 'start test' });
 });
-(0, vitest_1.test)('Allows modules that are whitelisted', () => {
+(0, vitest_1.test)('Allows built-in modules that are whitelisted', () => {
+    const testCode = `
+		const crypto = require('crypto');
+
+		module.exports = async function (data) {
+			return {
+				result: crypto.createHash('sha256').update('directus').digest('hex'),
+			};
+		};
+	`;
+    (0, vitest_1.expect)(index_1.default.handler({ code: testCode }, {
+        data: {},
+        env: {
+            FLOWS_EXEC_ALLOWED_MODULES: 'crypto',
+        },
+    })).resolves.toEqual({ result: '943e891bf6042f2db8926493c0f94e45b72cb58a21145fdfa3c23b5c057e4b2d' });
+});
+(0, vitest_1.test)('Allows external modules that are whitelisted', () => {
     const testCode = `
 		const bytes = require('bytes');
 

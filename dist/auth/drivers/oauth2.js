@@ -47,13 +47,17 @@ const get_milliseconds_1 = require("../../utils/get-milliseconds");
 const url_1 = require("../../utils/url");
 const local_1 = require("./local");
 class OAuth2AuthDriver extends local_1.LocalAuthDriver {
+    client;
+    redirectUrl;
+    usersService;
+    config;
     constructor(options, config) {
         super(options, config);
         const { authorizeUrl, accessUrl, profileUrl, clientId, clientSecret, ...additionalConfig } = config;
-        if (!authorizeUrl || !accessUrl || !profileUrl || !clientId || !clientSecret || !additionalConfig.provider) {
-            throw new exceptions_2.InvalidConfigException('Invalid provider config', { provider: additionalConfig.provider });
+        if (!authorizeUrl || !accessUrl || !profileUrl || !clientId || !clientSecret || !additionalConfig['provider']) {
+            throw new exceptions_2.InvalidConfigException('Invalid provider config', { provider: additionalConfig['provider'] });
         }
-        const redirectUrl = new url_1.Url(env_1.default.PUBLIC_URL).addPath('auth', 'login', additionalConfig.provider, 'callback');
+        const redirectUrl = new url_1.Url(env_1.default['PUBLIC_URL']).addPath('auth', 'login', additionalConfig['provider'], 'callback');
         this.redirectUrl = redirectUrl.toString();
         this.usersService = new services_1.UsersService({ knex: this.knex, schema: this.schema });
         this.config = additionalConfig;
@@ -61,9 +65,9 @@ class OAuth2AuthDriver extends local_1.LocalAuthDriver {
             authorization_endpoint: authorizeUrl,
             token_endpoint: accessUrl,
             userinfo_endpoint: profileUrl,
-            issuer: additionalConfig.provider,
+            issuer: additionalConfig['provider'],
         });
-        const clientOptionsOverrides = (0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config.provider.toUpperCase()}_CLIENT_`, [`AUTH_${config.provider.toUpperCase()}_CLIENT_ID`, `AUTH_${config.provider.toUpperCase()}_CLIENT_SECRET`], 'underscore');
+        const clientOptionsOverrides = (0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config['provider'].toUpperCase()}_CLIENT_`, [`AUTH_${config['provider'].toUpperCase()}_CLIENT_ID`, `AUTH_${config['provider'].toUpperCase()}_CLIENT_SECRET`], 'underscore');
         this.client = new issuer.Client({
             client_id: clientId,
             client_secret: clientSecret,
@@ -76,12 +80,11 @@ class OAuth2AuthDriver extends local_1.LocalAuthDriver {
         return openid_client_1.generators.codeVerifier();
     }
     generateAuthUrl(codeVerifier, prompt = false) {
-        var _a;
         try {
             const codeChallenge = openid_client_1.generators.codeChallenge(codeVerifier);
-            const paramsConfig = typeof this.config.params === 'object' ? this.config.params : {};
+            const paramsConfig = typeof this.config['params'] === 'object' ? this.config['params'] : {};
             return this.client.authorizationUrl({
-                scope: (_a = this.config.scope) !== null && _a !== void 0 ? _a : 'email',
+                scope: this.config['scope'] ?? 'email',
                 access_type: 'offline',
                 prompt: prompt ? 'consent' : undefined,
                 ...paramsConfig,
@@ -101,17 +104,17 @@ class OAuth2AuthDriver extends local_1.LocalAuthDriver {
             .from('directus_users')
             .whereRaw('LOWER(??) = ?', ['external_identifier', identifier.toLowerCase()])
             .first();
-        return user === null || user === void 0 ? void 0 : user.id;
+        return user?.id;
     }
     async getUserID(payload) {
-        if (!payload.code || !payload.codeVerifier || !payload.state) {
+        if (!payload['code'] || !payload['codeVerifier'] || !payload['state']) {
             logger_1.default.warn('[OAuth2] No code, codeVerifier or state in payload');
             throw new exceptions_2.InvalidCredentialsException();
         }
         let tokenSet;
         let userInfo;
         try {
-            tokenSet = await this.client.oauthCallback(this.redirectUrl, { code: payload.code, state: payload.state }, { code_verifier: payload.codeVerifier, state: openid_client_1.generators.codeChallenge(payload.codeVerifier) });
+            tokenSet = await this.client.oauthCallback(this.redirectUrl, { code: payload['code'], state: payload['state'] }, { code_verifier: payload['codeVerifier'], state: openid_client_1.generators.codeChallenge(payload['codeVerifier']) });
             userInfo = await this.client.userinfo(tokenSet.access_token);
         }
         catch (e) {
@@ -120,7 +123,7 @@ class OAuth2AuthDriver extends local_1.LocalAuthDriver {
         // Flatten response to support dot indexes
         userInfo = (0, flat_1.default)(userInfo);
         const { provider, emailKey, identifierKey, allowPublicRegistration } = this.config;
-        const email = userInfo[emailKey !== null && emailKey !== void 0 ? emailKey : 'email'] ? String(userInfo[emailKey !== null && emailKey !== void 0 ? emailKey : 'email']) : undefined;
+        const email = userInfo[emailKey ?? 'email'] ? String(userInfo[emailKey ?? 'email']) : undefined;
         // Fallback to email if explicit identifier not found
         const identifier = userInfo[identifierKey] ? String(userInfo[identifierKey]) : email;
         if (!identifier) {
@@ -145,11 +148,11 @@ class OAuth2AuthDriver extends local_1.LocalAuthDriver {
         try {
             await this.usersService.createOne({
                 provider,
-                first_name: userInfo[this.config.firstNameKey],
-                last_name: userInfo[this.config.lastNameKey],
+                first_name: userInfo[this.config['firstNameKey']],
+                last_name: userInfo[this.config['lastNameKey']],
                 email: email,
                 external_identifier: identifier,
-                role: this.config.defaultRoleId,
+                role: this.config['defaultRoleId'],
                 auth_data: tokenSet.refresh_token && JSON.stringify({ refreshToken: tokenSet.refresh_token }),
             });
         }
@@ -175,9 +178,9 @@ class OAuth2AuthDriver extends local_1.LocalAuthDriver {
                 logger_1.default.warn(`[OAuth2] Session data isn't valid JSON: ${authData}`);
             }
         }
-        if (authData === null || authData === void 0 ? void 0 : authData.refreshToken) {
+        if (authData?.['refreshToken']) {
             try {
-                const tokenSet = await this.client.refresh(authData.refreshToken);
+                const tokenSet = await this.client.refresh(authData['refreshToken']);
                 // Update user refreshToken if provided
                 if (tokenSet.refresh_token) {
                     await this.usersService.updateOne(user.id, {
@@ -219,8 +222,8 @@ function createOAuth2AuthRouter(providerName) {
     router.get('/', (req, res) => {
         const provider = (0, auth_1.getAuthProvider)(providerName);
         const codeVerifier = provider.generateCodeVerifier();
-        const prompt = !!req.query.prompt;
-        const token = jsonwebtoken_1.default.sign({ verifier: codeVerifier, redirect: req.query.redirect, prompt }, env_1.default.SECRET, {
+        const prompt = !!req.query['prompt'];
+        const token = jsonwebtoken_1.default.sign({ verifier: codeVerifier, redirect: req.query['redirect'], prompt }, env_1.default['SECRET'], {
             expiresIn: '5m',
             issuer: 'directus',
         });
@@ -234,32 +237,38 @@ function createOAuth2AuthRouter(providerName) {
         res.redirect(303, `./callback?${new URLSearchParams(req.body)}`);
     }, respond_1.respond);
     router.get('/callback', (0, async_handler_1.default)(async (req, res, next) => {
-        var _a;
         let tokenData;
         try {
-            tokenData = jsonwebtoken_1.default.verify(req.cookies[`oauth2.${providerName}`], env_1.default.SECRET, { issuer: 'directus' });
+            tokenData = jsonwebtoken_1.default.verify(req.cookies[`oauth2.${providerName}`], env_1.default['SECRET'], {
+                issuer: 'directus',
+            });
         }
         catch (e) {
             logger_1.default.warn(e, `[OAuth2] Couldn't verify OAuth2 cookie`);
             throw new exceptions_2.InvalidCredentialsException();
         }
         const { verifier, redirect, prompt } = tokenData;
+        const accountability = {
+            ip: (0, get_ip_from_req_1.getIPFromReq)(req),
+            role: null,
+        };
+        const userAgent = req.get('user-agent');
+        if (userAgent)
+            accountability.userAgent = userAgent;
+        const origin = req.get('origin');
+        if (origin)
+            accountability.origin = origin;
         const authenticationService = new services_1.AuthenticationService({
-            accountability: {
-                ip: (0, get_ip_from_req_1.getIPFromReq)(req),
-                userAgent: req.get('user-agent'),
-                origin: req.get('origin'),
-                role: null,
-            },
+            accountability,
             schema: req.schema,
         });
         let authResponse;
         try {
             res.clearCookie(`oauth2.${providerName}`);
             authResponse = await authenticationService.login(providerName, {
-                code: req.query.code,
+                code: req.query['code'],
                 codeVerifier: verifier,
-                state: req.query.state,
+                state: req.query['state'],
             });
         }
         catch (error) {
@@ -282,16 +291,16 @@ function createOAuth2AuthRouter(providerName) {
         }
         const { accessToken, refreshToken, expires } = authResponse;
         if (redirect) {
-            res.cookie(env_1.default.REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+            res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, {
                 httpOnly: true,
-                domain: env_1.default.REFRESH_TOKEN_COOKIE_DOMAIN,
-                maxAge: (0, get_milliseconds_1.getMilliseconds)(env_1.default.REFRESH_TOKEN_TTL),
-                secure: (_a = env_1.default.REFRESH_TOKEN_COOKIE_SECURE) !== null && _a !== void 0 ? _a : false,
-                sameSite: env_1.default.REFRESH_TOKEN_COOKIE_SAME_SITE || 'strict',
+                domain: env_1.default['REFRESH_TOKEN_COOKIE_DOMAIN'],
+                maxAge: (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL']),
+                secure: env_1.default['REFRESH_TOKEN_COOKIE_SECURE'] ?? false,
+                sameSite: env_1.default['REFRESH_TOKEN_COOKIE_SAME_SITE'] || 'strict',
             });
             return res.redirect(redirect);
         }
-        res.locals.payload = {
+        res.locals['payload'] = {
             data: { access_token: accessToken, refresh_token: refreshToken, expires },
         };
         next();

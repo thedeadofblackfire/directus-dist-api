@@ -1,6 +1,6 @@
-import { Accountability, PermissionsAction, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
-import { AbstractServiceOptions, AST, Item, PrimaryKey } from '../types';
+import type { Accountability, PermissionsAction, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
+import type { AbstractServiceOptions, AST, Item, PrimaryKey } from '../types';
 import { PayloadService } from './payload';
 export declare class AuthorizationService {
     knex: Knex;

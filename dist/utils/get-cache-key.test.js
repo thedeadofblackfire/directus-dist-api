@@ -23,9 +23,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const vitest_1 = require("vitest");
 const get_cache_key_1 = require("./get-cache-key");
 const getGraphqlQueryUtil = __importStar(require("./get-graphql-query-and-variables"));
-const vitest_1 = require("vitest");
 const baseUrl = 'http://localhost';
 const restUrl = `${baseUrl}/items/example`;
 const graphQlUrl = `${baseUrl}/graphql`;

@@ -1,4 +1,4 @@
-import { PrimaryKey } from '@directus/shared/types';
+import type { PrimaryKey } from '@directus/shared/types';
 type Options = {
     collection: string;
     key?: PrimaryKey | PrimaryKey[] | null;

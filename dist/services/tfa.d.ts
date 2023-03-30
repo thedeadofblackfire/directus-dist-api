@@ -1,6 +1,6 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
+import type { AbstractServiceOptions, PrimaryKey } from '../types';
 import { ItemsService } from './items';
-import { AbstractServiceOptions, PrimaryKey } from '../types';
 export declare class TFAService {
     knex: Knex;
     itemsService: ItemsService;

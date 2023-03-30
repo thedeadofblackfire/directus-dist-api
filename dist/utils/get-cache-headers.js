@@ -15,7 +15,6 @@ const should_skip_cache_1 = require("./should-skip-cache");
  * @param personalized Whether requests depend on the authentication status of users
  */
 function getCacheControlHeader(req, ttl, globalCacheSettings, personalized) {
-    var _a;
     // When the user explicitly asked to skip the cache
     if ((0, should_skip_cache_1.shouldSkipCache)(req))
         return 'no-store';
@@ -23,21 +22,21 @@ function getCacheControlHeader(req, ttl, globalCacheSettings, personalized) {
     if (ttl === undefined || ttl < 0)
         return 'no-cache';
     // When the API cache can invalidate at any moment
-    if (globalCacheSettings && env_1.default.CACHE_AUTO_PURGE === true)
+    if (globalCacheSettings && env_1.default['CACHE_AUTO_PURGE'] === true)
         return 'no-cache';
     const headerValues = [];
     // When caching depends on the authentication status of the users
     if (personalized) {
         // Allow response to be stored in shared cache (public) or local cache only (private)
-        const access = !!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.role) === false ? 'public' : 'private';
+        const access = !!req.accountability?.role === false ? 'public' : 'private';
         headerValues.push(access);
     }
     // Cache control header uses seconds for everything
     const ttlSeconds = Math.round(ttl / 1000);
     headerValues.push(`max-age=${ttlSeconds}`);
     // When the s-maxage flag should be included
-    if (globalCacheSettings && Number.isInteger(env_1.default.CACHE_CONTROL_S_MAXAGE) && env_1.default.CACHE_CONTROL_S_MAXAGE >= 0) {
-        headerValues.push(`s-maxage=${env_1.default.CACHE_CONTROL_S_MAXAGE}`);
+    if (globalCacheSettings && Number.isInteger(env_1.default['CACHE_CONTROL_S_MAXAGE']) && env_1.default['CACHE_CONTROL_S_MAXAGE'] >= 0) {
+        headerValues.push(`s-maxage=${env_1.default['CACHE_CONTROL_S_MAXAGE']}`);
     }
     return headerValues.join(', ');
 }

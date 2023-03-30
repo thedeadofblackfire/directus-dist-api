@@ -18,12 +18,11 @@ const exceptions_1 = require("../exceptions");
  * @param next
  */
 const notFound = async (req, res, next) => {
-    var _a;
     try {
         const hooksResult = await emitter_1.default.emitFilter('request.not_found', false, { request: req, response: res }, {
             database: (0, database_1.default)(),
             schema: req.schema,
-            accountability: (_a = req.accountability) !== null && _a !== void 0 ? _a : null,
+            accountability: req.accountability ?? null,
         });
         if (hooksResult) {
             return next();

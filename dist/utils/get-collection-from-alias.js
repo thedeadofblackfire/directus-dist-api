@@ -11,5 +11,6 @@ function getCollectionFromAlias(alias, aliasMap) {
             return aliasValue.collection;
         }
     }
+    return undefined;
 }
 exports.getCollectionFromAlias = getCollectionFromAlias;

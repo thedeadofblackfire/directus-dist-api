@@ -6,9 +6,8 @@ const flows_1 = require("../../flows");
 exports.default = (0, utils_1.defineOperationApi)({
     id: 'trigger',
     handler: async ({ flow, payload, iterationMode, batchSize }, context) => {
-        var _a;
         const flowManager = (0, flows_1.getFlowManager)();
-        const payloadObject = (_a = (0, utils_1.optionToObject)(payload)) !== null && _a !== void 0 ? _a : null;
+        const payloadObject = (0, utils_1.optionToObject)(payload) ?? null;
         if (Array.isArray(payloadObject)) {
             if (iterationMode === 'serial') {
                 const result = [];
@@ -18,7 +17,7 @@ exports.default = (0, utils_1.defineOperationApi)({
                 return result;
             }
             if (iterationMode === 'batch') {
-                const size = batchSize !== null && batchSize !== void 0 ? batchSize : 10;
+                const size = batchSize ?? 10;
                 const result = [];
                 for (let i = 0; i < payloadObject.length; i += size) {
                     const batch = payloadObject.slice(i, i + size);

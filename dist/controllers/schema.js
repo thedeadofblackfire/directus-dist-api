@@ -17,7 +17,7 @@ const router = express_1.default.Router();
 router.get('/snapshot', (0, async_handler_1.default)(async (req, res, next) => {
     const service = new schema_1.SchemaService({ accountability: req.accountability });
     const currentSnapshot = await service.snapshot();
-    res.locals.payload = { data: currentSnapshot };
+    res.locals['payload'] = { data: currentSnapshot };
     return next();
 }), respond_1.respond);
 router.post('/apply', (0, async_handler_1.default)(async (req, _res, next) => {
@@ -29,7 +29,7 @@ const schemaMultipartHandler = (req, res, next) => {
     if (req.is('application/json')) {
         if (Object.keys(req.body).length === 0)
             throw new exceptions_1.InvalidPayloadException(`No data was included in the body`);
-        res.locals.uploadedSnapshot = req.body;
+        res.locals['uploadedSnapshot'] = req.body;
         return next();
     }
     if (!req.is('multipart/form-data'))
@@ -70,7 +70,7 @@ const schemaMultipartHandler = (req, res, next) => {
             }
             if (!uploadedSnapshot)
                 throw new exceptions_1.InvalidPayloadException(`No file was included in the body`);
-            res.locals.uploadedSnapshot = uploadedSnapshot;
+            res.locals['uploadedSnapshot'] = uploadedSnapshot;
             return next();
         }
         catch (error) {
@@ -86,13 +86,13 @@ const schemaMultipartHandler = (req, res, next) => {
 };
 router.post('/diff', (0, async_handler_1.default)(schemaMultipartHandler), (0, async_handler_1.default)(async (req, res, next) => {
     const service = new schema_1.SchemaService({ accountability: req.accountability });
-    const snapshot = res.locals.uploadedSnapshot;
+    const snapshot = res.locals['uploadedSnapshot'];
     const currentSnapshot = await service.snapshot();
     const snapshotDiff = await service.diff(snapshot, { currentSnapshot, force: 'force' in req.query });
     if (!snapshotDiff)
         return next();
     const currentSnapshotHash = (0, get_versioned_hash_1.getVersionedHash)(currentSnapshot);
-    res.locals.payload = { data: { hash: currentSnapshotHash, diff: snapshotDiff } };
+    res.locals['payload'] = { data: { hash: currentSnapshotHash, diff: snapshotDiff } };
     return next();
 }), respond_1.respond);
 exports.default = router;

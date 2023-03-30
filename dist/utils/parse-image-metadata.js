@@ -53,8 +53,8 @@ function parseXmp(buffer) {
         if (!tagMatches || tagMatches.length === 0) {
             return;
         }
-        const value = tagMatches[1].trim();
-        if (value.toLowerCase().indexOf('<rdf:bag>') === 0) {
+        const value = tagMatches[1]?.trim();
+        if (value?.toLowerCase().indexOf('<rdf:bag>') === 0) {
             const r = new RegExp('<rdf:li>(.*?)</rdf:li>', 'smig');
             let match = r.exec(value);
             const result = [];
@@ -65,7 +65,7 @@ function parseXmp(buffer) {
             xmp[x] = result;
         }
         else {
-            xmp[x] = value.replace(/<[^>]*>?/gm, '').trim();
+            xmp[x] = value?.replace(/<[^>]*>?/gm, '').trim();
         }
     });
     return xmp;

@@ -16,16 +16,20 @@ const jwt_1 = require("../utils/jwt");
 /**
  * Verify the passed JWT and assign the user ID and role to `req`
  */
-const handler = async (req, res, next) => {
+const handler = async (req, _res, next) => {
     const defaultAccountability = {
         user: null,
         role: null,
         admin: false,
         app: false,
         ip: (0, get_ip_from_req_1.getIPFromReq)(req),
-        userAgent: req.get('user-agent'),
-        origin: req.get('origin'),
     };
+    const userAgent = req.get('user-agent');
+    if (userAgent)
+        defaultAccountability.userAgent = userAgent;
+    const origin = req.get('origin');
+    if (origin)
+        defaultAccountability.origin = origin;
     const database = (0, database_1.default)();
     const customAccountability = await emitter_1.default.emitFilter('authenticate', defaultAccountability, {
         req,
@@ -41,13 +45,16 @@ const handler = async (req, res, next) => {
     req.accountability = defaultAccountability;
     if (req.token) {
         if ((0, is_directus_jwt_1.default)(req.token)) {
-            const payload = (0, jwt_1.verifyAccessJWT)(req.token, env_1.default.SECRET);
-            req.accountability.share = payload.share;
-            req.accountability.share_scope = payload.share_scope;
-            req.accountability.user = payload.id;
+            const payload = (0, jwt_1.verifyAccessJWT)(req.token, env_1.default['SECRET']);
             req.accountability.role = payload.role;
             req.accountability.admin = payload.admin_access === true || payload.admin_access == 1;
             req.accountability.app = payload.app_access === true || payload.app_access == 1;
+            if (payload.share)
+                req.accountability.share = payload.share;
+            if (payload.share_scope)
+                req.accountability.share_scope = payload.share_scope;
+            if (payload.id)
+                req.accountability.user = payload.id;
         }
         else {
             // Try finding the user with the provided token

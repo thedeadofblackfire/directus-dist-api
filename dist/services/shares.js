@@ -17,6 +17,7 @@ const items_1 = require("./items");
 const mail_1 = require("./mail");
 const users_1 = require("./users");
 class SharesService extends items_1.ItemsService {
+    authorizationService;
     constructor(options) {
         super('directus_shares', options);
         this.authorizationService = new authorization_1.AuthorizationService({
@@ -26,11 +27,10 @@ class SharesService extends items_1.ItemsService {
         });
     }
     async createOne(data, opts) {
-        await this.authorizationService.checkAccess('share', data.collection, data.item);
+        await this.authorizationService.checkAccess('share', data['collection'], data['item']);
         return super.createOne(data, opts);
     }
     async login(payload) {
-        var _a, _b, _c;
         const { nanoid } = await import('nanoid');
         const record = await this.knex
             .select({
@@ -45,7 +45,7 @@ class SharesService extends items_1.ItemsService {
             share_password: 'password',
         })
             .from('directus_shares')
-            .where('id', payload.share)
+            .where('id', payload['share'])
             .andWhere((subQuery) => {
             subQuery.whereNull('date_end').orWhere('date_end', '>=', new Date());
         })
@@ -59,7 +59,7 @@ class SharesService extends items_1.ItemsService {
         if (!record) {
             throw new exceptions_1.InvalidCredentialsException();
         }
-        if (record.share_password && !(await argon2_1.default.verify(record.share_password, payload.password))) {
+        if (record.share_password && !(await argon2_1.default.verify(record.share_password, payload['password']))) {
             throw new exceptions_1.InvalidCredentialsException();
         }
         await this.knex('directus_shares')
@@ -75,25 +75,25 @@ class SharesService extends items_1.ItemsService {
                 collection: record.share_collection,
             },
         };
-        const accessToken = jsonwebtoken_1.default.sign(tokenPayload, env_1.default.SECRET, {
-            expiresIn: env_1.default.ACCESS_TOKEN_TTL,
+        const accessToken = jsonwebtoken_1.default.sign(tokenPayload, env_1.default['SECRET'], {
+            expiresIn: env_1.default['ACCESS_TOKEN_TTL'],
             issuer: 'directus',
         });
         const refreshToken = nanoid(64);
-        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default.REFRESH_TOKEN_TTL, 0));
+        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL'], 0));
         await this.knex('directus_sessions').insert({
             token: refreshToken,
             expires: refreshTokenExpiration,
-            ip: (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.ip,
-            user_agent: (_b = this.accountability) === null || _b === void 0 ? void 0 : _b.userAgent,
-            origin: (_c = this.accountability) === null || _c === void 0 ? void 0 : _c.origin,
+            ip: this.accountability?.ip,
+            user_agent: this.accountability?.userAgent,
+            origin: this.accountability?.origin,
             share: record.share_id,
         });
         await this.knex('directus_sessions').delete().where('expires', '<', new Date());
         return {
             accessToken,
             refreshToken,
-            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default.ACCESS_TOKEN_TTL),
+            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default['ACCESS_TOKEN_TTL']),
         };
     }
     /**
@@ -101,8 +101,7 @@ class SharesService extends items_1.ItemsService {
      * if you have read access to that particular share
      */
     async invite(payload) {
-        var _a;
-        if (!((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.user))
+        if (!this.accountability?.user)
             throw new exceptions_1.ForbiddenException();
         const share = await this.readOne(payload.share, { fields: ['collection'] });
         const usersService = new users_1.UsersService({
@@ -116,9 +115,9 @@ class SharesService extends items_1.ItemsService {
         const message = `
 Hello!
 
-${(0, user_name_1.userName)(userInfo)} has invited you to view an item in ${share.collection}.
+${(0, user_name_1.userName)(userInfo)} has invited you to view an item in ${share['collection']}.
 
-[Open](${new url_1.Url(env_1.default.PUBLIC_URL).addPath('admin', 'shared', payload.share).toString()})
+[Open](${new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'shared', payload.share).toString()})
 `;
         for (const email of payload.emails) {
             await mailService.send({

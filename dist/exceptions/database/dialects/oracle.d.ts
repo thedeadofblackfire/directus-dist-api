@@ -1,2 +1,2 @@
-import { OracleError } from './types';
+import type { OracleError } from './types';
 export declare function extractError(error: OracleError): OracleError | Error;

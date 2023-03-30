@@ -8,10 +8,10 @@
  * and store in req.token
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-const extractToken = (req, res, next) => {
+const extractToken = (req, _res, next) => {
     let token = null;
-    if (req.query && req.query.access_token) {
-        token = req.query.access_token;
+    if (req.query && req.query['access_token']) {
+        token = req.query['access_token'];
     }
     if (req.headers && req.headers.authorization) {
         const parts = req.headers.authorization.split(' ');

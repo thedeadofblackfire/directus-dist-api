@@ -1,6 +1,6 @@
 import { Accountability, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
-import { AbstractServiceOptions, LoginResult } from '../types';
+import type { Knex } from 'knex';
+import type { AbstractServiceOptions, LoginResult } from '../types';
 import { ActivityService } from './activity';
 export declare class AuthenticationService {
     knex: Knex;

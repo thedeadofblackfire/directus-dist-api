@@ -22,7 +22,7 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     });
     const records = await service.readByQuery(req.sanitizedQuery);
     const meta = await metaService.getMetaForQuery('directus_revisions', req.sanitizedQuery);
-    res.locals.payload = { data: records || null, meta };
+    res.locals['payload'] = { data: records || null, meta };
     return next();
 });
 router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
@@ -32,8 +32,8 @@ router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const record = await service.readOne(req.params.pk, req.sanitizedQuery);
-    res.locals.payload = { data: record || null };
+    const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
+    res.locals['payload'] = { data: record || null };
     return next();
 }), respond_1.respond);
 exports.default = router;

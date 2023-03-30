@@ -14,8 +14,7 @@ class GeometryHelper extends types_1.DatabaseHelper {
         return expression.wrap('NOT ', '');
     }
     createColumn(table, field) {
-        var _a;
-        const type = (_a = field.type.split('.')[1]) !== null && _a !== void 0 ? _a : 'geometry';
+        const type = field.type.split('.')[1] ?? 'geometry';
         return table.specificType(field.field, type);
     }
     asText(table, column) {

@@ -19,22 +19,21 @@ const apply_function_to_column_name_1 = require("./apply-function-to-column-name
  * @returns Knex raw instance
  */
 function getColumn(knex, table, column, alias = (0, apply_function_to_column_name_1.applyFunctionToColumnName)(column), schema, options) {
-    var _a, _b, _c, _d;
     const fn = (0, helpers_1.getFunctions)(knex, schema);
     if (column.includes('(') && column.includes(')')) {
         const functionName = column.split('(')[0];
         const columnName = column.match(constants_1.REGEX_BETWEEN_PARENS)[1];
         if (functionName in fn) {
-            const collectionName = (options === null || options === void 0 ? void 0 : options.originalCollectionName) || table;
-            const type = (_d = (_c = (_b = (_a = schema === null || schema === void 0 ? void 0 : schema.collections[collectionName]) === null || _a === void 0 ? void 0 : _a.fields) === null || _b === void 0 ? void 0 : _b[columnName]) === null || _c === void 0 ? void 0 : _c.type) !== null && _d !== void 0 ? _d : 'unknown';
+            const collectionName = options?.originalCollectionName || table;
+            const type = schema?.collections[collectionName]?.fields?.[columnName]?.type ?? 'unknown';
             const allowedFunctions = (0, utils_1.getFunctionsForType)(type);
             if (allowedFunctions.includes(functionName) === false) {
                 throw new exceptions_1.InvalidQueryException(`Invalid function specified "${functionName}"`);
             }
             const result = fn[functionName](table, columnName, {
                 type,
-                query: options === null || options === void 0 ? void 0 : options.query,
-                originalCollectionName: options === null || options === void 0 ? void 0 : options.originalCollectionName,
+                query: options?.query,
+                originalCollectionName: options?.originalCollectionName,
             });
             if (alias) {
                 return knex.raw(result + ' AS ??', [alias]);

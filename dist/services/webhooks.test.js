@@ -12,7 +12,7 @@ vitest_1.vi.mock('../../src/database/index', () => {
     return { __esModule: true, default: vitest_1.vi.fn(), getDatabaseClient: vitest_1.vi.fn().mockReturnValue('postgres') };
 });
 vitest_1.vi.mock('../messenger', () => {
-    return { getMessenger: vitest_1.vi.fn().mockReturnValue({ publish: vitest_1.vi.fn() }) };
+    return { getMessenger: vitest_1.vi.fn().mockReturnValue({ publish: vitest_1.vi.fn(), subscribe: vitest_1.vi.fn() }) };
 });
 (0, vitest_1.describe)('Integration Tests', () => {
     let db;

@@ -35,7 +35,7 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
         result = await service.readByQuery(req.sanitizedQuery);
     }
     const meta = await metaService.getMetaForQuery('directus_activity', req.sanitizedQuery);
-    res.locals.payload = {
+    res.locals['payload'] = {
         data: result,
         meta,
     };
@@ -48,8 +48,8 @@ router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const record = await service.readOne(req.params.pk, req.sanitizedQuery);
-    res.locals.payload = {
+    const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
+    res.locals['payload'] = {
         data: record || null,
     };
     return next();
@@ -60,7 +60,6 @@ const createCommentSchema = joi_1.default.object({
     item: [joi_1.default.number().required(), joi_1.default.string().required()],
 });
 router.post('/comment', (0, async_handler_1.default)(async (req, res, next) => {
-    var _a;
     const service = new services_1.ActivityService({
         accountability: req.accountability,
         schema: req.schema,
@@ -72,14 +71,14 @@ router.post('/comment', (0, async_handler_1.default)(async (req, res, next) => {
     const primaryKey = await service.createOne({
         ...req.body,
         action: types_1.Action.COMMENT,
-        user: (_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user,
+        user: req.accountability?.user,
         ip: (0, get_ip_from_req_1.getIPFromReq)(req),
         user_agent: req.get('user-agent'),
         origin: req.get('origin'),
     });
     try {
         const record = await service.readOne(primaryKey, req.sanitizedQuery);
-        res.locals.payload = {
+        res.locals['payload'] = {
             data: record || null,
         };
     }
@@ -103,10 +102,10 @@ router.patch('/comment/:pk', (0, async_handler_1.default)(async (req, res, next)
     if (error) {
         throw new exceptions_1.InvalidPayloadException(error.message);
     }
-    const primaryKey = await service.updateOne(req.params.pk, req.body);
+    const primaryKey = await service.updateOne(req.params['pk'], req.body);
     try {
         const record = await service.readOne(primaryKey, req.sanitizedQuery);
-        res.locals.payload = {
+        res.locals['payload'] = {
             data: record || null,
         };
     }
@@ -118,7 +117,7 @@ router.patch('/comment/:pk', (0, async_handler_1.default)(async (req, res, next)
     }
     return next();
 }), respond_1.respond);
-router.delete('/comment/:pk', (0, async_handler_1.default)(async (req, res, next) => {
+router.delete('/comment/:pk', (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.ActivityService({
         accountability: req.accountability,
         schema: req.schema,
@@ -126,11 +125,11 @@ router.delete('/comment/:pk', (0, async_handler_1.default)(async (req, res, next
     const adminService = new services_1.ActivityService({
         schema: req.schema,
     });
-    const item = await adminService.readOne(req.params.pk, { fields: ['action'] });
-    if (!item || item.action !== 'comment') {
+    const item = await adminService.readOne(req.params['pk'], { fields: ['action'] });
+    if (!item || item['action'] !== 'comment') {
         throw new exceptions_1.ForbiddenException();
     }
-    await service.deleteOne(req.params.pk);
+    await service.deleteOne(req.params['pk']);
     return next();
 }), respond_1.respond);
 exports.default = router;

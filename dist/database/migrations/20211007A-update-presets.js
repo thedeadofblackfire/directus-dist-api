@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.down = exports.up = void 0;
 const utils_1 = require("@directus/shared/utils");
 async function up(knex) {
-    var _a;
     await knex.schema.alterTable('directus_presets', (table) => {
         table.json('filter');
     });
@@ -12,7 +11,7 @@ async function up(knex) {
         .from('directus_presets');
     for (const preset of presets) {
         if (preset.filters) {
-            const oldFilters = (_a = (typeof preset.filters === 'string' ? (0, utils_1.parseJSON)(preset.filters) : preset.filters)) !== null && _a !== void 0 ? _a : [];
+            const oldFilters = (typeof preset.filters === 'string' ? (0, utils_1.parseJSON)(preset.filters) : preset.filters) ?? [];
             if (oldFilters.length === 0)
                 continue;
             const newFilter = {
@@ -52,7 +51,6 @@ async function up(knex) {
 }
 exports.up = up;
 async function down(knex) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
     const { nanoid } = await import('nanoid');
     await knex.schema.alterTable('directus_presets', (table) => {
         table.json('filters');
@@ -62,14 +60,14 @@ async function down(knex) {
         .from('directus_presets');
     for (const preset of presets) {
         if (preset.filter) {
-            const newFilter = (_a = (typeof preset.filter === 'string' ? (0, utils_1.parseJSON)(preset.filter) : preset.filter)) !== null && _a !== void 0 ? _a : {};
+            const newFilter = (typeof preset.filter === 'string' ? (0, utils_1.parseJSON)(preset.filter) : preset.filter) ?? {};
             if (Object.keys(newFilter).length === 0)
                 continue;
             const oldFilters = [];
-            for (const filter of (_b = newFilter._and) !== null && _b !== void 0 ? _b : []) {
-                const field = (_c = Object.keys(filter)) === null || _c === void 0 ? void 0 : _c[0];
-                const operator = (_f = Object.keys((_e = (_d = Object.values(filter)) === null || _d === void 0 ? void 0 : _d[0]) !== null && _e !== void 0 ? _e : {})) === null || _f === void 0 ? void 0 : _f[0];
-                const value = (_j = Object.values((_h = (_g = Object.values(filter)) === null || _g === void 0 ? void 0 : _g[0]) !== null && _h !== void 0 ? _h : {})) === null || _j === void 0 ? void 0 : _j[0];
+            for (const filter of newFilter._and ?? []) {
+                const field = Object.keys(filter)?.[0];
+                const operator = Object.keys(Object.values(filter)?.[0] ?? {})?.[0];
+                const value = Object.values(Object.values(filter)?.[0] ?? {})?.[0];
                 if (!field || !operator || !value)
                     continue;
                 oldFilters.push({
@@ -89,7 +87,7 @@ async function down(knex) {
             const layoutQuery = typeof preset.layout_query === 'string' ? (0, utils_1.parseJSON)(preset.layout_query) : preset.layout_query;
             for (const [layout, query] of Object.entries(layoutQuery)) {
                 if (query.sort && Array.isArray(query.sort)) {
-                    query.sort = (_l = (_k = query.sort) === null || _k === void 0 ? void 0 : _k[0]) !== null && _l !== void 0 ? _l : null;
+                    query.sort = query.sort?.[0] ?? null;
                 }
                 layoutQuery[layout] = query;
             }

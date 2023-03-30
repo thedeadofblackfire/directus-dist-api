@@ -16,7 +16,7 @@ async function snapshot(snapshotPath, options) {
     try {
         const snapshot = await (0, get_snapshot_1.getSnapshot)({ database });
         let snapshotString;
-        if ((options === null || options === void 0 ? void 0 : options.format) === 'yaml') {
+        if (options?.format === 'yaml') {
             snapshotString = (0, js_yaml_1.dump)(snapshot);
         }
         else {
@@ -32,7 +32,7 @@ async function snapshot(snapshotPath, options) {
             catch {
                 snapshotExists = false;
             }
-            if (snapshotExists && (options === null || options === void 0 ? void 0 : options.yes) === false) {
+            if (snapshotExists && options?.yes === false) {
                 const { overwrite } = await inquirer_1.default.prompt([
                     {
                         type: 'confirm',

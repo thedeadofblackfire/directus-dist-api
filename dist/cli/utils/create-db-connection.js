@@ -25,11 +25,12 @@ function createDBConnection(client, credentials) {
         };
         if (client === 'pg' || client === 'cockroachdb') {
             const { ssl } = credentials;
-            connection['ssl'] = ssl;
+            connection.ssl = ssl;
         }
         if (client === 'mssql') {
             const { options__encrypt } = credentials;
-            connection['options'] = {
+            connection = {
+                ...connection,
                 encrypt: options__encrypt,
             };
         }

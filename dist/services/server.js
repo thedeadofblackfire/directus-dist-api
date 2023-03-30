@@ -30,21 +30,25 @@ exports.ServerService = void 0;
 const lodash_1 = require("lodash");
 const os_1 = __importDefault(require("os"));
 const perf_hooks_1 = require("perf_hooks");
+const utils_1 = require("@directus/shared/utils");
+const node_stream_1 = require("node:stream");
 // @ts-ignore
 const package_json_1 = require("../../package.json");
 const cache_1 = require("../cache");
 const database_1 = __importStar(require("../database"));
 const env_1 = __importDefault(require("../env"));
 const logger_1 = __importDefault(require("../logger"));
+const mailer_1 = __importDefault(require("../mailer"));
+const rate_limiter_global_1 = require("../middleware/rate-limiter-global");
 const rate_limiter_ip_1 = require("../middleware/rate-limiter-ip");
 const storage_1 = require("../storage");
-const utils_1 = require("@directus/shared/utils");
-const mailer_1 = __importDefault(require("../mailer"));
-const settings_1 = require("./settings");
 const get_os_info_1 = require("../utils/get-os-info");
-const node_stream_1 = require("node:stream");
-const rate_limiter_global_1 = require("../middleware/rate-limiter-global");
+const settings_1 = require("./settings");
 class ServerService {
+    knex;
+    accountability;
+    settingsService;
+    schema;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
@@ -52,7 +56,6 @@ class ServerService {
         this.settingsService = new settings_1.SettingsService({ knex: this.knex, schema: this.schema });
     }
     async serverInfo() {
-        var _a, _b;
         const info = {};
         const projectInfo = await this.settingsService.readSingleton({
             fields: [
@@ -67,40 +70,40 @@ class ServerService {
                 'custom_css',
             ],
         });
-        info.project = projectInfo;
-        if ((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.user) {
-            if (env_1.default.RATE_LIMITER_ENABLED) {
-                info.rateLimit = {
-                    points: env_1.default.RATE_LIMITER_POINTS,
-                    duration: env_1.default.RATE_LIMITER_DURATION,
+        info['project'] = projectInfo;
+        if (this.accountability?.user) {
+            if (env_1.default['RATE_LIMITER_ENABLED']) {
+                info['rateLimit'] = {
+                    points: env_1.default['RATE_LIMITER_POINTS'],
+                    duration: env_1.default['RATE_LIMITER_DURATION'],
                 };
             }
             else {
-                info.rateLimit = false;
+                info['rateLimit'] = false;
             }
-            if (env_1.default.RATE_LIMITER_GLOBAL_ENABLED) {
-                info.rateLimitGlobal = {
-                    points: env_1.default.RATE_LIMITER_GLOBAL_POINTS,
-                    duration: env_1.default.RATE_LIMITER_GLOBAL_DURATION,
+            if (env_1.default['RATE_LIMITER_GLOBAL_ENABLED']) {
+                info['rateLimitGlobal'] = {
+                    points: env_1.default['RATE_LIMITER_GLOBAL_POINTS'],
+                    duration: env_1.default['RATE_LIMITER_GLOBAL_DURATION'],
                 };
             }
             else {
-                info.rateLimitGlobal = false;
+                info['rateLimitGlobal'] = false;
             }
-            info.flows = {
-                execAllowedModules: env_1.default.FLOWS_EXEC_ALLOWED_MODULES ? (0, utils_1.toArray)(env_1.default.FLOWS_EXEC_ALLOWED_MODULES) : [],
+            info['flows'] = {
+                execAllowedModules: env_1.default['FLOWS_EXEC_ALLOWED_MODULES'] ? (0, utils_1.toArray)(env_1.default['FLOWS_EXEC_ALLOWED_MODULES']) : [],
             };
         }
-        if (((_b = this.accountability) === null || _b === void 0 ? void 0 : _b.admin) === true) {
+        if (this.accountability?.admin === true) {
             const { osType, osVersion } = (0, get_os_info_1.getOSInfo)();
-            info.directus = {
+            info['directus'] = {
                 version: package_json_1.version,
             };
-            info.node = {
+            info['node'] = {
                 version: process.versions.node,
                 uptime: Math.round(process.uptime()),
             };
-            info.os = {
+            info['os'] = {
                 type: osType,
                 version: osVersion,
                 uptime: Math.round(os_1.default.uptime()),
@@ -110,13 +113,12 @@ class ServerService {
         return info;
     }
     async health() {
-        var _a;
         const { nanoid } = await import('nanoid');
         const checkID = nanoid(5);
         const data = {
             status: 'ok',
             releaseId: package_json_1.version,
-            serviceId: env_1.default.KEY,
+            serviceId: env_1.default['KEY'],
             checks: (0, lodash_1.merge)(...(await Promise.all([
                 testDatabase(),
                 testCache(),
@@ -143,7 +145,7 @@ class ServerService {
             if (data.status === 'error')
                 break;
         }
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true) {
+        if (this.accountability?.admin !== true) {
             return { status: data.status };
         }
         else {
@@ -151,7 +153,7 @@ class ServerService {
         }
         async function testDatabase() {
             const database = (0, database_1.default)();
-            const client = env_1.default.DB_CLIENT;
+            const client = env_1.default['DB_CLIENT'];
             const checks = {};
             // Response time
             // ----------------------------------------------------------------------------------------
@@ -161,7 +163,7 @@ class ServerService {
                     componentType: 'datastore',
                     observedUnit: 'ms',
                     observedValue: 0,
-                    threshold: env_1.default.DB_HEALTHCHECK_THRESHOLD ? +env_1.default.DB_HEALTHCHECK_THRESHOLD : 150,
+                    threshold: env_1.default['DB_HEALTHCHECK_THRESHOLD'] ? +env_1.default['DB_HEALTHCHECK_THRESHOLD'] : 150,
                 },
             ];
             const startTime = perf_hooks_1.performance.now();
@@ -195,7 +197,7 @@ class ServerService {
             return checks;
         }
         async function testCache() {
-            if (env_1.default.CACHE_ENABLED !== true) {
+            if (env_1.default['CACHE_ENABLED'] !== true) {
                 return {};
             }
             const { cache } = (0, cache_1.getCache)();
@@ -206,7 +208,7 @@ class ServerService {
                         componentType: 'cache',
                         observedValue: 0,
                         observedUnit: 'ms',
-                        threshold: env_1.default.CACHE_HEALTHCHECK_THRESHOLD ? +env_1.default.CACHE_HEALTHCHECK_THRESHOLD : 150,
+                        threshold: env_1.default['CACHE_HEALTHCHECK_THRESHOLD'] ? +env_1.default['CACHE_HEALTHCHECK_THRESHOLD'] : 150,
                     },
                 ],
             };
@@ -230,7 +232,7 @@ class ServerService {
             return checks;
         }
         async function testRateLimiter() {
-            if (env_1.default.RATE_LIMITER_ENABLED !== true) {
+            if (env_1.default['RATE_LIMITER_ENABLED'] !== true) {
                 return {};
             }
             const checks = {
@@ -240,7 +242,7 @@ class ServerService {
                         componentType: 'ratelimiter',
                         observedValue: 0,
                         observedUnit: 'ms',
-                        threshold: env_1.default.RATE_LIMITER_HEALTHCHECK_THRESHOLD ? +env_1.default.RATE_LIMITER_HEALTHCHECK_THRESHOLD : 150,
+                        threshold: env_1.default['RATE_LIMITER_HEALTHCHECK_THRESHOLD'] ? +env_1.default['RATE_LIMITER_HEALTHCHECK_THRESHOLD'] : 150,
                     },
                 ],
             };
@@ -264,7 +266,7 @@ class ServerService {
             return checks;
         }
         async function testRateLimiterGlobal() {
-            if (env_1.default.RATE_LIMITER_GLOBAL_ENABLED !== true) {
+            if (env_1.default['RATE_LIMITER_GLOBAL_ENABLED'] !== true) {
                 return {};
             }
             const checks = {
@@ -274,8 +276,8 @@ class ServerService {
                         componentType: 'ratelimiter',
                         observedValue: 0,
                         observedUnit: 'ms',
-                        threshold: env_1.default.RATE_LIMITER_GLOBAL_HEALTHCHECK_THRESHOLD
-                            ? +env_1.default.RATE_LIMITER_GLOBAL_HEALTHCHECK_THRESHOLD
+                        threshold: env_1.default['RATE_LIMITER_GLOBAL_HEALTHCHECK_THRESHOLD']
+                            ? +env_1.default['RATE_LIMITER_GLOBAL_HEALTHCHECK_THRESHOLD']
                             : 150,
                     },
                 ],
@@ -303,7 +305,7 @@ class ServerService {
         async function testStorage() {
             const storage = await (0, storage_1.getStorage)();
             const checks = {};
-            for (const location of (0, utils_1.toArray)(env_1.default.STORAGE_LOCATIONS)) {
+            for (const location of (0, utils_1.toArray)(env_1.default['STORAGE_LOCATIONS'])) {
                 const disk = storage.location(location);
                 const envThresholdKey = `STORAGE_${location}_HEALTHCHECK_THRESHOLD`.toUpperCase();
                 checks[`storage:${location}:responseTime`] = [

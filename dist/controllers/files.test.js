@@ -3,11 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const files_1 = require("./files");
-const invalid_payload_1 = require("../exceptions/invalid-payload");
-const stream_1 = require("stream");
 const form_data_1 = __importDefault(require("form-data"));
+const stream_1 = require("stream");
 const vitest_1 = require("vitest");
+const invalid_payload_1 = require("../exceptions/invalid-payload");
+const files_1 = require("./files");
 vitest_1.vi.mock('../../src/database');
 vitest_1.vi.mock('../services', () => {
     const FilesService = vitest_1.vi.fn();

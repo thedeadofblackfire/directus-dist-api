@@ -1,7 +1,7 @@
-import { Accountability, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
+import type { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
 import { Helpers } from '../database/helpers';
-import { AbstractServiceOptions, ActionEventParams, Item, MutationOptions, PrimaryKey } from '../types';
+import type { AbstractServiceOptions, ActionEventParams, Item, MutationOptions, PrimaryKey } from '../types';
 type Action = 'create' | 'read' | 'update';
 type Transformers = {
     [type: string]: (context: {

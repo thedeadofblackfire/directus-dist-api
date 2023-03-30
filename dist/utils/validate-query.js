@@ -6,10 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateQuery = void 0;
 const joi_1 = __importDefault(require("joi"));
 const lodash_1 = require("lodash");
-const exceptions_1 = require("../exceptions");
 const wellknown_1 = require("wellknown");
-const calculate_field_depth_1 = require("./calculate-field-depth");
 const env_1 = __importDefault(require("../env"));
+const exceptions_1 = require("../exceptions");
+const calculate_field_depth_1 = require("./calculate-field-depth");
 const querySchema = joi_1.default.object({
     fields: joi_1.default.array().items(joi_1.default.string()),
     group: joi_1.default.array().items(joi_1.default.string()),
@@ -157,7 +157,7 @@ function validateAlias(alias) {
     }
 }
 function validateRelationalDepth(query) {
-    const maxRelationalDepth = Number(env_1.default.MAX_RELATIONAL_DEPTH) > 2 ? Number(env_1.default.MAX_RELATIONAL_DEPTH) : 2;
+    const maxRelationalDepth = Number(env_1.default['MAX_RELATIONAL_DEPTH']) > 2 ? Number(env_1.default['MAX_RELATIONAL_DEPTH']) : 2;
     // Process the fields in the same way as api/src/utils/get-ast-from-query.ts
     let fields = ['*'];
     if (query.fields) {

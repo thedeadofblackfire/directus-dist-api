@@ -1,4 +1,4 @@
-import { Relation, SchemaOverview } from '@directus/shared/types';
+import type { Relation, SchemaOverview } from '@directus/shared/types';
 export type AliasMap = {
     [key: string]: {
         alias: string;
@@ -15,7 +15,7 @@ export type ColPathProps = {
 export type ColPathResult = {
     columnPath: string;
     targetCollection: string;
-    addNestedPkField?: string;
+    addNestedPkField: string | undefined;
 };
 /**
  * Converts a Directus field list path to the correct SQL names based on the constructed alias map.

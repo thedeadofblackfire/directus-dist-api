@@ -10,7 +10,7 @@ function generateHash(stringToHash) {
     const argon2HashConfigOptions = (0, get_config_from_env_1.getConfigFromEnv)('HASH_', 'HASH_RAW'); // Disallow the HASH_RAW option, see https://github.com/directus/directus/discussions/7670#discussioncomment-1255805
     // associatedData, if specified, must be passed as a Buffer to argon2.hash, see https://github.com/ranisalt/node-argon2/wiki/Options#associateddata
     'associatedData' in argon2HashConfigOptions &&
-        (argon2HashConfigOptions.associatedData = Buffer.from(argon2HashConfigOptions.associatedData));
+        (argon2HashConfigOptions['associatedData'] = Buffer.from(argon2HashConfigOptions['associatedData']));
     return argon2_1.default.hash(stringToHash, argon2HashConfigOptions);
 }
 exports.generateHash = generateHash;

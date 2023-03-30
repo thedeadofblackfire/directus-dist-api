@@ -28,9 +28,8 @@ class FnHelperMySQL extends types_1.FnHelper {
         return this.knex.raw('SECOND(??.??)', [table, column]);
     }
     count(table, column, options) {
-        var _a, _b, _c, _d, _e;
-        const collectionName = (options === null || options === void 0 ? void 0 : options.originalCollectionName) || table;
-        const type = (_e = (_d = (_c = (_b = (_a = this.schema.collections) === null || _a === void 0 ? void 0 : _a[collectionName]) === null || _b === void 0 ? void 0 : _b.fields) === null || _c === void 0 ? void 0 : _c[column]) === null || _d === void 0 ? void 0 : _d.type) !== null && _e !== void 0 ? _e : 'unknown';
+        const collectionName = options?.originalCollectionName || table;
+        const type = this.schema.collections?.[collectionName]?.fields?.[column]?.type ?? 'unknown';
         if (type === 'json') {
             return this.knex.raw('JSON_LENGTH(??.??)', [table, column]);
         }

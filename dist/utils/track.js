@@ -14,13 +14,13 @@ const logger_1 = __importDefault(require("../logger"));
 const get_milliseconds_1 = require("./get-milliseconds");
 async function track(event) {
     const axios = (await import('axios')).default;
-    if (env_1.default.TELEMETRY !== false) {
+    if (env_1.default['TELEMETRY'] !== false) {
         const info = await getEnvInfo(event);
         try {
             await axios.post('https://telemetry.directus.io/', info);
         }
         catch (err) {
-            if (env_1.default.NODE_ENV === 'development') {
+            if (env_1.default['NODE_ENV'] === 'development') {
                 logger_1.default.error(err);
             }
         }
@@ -31,9 +31,9 @@ async function getEnvInfo(event) {
     return {
         version: package_json_1.version,
         event: event,
-        project_id: env_1.default.KEY,
+        project_id: env_1.default['KEY'],
         machine_id: await (0, node_machine_id_1.machineId)(),
-        environment: env_1.default.NODE_ENV,
+        environment: env_1.default['NODE_ENV'],
         stack: 'node',
         os: {
             arch: os_1.default.arch(),
@@ -41,36 +41,36 @@ async function getEnvInfo(event) {
             release: os_1.default.release(),
         },
         rate_limiter: {
-            enabled: env_1.default.RATE_LIMITER_ENABLED,
-            points: +env_1.default.RATE_LIMITER_POINTS,
-            duration: +env_1.default.RATE_LIMITER_DURATION,
-            store: env_1.default.RATE_LIMITER_STORE,
+            enabled: env_1.default['RATE_LIMITER_ENABLED'],
+            points: +env_1.default['RATE_LIMITER_POINTS'],
+            duration: +env_1.default['RATE_LIMITER_DURATION'],
+            store: env_1.default['RATE_LIMITER_STORE'],
         },
         cache: {
-            enabled: env_1.default.CACHE_ENABLED,
-            ttl: (0, get_milliseconds_1.getMilliseconds)(env_1.default.CACHE_TTL),
-            store: env_1.default.CACHE_STORE,
+            enabled: env_1.default['CACHE_ENABLED'],
+            ttl: (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL']),
+            store: env_1.default['CACHE_STORE'],
         },
         storage: {
             drivers: getStorageDrivers(),
         },
         cors: {
-            enabled: env_1.default.CORS_ENABLED,
+            enabled: env_1.default['CORS_ENABLED'],
         },
         email: {
-            transport: env_1.default.EMAIL_TRANSPORT,
+            transport: env_1.default['EMAIL_TRANSPORT'],
         },
         auth: {
-            providers: (0, utils_1.toArray)(env_1.default.AUTH_PROVIDERS)
+            providers: (0, utils_1.toArray)(env_1.default['AUTH_PROVIDERS'])
                 .map((v) => v.trim())
                 .filter((v) => v),
         },
-        db_client: env_1.default.DB_CLIENT,
+        db_client: env_1.default['DB_CLIENT'],
     };
 }
 function getStorageDrivers() {
     const drivers = [];
-    const locations = (0, utils_1.toArray)(env_1.default.STORAGE_LOCATIONS)
+    const locations = (0, utils_1.toArray)(env_1.default['STORAGE_LOCATIONS'])
         .map((v) => v.trim())
         .filter((v) => v);
     for (const location of locations) {

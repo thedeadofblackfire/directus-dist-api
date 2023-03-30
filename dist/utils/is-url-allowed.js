@@ -13,7 +13,8 @@ function isUrlAllowed(url, allowList) {
     const urlAllowList = (0, utils_1.toArray)(allowList);
     if (urlAllowList.includes(url))
         return true;
-    const parsedWhitelist = urlAllowList.map((allowedURL) => {
+    const parsedWhitelist = urlAllowList
+        .map((allowedURL) => {
         try {
             const { hostname, pathname } = new url_1.URL(allowedURL);
             return hostname + pathname;
@@ -21,7 +22,9 @@ function isUrlAllowed(url, allowList) {
         catch {
             logger_1.default.warn(`Invalid URL used "${url}"`);
         }
-    });
+        return null;
+    })
+        .filter((f) => f);
     try {
         const { hostname, pathname } = new url_1.URL(url);
         return parsedWhitelist.includes(hostname + pathname);

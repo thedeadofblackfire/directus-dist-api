@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import type { Request } from 'express';
 /**
  * Whether to skip caching for the current request
  *

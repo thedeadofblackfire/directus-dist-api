@@ -7,7 +7,7 @@ const constants_1 = require("@directus/shared/constants");
  */
 function stripFunction(field) {
     if (field.includes('(') && field.includes(')')) {
-        return field.match(constants_1.REGEX_BETWEEN_PARENS)[1].trim();
+        return field.match(constants_1.REGEX_BETWEEN_PARENS)?.[1]?.trim() ?? field;
     }
     else {
         return field;

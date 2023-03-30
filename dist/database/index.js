@@ -5,16 +5,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateDatabaseExtensions = exports.validateMigrations = exports.isInstalled = exports.getDatabaseClient = exports.validateDatabaseConnection = exports.hasDatabaseConnection = exports.getDatabaseVersion = exports.getSchemaInspector = void 0;
 const schema_1 = __importDefault(require("@directus/schema"));
+const fs_extra_1 = __importDefault(require("fs-extra"));
 const knex_1 = require("knex");
+const lodash_1 = require("lodash");
+const path_1 = __importDefault(require("path"));
 const perf_hooks_1 = require("perf_hooks");
+const util_1 = require("util");
 const env_1 = __importDefault(require("../env"));
 const logger_1 = __importDefault(require("../logger"));
 const get_config_from_env_1 = require("../utils/get-config-from-env");
 const validate_env_1 = require("../utils/validate-env");
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const path_1 = __importDefault(require("path"));
-const lodash_1 = require("lodash");
-const util_1 = require("util");
 const helpers_1 = require("./helpers");
 let database = null;
 let inspector = null;
@@ -30,7 +30,7 @@ function getDatabase() {
             requiredEnvVars.push('DB_FILENAME');
             break;
         case 'oracledb':
-            if (!env_1.default.DB_CONNECT_STRING) {
+            if (!env_1.default['DB_CONNECT_STRING']) {
                 requiredEnvVars.push('DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USER', 'DB_PASSWORD');
             }
             else {
@@ -47,7 +47,7 @@ function getDatabase() {
             }
             break;
         case 'mssql':
-            if (!env_1.default.DB_TYPE || env_1.default.DB_TYPE === 'default') {
+            if (!env_1.default['DB_TYPE'] || env_1.default['DB_TYPE'] === 'default') {
                 requiredEnvVars.push('DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USER', 'DB_PASSWORD');
             }
             break;
@@ -112,7 +112,7 @@ function getDatabase() {
         (0, lodash_1.merge)(knexConfig, { connection: { options: { useUTC: false } } });
     }
     database = (0, knex_1.knex)(knexConfig);
-    if (!env_1.default.SERVERLESS) {
+    if (!env_1.default['SERVERLESS']) {
         validateDatabaseCharset(database);
     }
     const times = {};
@@ -147,7 +147,7 @@ function getDatabaseVersion() {
 }
 exports.getDatabaseVersion = getDatabaseVersion;
 async function hasDatabaseConnection(database) {
-    database = database !== null && database !== void 0 ? database : getDatabase();
+    database = database ?? getDatabase();
     try {
         if (getDatabaseClient(database) === 'oracle') {
             await database.raw('select 1 from DUAL');
@@ -163,7 +163,7 @@ async function hasDatabaseConnection(database) {
 }
 exports.hasDatabaseConnection = hasDatabaseConnection;
 async function validateDatabaseConnection(database) {
-    database = database !== null && database !== void 0 ? database : getDatabase();
+    database = database ?? getDatabase();
     try {
         if (getDatabaseClient(database) === 'oracle') {
             await database.raw('select 1 from DUAL');
@@ -180,7 +180,7 @@ async function validateDatabaseConnection(database) {
 }
 exports.validateDatabaseConnection = validateDatabaseConnection;
 function getDatabaseClient(database) {
-    database = database !== null && database !== void 0 ? database : getDatabase();
+    database = database ?? getDatabase();
     switch (database.client.constructor.name) {
         case 'Client_MySQL':
             return 'mysql';
@@ -213,7 +213,7 @@ async function validateMigrations() {
     const database = getDatabase();
     try {
         let migrationFiles = await fs_extra_1.default.readdir(path_1.default.join(__dirname, 'migrations'));
-        const customMigrationsPath = path_1.default.resolve(env_1.default.EXTENSIONS_PATH, 'migrations');
+        const customMigrationsPath = path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'migrations');
         let customMigrationFiles = ((await fs_extra_1.default.pathExists(customMigrationsPath)) && (await fs_extra_1.default.readdir(customMigrationsPath))) || [];
         migrationFiles = migrationFiles.filter((file) => file.startsWith('run') === false && file.endsWith('.d.ts') === false);
         customMigrationFiles = customMigrationFiles.filter((file) => file.endsWith('.js'));
@@ -252,15 +252,15 @@ async function validateDatabaseExtensions() {
 }
 exports.validateDatabaseExtensions = validateDatabaseExtensions;
 async function validateDatabaseCharset(database) {
-    database = database !== null && database !== void 0 ? database : getDatabase();
+    database = database ?? getDatabase();
     if (getDatabaseClient(database) === 'mysql') {
         const { collation } = await database.select(database.raw(`@@collation_database as collation`)).first();
         const tables = await database('information_schema.tables')
             .select({ name: 'TABLE_NAME', collation: 'TABLE_COLLATION' })
-            .where({ TABLE_SCHEMA: env_1.default.DB_DATABASE });
+            .where({ TABLE_SCHEMA: env_1.default['DB_DATABASE'] });
         const columns = await database('information_schema.columns')
             .select({ table_name: 'TABLE_NAME', name: 'COLUMN_NAME', collation: 'COLLATION_NAME' })
-            .where({ TABLE_SCHEMA: env_1.default.DB_DATABASE })
+            .where({ TABLE_SCHEMA: env_1.default['DB_DATABASE'] })
             .whereNot({ COLLATION_NAME: collation });
         let inconsistencies = '';
         for (const table of tables) {

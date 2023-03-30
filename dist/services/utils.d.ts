@@ -1,6 +1,6 @@
-import { Knex } from 'knex';
-import { AbstractServiceOptions, PrimaryKey } from '../types';
-import { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
+import type { AbstractServiceOptions, PrimaryKey } from '../types';
 export declare class UtilsService {
     knex: Knex;
     accountability: Accountability | null;

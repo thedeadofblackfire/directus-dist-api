@@ -1,5 +1,5 @@
-import { Accountability, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
+import type { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
 export declare function getAccountabilityForRole(role: null | string, context: {
     accountability: null | Accountability;
     schema: SchemaOverview;

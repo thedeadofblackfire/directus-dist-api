@@ -4,7 +4,6 @@ exports.registerDrivers = void 0;
 const env_1 = require("../env");
 const get_storage_driver_1 = require("./get-storage-driver");
 const registerDrivers = async (storage) => {
-    var _a, _b;
     const env = (0, env_1.getEnv)();
     const usedDrivers = [];
     for (const [key, value] of Object.entries(env)) {
@@ -13,7 +12,7 @@ const registerDrivers = async (storage) => {
         if (value && usedDrivers.includes(value) === false)
             usedDrivers.push(value);
     }
-    if (((_a = process.env) === null || _a === void 0 ? void 0 : _a.VERCEL) || (((_b = process.env) === null || _b === void 0 ? void 0 : _b.VERCEL_REGION) && process.env.VERCEL_REGION == 'dev1')) {
+    if (process.env['VERCEL'] || (process.env['VERCEL_REGION'] && process.env['VERCEL_REGION'] == 'dev1')) {
         console.log('usedDrivers', usedDrivers); // usedDrivers [ 'local', 's3' ]
         //storage.registerDriver('local', storageDrivers_local);
         //storage.registerDriver('s3', storageDrivers_s3.default);

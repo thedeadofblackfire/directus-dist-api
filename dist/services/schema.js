@@ -13,21 +13,20 @@ const get_versioned_hash_1 = require("../utils/get-versioned-hash");
 const validate_diff_1 = require("../utils/validate-diff");
 const validate_snapshot_1 = require("../utils/validate-snapshot");
 class SchemaService {
+    knex;
+    accountability;
     constructor(options) {
-        var _a, _b;
-        this.knex = (_a = options.knex) !== null && _a !== void 0 ? _a : (0, database_1.default)();
-        this.accountability = (_b = options.accountability) !== null && _b !== void 0 ? _b : null;
+        this.knex = options.knex ?? (0, database_1.default)();
+        this.accountability = options.accountability ?? null;
     }
     async snapshot() {
-        var _a;
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true)
+        if (this.accountability?.admin !== true)
             throw new exceptions_1.ForbiddenException();
         const currentSnapshot = await (0, get_snapshot_1.getSnapshot)({ database: this.knex });
         return currentSnapshot;
     }
     async apply(payload) {
-        var _a;
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true)
+        if (this.accountability?.admin !== true)
             throw new exceptions_1.ForbiddenException();
         const currentSnapshot = await this.snapshot();
         const snapshotWithHash = this.getHashedSnapshot(currentSnapshot);
@@ -36,11 +35,10 @@ class SchemaService {
         await (0, apply_diff_1.applyDiff)(currentSnapshot, payload.diff, { database: this.knex });
     }
     async diff(snapshot, options) {
-        var _a, _b;
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true)
+        if (this.accountability?.admin !== true)
             throw new exceptions_1.ForbiddenException();
-        (0, validate_snapshot_1.validateSnapshot)(snapshot, options === null || options === void 0 ? void 0 : options.force);
-        const currentSnapshot = (_b = options === null || options === void 0 ? void 0 : options.currentSnapshot) !== null && _b !== void 0 ? _b : (await (0, get_snapshot_1.getSnapshot)({ database: this.knex }));
+        (0, validate_snapshot_1.validateSnapshot)(snapshot, options?.force);
+        const currentSnapshot = options?.currentSnapshot ?? (await (0, get_snapshot_1.getSnapshot)({ database: this.knex }));
         const diff = (0, get_snapshot_diff_1.getSnapshotDiff)(currentSnapshot, snapshot);
         if (diff.collections.length === 0 && diff.fields.length === 0 && diff.relations.length === 0) {
             return null;

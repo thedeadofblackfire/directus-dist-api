@@ -1,6 +1,6 @@
-import { SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
-import { Snapshot, SnapshotDiff } from '../types';
+import type { SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
+import type { Snapshot, SnapshotDiff } from '../types';
 export declare function applySnapshot(snapshot: Snapshot, options?: {
     database?: Knex;
     schema?: SchemaOverview;

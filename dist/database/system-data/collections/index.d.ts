@@ -1,2 +1,2 @@
-import { CollectionMeta } from '../../../types';
+import type { CollectionMeta } from '../../../types';
 export declare const systemCollectionRows: CollectionMeta[];

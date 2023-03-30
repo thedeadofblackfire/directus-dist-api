@@ -1,8 +1,8 @@
-import { Query, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
+import type { Query, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
 type GetColumnOptions = {
-    query?: Query;
-    originalCollectionName?: string;
+    query?: Query | undefined;
+    originalCollectionName?: string | undefined;
 };
 /**
  * Return column prefixed by table. If column includes functions (like `year(date_created)`), the

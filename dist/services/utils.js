@@ -6,30 +6,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UtilsService = void 0;
 const database_1 = __importDefault(require("../database"));
 const collections_1 = require("../database/system-data/collections");
-const exceptions_1 = require("../exceptions");
 const emitter_1 = __importDefault(require("../emitter"));
+const exceptions_1 = require("../exceptions");
 class UtilsService {
+    knex;
+    accountability;
+    schema;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
         this.schema = options.schema;
     }
     async sort(collection, { item, to }) {
-        var _a, _b, _c, _d;
         const sortFieldResponse = (await this.knex.select('sort_field').from('directus_collections').where({ collection }).first()) ||
             collections_1.systemCollectionRows;
-        const sortField = sortFieldResponse === null || sortFieldResponse === void 0 ? void 0 : sortFieldResponse.sort_field;
+        const sortField = sortFieldResponse?.sort_field;
         if (!sortField) {
             throw new exceptions_1.InvalidPayloadException(`Collection "${collection}" doesn't have a sort field.`);
         }
-        if (((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) !== true) {
-            const permissions = (_c = (_b = this.accountability) === null || _b === void 0 ? void 0 : _b.permissions) === null || _c === void 0 ? void 0 : _c.find((permission) => {
+        if (this.accountability?.admin !== true) {
+            const permissions = this.accountability?.permissions?.find((permission) => {
                 return permission.collection === collection && permission.action === 'update';
             });
             if (!permissions) {
                 throw new exceptions_1.ForbiddenException();
             }
-            const allowedFields = (_d = permissions.fields) !== null && _d !== void 0 ? _d : [];
+            const allowedFields = permissions.fields ?? [];
             if (allowedFields[0] !== '*' && allowedFields.includes(sortField) === false) {
                 throw new exceptions_1.ForbiddenException();
             }
@@ -37,7 +39,7 @@ class UtilsService {
         const primaryKeyField = this.schema.collections[collection].primary;
         // Make sure all rows have a sort value
         const countResponse = await this.knex.count('* as count').from(collection).whereNull(sortField).first();
-        if ((countResponse === null || countResponse === void 0 ? void 0 : countResponse.count) && +countResponse.count !== 0) {
+        if (countResponse?.count && +countResponse.count !== 0) {
             const lastSortValueResponse = await this.knex.max(sortField).from(collection).first();
             const rowsWithoutSortValue = await this.knex
                 .select(primaryKeyField, sortField)
@@ -59,7 +61,7 @@ class UtilsService {
             .groupBy(sortField)
             .from(collection)
             .havingRaw('count(??) > 1', [sortField]);
-        if ((duplicates === null || duplicates === void 0 ? void 0 : duplicates.length) > 0) {
+        if (duplicates?.length > 0) {
             const ids = await this.knex.select(primaryKeyField).from(collection).orderBy(sortField);
             // This might not scale that well, but I don't really know how to accurately set all rows
             // to a sequential value that works cross-DB vendor otherwise

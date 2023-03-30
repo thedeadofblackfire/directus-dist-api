@@ -1,7 +1,7 @@
-import { Knex } from 'knex';
-import { OpenAPIObject } from 'openapi3-ts';
-import { AbstractServiceOptions } from '../types';
-import { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
+import type { OpenAPIObject } from 'openapi3-ts';
+import type { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { AbstractServiceOptions } from '../types';
 import { CollectionsService } from './collections';
 import { FieldsService } from './fields';
 import { GraphQLService } from './graphql';

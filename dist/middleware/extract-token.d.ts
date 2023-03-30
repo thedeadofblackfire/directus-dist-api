@@ -6,6 +6,6 @@
  *
  * and store in req.token
  */
-import { RequestHandler } from 'express';
+import type { RequestHandler } from 'express';
 declare const extractToken: RequestHandler;
 export default extractToken;

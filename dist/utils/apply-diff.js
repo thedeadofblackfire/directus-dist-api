@@ -4,19 +4,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isNestedMetaUpdate = exports.applyDiff = void 0;
+const deep_diff_1 = require("deep-diff");
+const lodash_1 = require("lodash");
+const cache_1 = require("../cache");
+const database_1 = __importDefault(require("../database"));
+const emitter_1 = __importDefault(require("../emitter"));
+const logger_1 = __importDefault(require("../logger"));
 const services_1 = require("../services");
 const types_1 = require("../types");
 const get_schema_1 = require("./get-schema");
-const database_1 = __importDefault(require("../database"));
-const deep_diff_1 = require("deep-diff");
-const lodash_1 = require("lodash");
-const logger_1 = __importDefault(require("../logger"));
-const emitter_1 = __importDefault(require("../emitter"));
-const cache_1 = require("../cache");
 async function applyDiff(currentSnapshot, snapshotDiff, options) {
-    var _a, _b;
-    const database = (_a = options === null || options === void 0 ? void 0 : options.database) !== null && _a !== void 0 ? _a : (0, database_1.default)();
-    const schema = (_b = options === null || options === void 0 ? void 0 : options.schema) !== null && _b !== void 0 ? _b : (await (0, get_schema_1.getSchema)({ database, bypassCache: true }));
+    const database = options?.database ?? (0, database_1.default)();
+    const schema = options?.schema ?? (await (0, get_schema_1.getSchema)({ database, bypassCache: true }));
     const nestedActionEvents = [];
     const mutationOptions = {
         autoPurgeSystemCache: false,
@@ -24,24 +23,23 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
     };
     await database.transaction(async (trx) => {
         const collectionsService = new services_1.CollectionsService({ knex: trx, schema });
-        const getNestedCollectionsToCreate = (currentLevelCollection) => snapshotDiff.collections.filter(({ diff }) => { var _a, _b; return ((_b = (_a = diff[0].rhs) === null || _a === void 0 ? void 0 : _a.meta) === null || _b === void 0 ? void 0 : _b.group) === currentLevelCollection; });
-        const getNestedCollectionsToDelete = (currentLevelCollection) => snapshotDiff.collections.filter(({ diff }) => { var _a, _b; return ((_b = (_a = diff[0].lhs) === null || _a === void 0 ? void 0 : _a.meta) === null || _b === void 0 ? void 0 : _b.group) === currentLevelCollection; });
+        const getNestedCollectionsToCreate = (currentLevelCollection) => snapshotDiff.collections.filter(({ diff }) => diff[0].rhs?.meta?.group === currentLevelCollection);
+        const getNestedCollectionsToDelete = (currentLevelCollection) => snapshotDiff.collections.filter(({ diff }) => diff[0].lhs?.meta?.group === currentLevelCollection);
         const createCollections = async (collections) => {
             for (const { collection, diff } of collections) {
-                if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.NEW && diff[0].rhs) {
+                if (diff?.[0]?.kind === types_1.DiffKind.NEW && diff[0].rhs) {
                     // We'll nest the to-be-created fields in the same collection creation, to prevent
                     // creating a collection without a primary key
                     const fields = snapshotDiff.fields
                         .filter((fieldDiff) => fieldDiff.collection === collection)
                         .map((fieldDiff) => fieldDiff.diff[0].rhs)
                         .map((fieldDiff) => {
-                        var _a, _b, _c, _d, _e;
                         // Casts field type to UUID when applying non-PostgreSQL schema onto PostgreSQL database.
                         // This is needed because they snapshots UUID fields as char/varchar with length 36.
-                        if (['char', 'varchar'].includes(String((_a = fieldDiff.schema) === null || _a === void 0 ? void 0 : _a.data_type).toLowerCase()) &&
-                            ((_b = fieldDiff.schema) === null || _b === void 0 ? void 0 : _b.max_length) === 36 &&
-                            (((_c = fieldDiff.schema) === null || _c === void 0 ? void 0 : _c.is_primary_key) ||
-                                (((_d = fieldDiff.schema) === null || _d === void 0 ? void 0 : _d.foreign_key_table) && ((_e = fieldDiff.schema) === null || _e === void 0 ? void 0 : _e.foreign_key_column)))) {
+                        if (['char', 'varchar'].includes(String(fieldDiff.schema?.data_type).toLowerCase()) &&
+                            fieldDiff.schema?.max_length === 36 &&
+                            (fieldDiff.schema?.is_primary_key ||
+                                (fieldDiff.schema?.foreign_key_table && fieldDiff.schema?.foreign_key_column))) {
                             return (0, lodash_1.merge)(fieldDiff, { type: 'uuid', schema: { data_type: 'uuid', max_length: null } });
                         }
                         else {
@@ -66,7 +64,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
         };
         const deleteCollections = async (collections) => {
             for (const { collection, diff } of collections) {
-                if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.DELETE) {
+                if (diff?.[0]?.kind === types_1.DiffKind.DELETE) {
                     const relations = schema.relations.filter((r) => r.related_collection === collection || r.collection === collection);
                     if (relations.length > 0) {
                         const relationsService = new services_1.RelationsService({ knex: trx, schema });
@@ -95,13 +93,12 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
         };
         // Finds all collections that need to be created
         const filterCollectionsForCreation = ({ diff }) => {
-            var _a;
             // Check new collections only
-            const isNewCollection = diff[0].kind === types_1.DiffKind.NEW;
+            const isNewCollection = diff[0]?.kind === types_1.DiffKind.NEW;
             if (!isNewCollection)
                 return false;
             // Create now if no group
-            const groupName = (_a = diff[0].rhs.meta) === null || _a === void 0 ? void 0 : _a.group;
+            const groupName = diff[0].rhs.meta?.group;
             if (!groupName)
                 return true;
             // Check if parent collection already exists in schema
@@ -114,7 +111,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
             // TopLevelCollection - I exist in current schema
             // 		NestedCollection - I exist in snapshotDiff as a new collection
             //			TheCurrentCollectionInIteration - I exist in snapshotDiff as a new collection but will be created as part of NestedCollection
-            const parentWillBeCreatedInThisApply = snapshotDiff.collections.filter(({ collection, diff }) => diff[0].kind === types_1.DiffKind.NEW && collection === groupName).length > 0;
+            const parentWillBeCreatedInThisApply = snapshotDiff.collections.filter(({ collection, diff }) => diff[0]?.kind === types_1.DiffKind.NEW && collection === groupName).length > 0;
             // Has group, but parent is not new, parent is also not being created in this snapshot apply
             if (parentExists && !parentWillBeCreatedInThisApply)
                 return true;
@@ -124,9 +121,9 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
         // then continue with nested collections recursively
         await createCollections(snapshotDiff.collections.filter(filterCollectionsForCreation));
         // delete top level collections (no group) first, then continue with nested collections recursively
-        await deleteCollections(snapshotDiff.collections.filter(({ diff }) => { var _a; return diff[0].kind === types_1.DiffKind.DELETE && ((_a = diff[0].lhs.meta) === null || _a === void 0 ? void 0 : _a.group) === null; }));
+        await deleteCollections(snapshotDiff.collections.filter(({ diff }) => diff[0]?.kind === types_1.DiffKind.DELETE && diff[0].lhs.meta?.group === null));
         for (const { collection, diff } of snapshotDiff.collections) {
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.EDIT || (diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.ARRAY) {
+            if (diff?.[0]?.kind === types_1.DiffKind.EDIT || diff?.[0]?.kind === types_1.DiffKind.ARRAY) {
                 const currentCollection = currentSnapshot.collections.find((field) => {
                     return field.collection === collection;
                 });
@@ -150,7 +147,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
             schema: await (0, get_schema_1.getSchema)({ database: trx, bypassCache: true }),
         });
         for (const { collection, field, diff } of snapshotDiff.fields) {
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.NEW && !isNestedMetaUpdate(diff === null || diff === void 0 ? void 0 : diff[0])) {
+            if (diff?.[0]?.kind === types_1.DiffKind.NEW && !isNestedMetaUpdate(diff?.[0])) {
                 try {
                     await fieldsService.createField(collection, diff[0].rhs, undefined, mutationOptions);
                 }
@@ -159,7 +156,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
                     throw err;
                 }
             }
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.EDIT || (diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.ARRAY || isNestedMetaUpdate(diff === null || diff === void 0 ? void 0 : diff[0])) {
+            if (diff?.[0]?.kind === types_1.DiffKind.EDIT || diff?.[0]?.kind === types_1.DiffKind.ARRAY || isNestedMetaUpdate(diff[0])) {
                 const currentField = currentSnapshot.fields.find((snapshotField) => {
                     return snapshotField.collection === collection && snapshotField.field === field;
                 });
@@ -177,7 +174,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
                     }
                 }
             }
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.DELETE && !isNestedMetaUpdate(diff === null || diff === void 0 ? void 0 : diff[0])) {
+            if (diff?.[0]?.kind === types_1.DiffKind.DELETE && !isNestedMetaUpdate(diff?.[0])) {
                 try {
                     await fieldsService.deleteField(collection, field, mutationOptions);
                 }
@@ -199,7 +196,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
             for (const diffEdit of diff) {
                 (0, lodash_1.set)(structure, diffEdit.path, undefined);
             }
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.NEW) {
+            if (diff?.[0]?.kind === types_1.DiffKind.NEW) {
                 try {
                     await relationsService.createOne(diff[0].rhs, mutationOptions);
                 }
@@ -208,7 +205,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
                     throw err;
                 }
             }
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.EDIT || (diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.ARRAY) {
+            if (diff?.[0]?.kind === types_1.DiffKind.EDIT || diff?.[0]?.kind === types_1.DiffKind.ARRAY) {
                 const currentRelation = currentSnapshot.relations.find((relation) => {
                     return relation.collection === collection && relation.field === field;
                 });
@@ -226,7 +223,7 @@ async function applyDiff(currentSnapshot, snapshotDiff, options) {
                     }
                 }
             }
-            if ((diff === null || diff === void 0 ? void 0 : diff[0].kind) === types_1.DiffKind.DELETE) {
+            if (diff?.[0]?.kind === types_1.DiffKind.DELETE) {
                 try {
                     await relationsService.deleteOne(collection, field, mutationOptions);
                 }

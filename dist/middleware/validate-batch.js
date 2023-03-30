@@ -9,7 +9,7 @@ const exceptions_1 = require("../exceptions");
 const exceptions_2 = require("@directus/shared/exceptions");
 const async_handler_1 = __importDefault(require("../utils/async-handler"));
 const sanitize_query_1 = require("../utils/sanitize-query");
-const validateBatch = (scope) => (0, async_handler_1.default)(async (req, res, next) => {
+const validateBatch = (scope) => (0, async_handler_1.default)(async (req, _res, next) => {
     if (req.method.toLowerCase() === 'get') {
         req.body = {};
         return next();

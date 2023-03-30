@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import type { Readable } from 'node:stream';
-import { AbstractServiceOptions, File, Metadata, MutationOptions, PrimaryKey } from '../types';
+import type { AbstractServiceOptions, File, Metadata, MutationOptions, PrimaryKey } from '../types';
 import { ItemsService } from './items';
 export declare class FilesService extends ItemsService {
     constructor(options: AbstractServiceOptions);
@@ -8,7 +8,6 @@ export declare class FilesService extends ItemsService {
      * Upload a single new file to the configured storage adapter
      */
     uploadOne(stream: Readable, data: Partial<File> & {
-        filename_download: string;
         storage: string;
     }, primaryKey?: PrimaryKey, opts?: MutationOptions): Promise<PrimaryKey>;
     /**

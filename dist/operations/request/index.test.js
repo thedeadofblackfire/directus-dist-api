@@ -21,8 +21,7 @@ const index_1 = __importDefault(require("./index"));
 });
 (0, vitest_1.test)('no headers configured', async () => {
     const body = 'body';
-    const headers = undefined;
-    await index_1.default.handler({ url, method, body, headers }, {});
+    await index_1.default.handler({ url, method, body }, {});
     (0, vitest_1.expect)(axiosDefault).toHaveBeenCalledWith(vitest_1.expect.objectContaining({
         url,
         method,

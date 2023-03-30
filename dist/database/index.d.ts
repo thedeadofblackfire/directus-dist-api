@@ -1,6 +1,6 @@
 import SchemaInspector from '@directus/schema';
 import { Knex } from 'knex';
-import { DatabaseClient } from '../types';
+import type { DatabaseClient } from '../types';
 export default function getDatabase(): Knex;
 export declare function getSchemaInspector(): ReturnType<typeof SchemaInspector>;
 /**

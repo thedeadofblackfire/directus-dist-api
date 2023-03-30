@@ -28,12 +28,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const knex_1 = __importDefault(require("knex"));
 const knex_mock_client_1 = require("knex-mock-client");
-const schemas_1 = require("../__utils__/schemas");
+const vitest_1 = require("vitest");
 const services_1 = require("../services");
+const schemas_1 = require("../__utils__/schemas");
+const snapshots_1 = require("../__utils__/snapshots");
 const apply_snapshot_1 = require("./apply-snapshot");
 const getSchema = __importStar(require("./get-schema"));
-const snapshots_1 = require("../__utils__/snapshots");
-const vitest_1 = require("vitest");
 class Client_PG extends knex_mock_client_1.MockClient {
 }
 (0, vitest_1.describe)('applySnapshot', () => {

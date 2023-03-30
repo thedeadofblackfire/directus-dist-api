@@ -4,15 +4,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const joi_1 = __importDefault(require("joi"));
+const constants_1 = require("../constants");
+const env_1 = __importDefault(require("../env"));
 const exceptions_1 = require("../exceptions");
 const respond_1 = require("../middleware/respond");
 const use_collection_1 = __importDefault(require("../middleware/use-collection"));
 const validate_batch_1 = require("../middleware/validate-batch");
 const services_1 = require("../services");
 const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const constants_1 = require("../constants");
-const joi_1 = __importDefault(require("joi"));
-const env_1 = __importDefault(require("../env"));
 const sanitize_query_1 = require("../utils/sanitize-query");
 const router = express_1.default.Router();
 router.use((0, use_collection_1.default)('directus_shares'));
@@ -30,15 +30,15 @@ router.post('/auth', (0, async_handler_1.default)(async (req, res, next) => {
         throw new exceptions_1.InvalidPayloadException(error.message);
     }
     const { accessToken, refreshToken, expires } = await service.login(req.body);
-    res.cookie(env_1.default.REFRESH_TOKEN_COOKIE_NAME, refreshToken, constants_1.COOKIE_OPTIONS);
-    res.locals.payload = { data: { access_token: accessToken, expires } };
+    res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, constants_1.COOKIE_OPTIONS);
+    res.locals['payload'] = { data: { access_token: accessToken, expires } };
     return next();
 }), respond_1.respond);
 const sharedInviteSchema = joi_1.default.object({
     share: joi_1.default.string().required(),
     emails: joi_1.default.array().items(joi_1.default.string()),
 }).unknown();
-router.post('/invite', (0, async_handler_1.default)(async (req, res, next) => {
+router.post('/invite', (0, async_handler_1.default)(async (req, _res, next) => {
     const service = new services_1.SharesService({
         schema: req.schema,
         accountability: req.accountability,
@@ -67,11 +67,11 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
     try {
         if (Array.isArray(req.body)) {
             const items = await service.readMany(savedKeys, req.sanitizedQuery);
-            res.locals.payload = { data: items };
+            res.locals['payload'] = { data: items };
         }
         else {
             const item = await service.readOne(savedKeys[0], req.sanitizedQuery);
-            res.locals.payload = { data: item };
+            res.locals['payload'] = { data: item };
         }
     }
     catch (error) {
@@ -88,7 +88,7 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
         schema: req.schema,
     });
     const records = await service.readByQuery(req.sanitizedQuery);
-    res.locals.payload = { data: records || null };
+    res.locals['payload'] = { data: records || null };
     return next();
 });
 router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
@@ -97,7 +97,7 @@ router.get(`/info/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(
     const service = new services_1.SharesService({
         schema: req.schema,
     });
-    const record = await service.readOne(req.params.pk, {
+    const record = await service.readOne(req.params['pk'], {
         fields: ['id', 'collection', 'item', 'password', 'max_uses', 'times_used', 'date_start', 'date_end'],
         filter: {
             _and: [
@@ -132,7 +132,7 @@ router.get(`/info/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(
             ],
         },
     });
-    res.locals.payload = { data: record || null };
+    res.locals['payload'] = { data: record || null };
     return next();
 }), respond_1.respond);
 router.get(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(async (req, res, next) => {
@@ -140,8 +140,8 @@ router.get(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(async
         accountability: req.accountability,
         schema: req.schema,
     });
-    const record = await service.readOne(req.params.pk, req.sanitizedQuery);
-    res.locals.payload = { data: record || null };
+    const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
+    res.locals['payload'] = { data: record || null };
     return next();
 }), respond_1.respond);
 router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handler_1.default)(async (req, res, next) => {
@@ -162,7 +162,7 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
     }
     try {
         const result = await service.readMany(keys, req.sanitizedQuery);
-        res.locals.payload = { data: result };
+        res.locals['payload'] = { data: result };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -177,10 +177,10 @@ router.patch(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(asy
         accountability: req.accountability,
         schema: req.schema,
     });
-    const primaryKey = await service.updateOne(req.params.pk, req.body);
+    const primaryKey = await service.updateOne(req.params['pk'], req.body);
     try {
         const item = await service.readOne(primaryKey, req.sanitizedQuery);
-        res.locals.payload = { data: item || null };
+        res.locals['payload'] = { data: item || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -212,7 +212,7 @@ router.delete(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(as
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.deleteOne(req.params.pk);
+    await service.deleteOne(req.params['pk']);
     return next();
 }), respond_1.respond);
 exports.default = router;

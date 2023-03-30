@@ -8,11 +8,10 @@ const object_hash_1 = __importDefault(require("object-hash"));
 const url_1 = __importDefault(require("url"));
 const get_graphql_query_and_variables_1 = require("./get-graphql-query-and-variables");
 function getCacheKey(req) {
-    var _a;
     const path = url_1.default.parse(req.originalUrl).pathname;
-    const isGraphQl = path === null || path === void 0 ? void 0 : path.startsWith('/graphql');
+    const isGraphQl = path?.startsWith('/graphql');
     const info = {
-        user: ((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user) || null,
+        user: req.accountability?.user || null,
         path,
         query: isGraphQl ? (0, get_graphql_query_and_variables_1.getGraphqlQueryAndVariables)(req) : req.sanitizedQuery,
     };

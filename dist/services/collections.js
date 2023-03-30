@@ -28,20 +28,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CollectionsService = void 0;
 const schema_1 = __importDefault(require("@directus/schema"));
+const utils_1 = require("@directus/shared/utils");
+const lodash_1 = require("lodash");
 const cache_1 = require("../cache");
 const constants_1 = require("../constants");
 const database_1 = __importStar(require("../database"));
+const helpers_1 = require("../database/helpers");
 const collections_1 = require("../database/system-data/collections");
+const emitter_1 = __importDefault(require("../emitter"));
 const env_1 = __importDefault(require("../env"));
 const exceptions_1 = require("../exceptions");
 const fields_1 = require("../services/fields");
 const items_1 = require("../services/items");
-const utils_1 = require("@directus/shared/utils");
-const helpers_1 = require("../database/helpers");
-const lodash_1 = require("lodash");
 const get_schema_1 = require("../utils/get-schema");
-const emitter_1 = __importDefault(require("../emitter"));
 class CollectionsService {
+    knex;
+    helpers;
+    accountability;
+    schemaInspector;
+    schema;
+    cache;
+    systemCache;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.helpers = (0, helpers_1.getHelpers)(this.knex);
@@ -56,7 +63,6 @@ class CollectionsService {
      * Create a single new collection
      */
     async createOne(payload, opts) {
-        var _a, _b;
         if (this.accountability && this.accountability.admin !== true) {
             throw new exceptions_1.ForbiddenException();
         }
@@ -68,7 +74,8 @@ class CollectionsService {
         const nestedActionEvents = [];
         try {
             const existingCollections = [
-                ...((_b = (_a = (await this.knex.select('collection').from('directus_collections'))) === null || _a === void 0 ? void 0 : _a.map(({ collection }) => collection)) !== null && _b !== void 0 ? _b : []),
+                ...((await this.knex.select('collection').from('directus_collections'))?.map(({ collection }) => collection) ??
+                    []),
                 ...Object.keys(this.schema.collections),
             ];
             if (existingCollections.includes(payload.collection)) {
@@ -129,7 +136,7 @@ class CollectionsService {
                     });
                     const fieldPayloads = payload.fields.filter((field) => field.meta).map((field) => field.meta);
                     await fieldItemsService.createMany(fieldPayloads, {
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     });
                 }
                 if (payload.meta) {
@@ -142,7 +149,7 @@ class CollectionsService {
                         ...payload.meta,
                         collection: payload.collection,
                     }, {
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     });
                 }
                 return payload.collection;
@@ -150,13 +157,13 @@ class CollectionsService {
             return payload.collection;
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -191,13 +198,13 @@ class CollectionsService {
             return collections;
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -210,7 +217,6 @@ class CollectionsService {
      * Read all collections. Currently doesn't support any query.
      */
     async readByQuery() {
-        var _a;
         const collectionItemsService = new items_1.ItemsService('directus_collections', {
             knex: this.knex,
             schema: this.schema,
@@ -250,7 +256,7 @@ class CollectionsService {
             const collection = {
                 collection: collectionMeta.collection,
                 meta: collectionMeta,
-                schema: (_a = tablesInDatabase.find((table) => table.name === collectionMeta.collection)) !== null && _a !== void 0 ? _a : null,
+                schema: tablesInDatabase.find((table) => table.name === collectionMeta.collection) ?? null,
             };
             collections.push(collection);
         }
@@ -264,8 +270,8 @@ class CollectionsService {
                 });
             }
         }
-        if (env_1.default.DB_EXCLUDE_TABLES) {
-            return collections.filter((collection) => env_1.default.DB_EXCLUDE_TABLES.includes(collection.collection) === false);
+        if (env_1.default['DB_EXCLUDE_TABLES']) {
+            return collections.filter((collection) => env_1.default['DB_EXCLUDE_TABLES'].includes(collection.collection) === false);
         }
         return collections;
     }
@@ -324,25 +330,25 @@ class CollectionsService {
             if (exists) {
                 await collectionItemsService.updateOne(collectionKey, payload.meta, {
                     ...opts,
-                    bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                    bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                 });
             }
             else {
                 await collectionItemsService.createOne({ ...payload.meta, collection: collectionKey }, {
                     ...opts,
-                    bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                    bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                 });
             }
             return collectionKey;
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -377,20 +383,20 @@ class CollectionsService {
                     await collectionItemsService.updateOne(payload[collectionKey], (0, lodash_1.omit)(payload, collectionKey), {
                         autoPurgeCache: false,
                         autoPurgeSystemCache: false,
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     });
                     collectionKeys.push(payload[collectionKey]);
                 }
             });
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -426,13 +432,13 @@ class CollectionsService {
             return collectionKeys;
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -457,7 +463,6 @@ class CollectionsService {
                 throw new exceptions_1.ForbiddenException();
             }
             await this.knex.transaction(async (trx) => {
-                var _a;
                 if (collectionToBeDeleted.schema) {
                     await trx.schema.dropTable(collectionKey);
                 }
@@ -470,7 +475,7 @@ class CollectionsService {
                         schema: this.schema,
                     });
                     await collectionItemsService.deleteOne(collectionKey, {
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     });
                 }
                 if (collectionToBeDeleted.schema) {
@@ -498,11 +503,11 @@ class CollectionsService {
                     });
                     for (const relation of relations) {
                         // Delete related o2m fields that point to current collection
-                        if (relation.related_collection && ((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field)) {
+                        if (relation.related_collection && relation.meta?.one_field) {
                             await fieldsService.deleteField(relation.related_collection, relation.meta.one_field, {
                                 autoPurgeCache: false,
                                 autoPurgeSystemCache: false,
-                                bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                                bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                             });
                         }
                         // Delete related m2o fields that point to current collection
@@ -510,13 +515,12 @@ class CollectionsService {
                             await fieldsService.deleteField(relation.collection, relation.field, {
                                 autoPurgeCache: false,
                                 autoPurgeSystemCache: false,
-                                bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                                bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                             });
                         }
                     }
                     const a2oRelationsThatIncludeThisCollection = this.schema.relations.filter((relation) => {
-                        var _a, _b;
-                        return (_b = (_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_allowed_collections) === null || _b === void 0 ? void 0 : _b.includes(collectionKey);
+                        return relation.meta?.one_allowed_collections?.includes(collectionKey);
                     });
                     for (const relation of a2oRelationsThatIncludeThisCollection) {
                         const newAllowedCollections = relation
@@ -531,13 +535,13 @@ class CollectionsService {
             return collectionKey;
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -572,13 +576,13 @@ class CollectionsService {
             return collectionKeys;
         }
         finally {
-            if (this.cache && env_1.default.CACHE_AUTO_PURGE && (opts === null || opts === void 0 ? void 0 : opts.autoPurgeCache) !== false) {
+            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;

@@ -48,15 +48,14 @@ async function uniqueViolation(error) {
      * While it's not ideal, the best next thing we can do is extract the column name from
      * information_schema when this happens
      */
-    var _a, _b, _c;
     const betweenQuotes = /'([^']+)'/g;
     const betweenParens = /\(([^)]+)\)/g;
     const quoteMatches = error.message.match(betweenQuotes);
     const parenMatches = error.message.match(betweenParens);
     if (!quoteMatches || !parenMatches)
         return error;
-    const keyName = (_a = quoteMatches[1]) === null || _a === void 0 ? void 0 : _a.slice(1, -1);
-    let collection = (_b = quoteMatches[0]) === null || _b === void 0 ? void 0 : _b.slice(1, -1);
+    const keyName = quoteMatches[1].slice(1, -1);
+    let collection = quoteMatches[0].slice(1, -1);
     let field = null;
     if (keyName) {
         const database = (0, database_1.default)();
@@ -75,10 +74,10 @@ async function uniqueViolation(error) {
         })
             .where('sys.indexes.name', '=', keyName)
             .first();
-        collection = constraintUsage === null || constraintUsage === void 0 ? void 0 : constraintUsage.collection;
-        field = constraintUsage === null || constraintUsage === void 0 ? void 0 : constraintUsage.field;
+        collection = constraintUsage?.collection;
+        field = constraintUsage?.field;
     }
-    const invalid = (_c = parenMatches[parenMatches.length - 1]) === null || _c === void 0 ? void 0 : _c.slice(1, -1);
+    const invalid = parenMatches[parenMatches.length - 1]?.slice(1, -1);
     return new record_not_unique_1.RecordNotUniqueException(field, {
         collection,
         field,

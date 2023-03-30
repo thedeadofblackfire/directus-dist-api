@@ -31,11 +31,11 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
     try {
         if (Array.isArray(req.body)) {
             const items = await service.readMany(savedKeys, req.sanitizedQuery);
-            res.locals.payload = { data: items };
+            res.locals['payload'] = { data: items };
         }
         else {
             const item = await service.readOne(savedKeys[0], req.sanitizedQuery);
-            res.locals.payload = { data: item };
+            res.locals['payload'] = { data: item };
         }
     }
     catch (error) {
@@ -57,26 +57,25 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     });
     const item = await service.readByQuery(req.sanitizedQuery);
     const meta = await metaService.getMetaForQuery('directus_users', req.sanitizedQuery);
-    res.locals.payload = { data: item || null, meta };
+    res.locals['payload'] = { data: item || null, meta };
     return next();
 });
 router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
 router.search('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
 router.get('/me', (0, async_handler_1.default)(async (req, res, next) => {
-    var _a, _b, _c;
-    if ((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.share_scope) {
+    if (req.accountability?.share_scope) {
         const user = {
-            share: (_b = req.accountability) === null || _b === void 0 ? void 0 : _b.share,
+            share: req.accountability?.share,
             role: {
                 id: req.accountability.role,
                 admin_access: false,
                 app_access: false,
             },
         };
-        res.locals.payload = { data: user };
+        res.locals['payload'] = { data: user };
         return next();
     }
-    if (!((_c = req.accountability) === null || _c === void 0 ? void 0 : _c.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
     const service = new services_1.UsersService({
@@ -85,11 +84,11 @@ router.get('/me', (0, async_handler_1.default)(async (req, res, next) => {
     });
     try {
         const item = await service.readOne(req.accountability.user, req.sanitizedQuery);
-        res.locals.payload = { data: item || null };
+        res.locals['payload'] = { data: item || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
-            res.locals.payload = { data: { id: req.accountability.user } };
+            res.locals['payload'] = { data: { id: req.accountability.user } };
             return next();
         }
         throw error;
@@ -103,13 +102,12 @@ router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const items = await service.readOne(req.params.pk, req.sanitizedQuery);
-    res.locals.payload = { data: items || null };
+    const items = await service.readOne(req.params['pk'], req.sanitizedQuery);
+    res.locals['payload'] = { data: items || null };
     return next();
 }), respond_1.respond);
 router.patch('/me', (0, async_handler_1.default)(async (req, res, next) => {
-    var _a;
-    if (!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
     const service = new services_1.UsersService({
@@ -118,12 +116,11 @@ router.patch('/me', (0, async_handler_1.default)(async (req, res, next) => {
     });
     const primaryKey = await service.updateOne(req.accountability.user, req.body);
     const item = await service.readOne(primaryKey, req.sanitizedQuery);
-    res.locals.payload = { data: item || null };
+    res.locals['payload'] = { data: item || null };
     return next();
 }), respond_1.respond);
 router.patch('/me/track/page', (0, async_handler_1.default)(async (req, _res, next) => {
-    var _a;
-    if (!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
     if (!req.body.last_page) {
@@ -151,7 +148,7 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
     }
     try {
         const result = await service.readMany(keys, req.sanitizedQuery);
-        res.locals.payload = { data: result };
+        res.locals['payload'] = { data: result };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -166,10 +163,10 @@ router.patch('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    const primaryKey = await service.updateOne(req.params.pk, req.body);
+    const primaryKey = await service.updateOne(req.params['pk'], req.body);
     try {
         const item = await service.readOne(primaryKey, req.sanitizedQuery);
-        res.locals.payload = { data: item || null };
+        res.locals['payload'] = { data: item || null };
     }
     catch (error) {
         if (error instanceof exceptions_1.ForbiddenException) {
@@ -201,7 +198,7 @@ router.delete('/:pk', (0, async_handler_1.default)(async (req, _res, next) => {
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.deleteOne(req.params.pk);
+    await service.deleteOne(req.params['pk']);
     return next();
 }), respond_1.respond);
 const inviteSchema = joi_1.default.object({
@@ -236,8 +233,7 @@ router.post('/invite/accept', (0, async_handler_1.default)(async (req, _res, nex
     return next();
 }), respond_1.respond);
 router.post('/me/tfa/generate/', (0, async_handler_1.default)(async (req, res, next) => {
-    var _a;
-    if (!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
     if (!req.body.password) {
@@ -253,12 +249,11 @@ router.post('/me/tfa/generate/', (0, async_handler_1.default)(async (req, res, n
     });
     await authService.verifyPassword(req.accountability.user, req.body.password);
     const { url, secret } = await service.generateTFA(req.accountability.user);
-    res.locals.payload = { data: { secret, otpauth_url: url } };
+    res.locals['payload'] = { data: { secret, otpauth_url: url } };
     return next();
 }), respond_1.respond);
 router.post('/me/tfa/enable/', (0, async_handler_1.default)(async (req, _res, next) => {
-    var _a, _b;
-    if (!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
     if (!req.body.secret) {
@@ -274,7 +269,7 @@ router.post('/me/tfa/enable/', (0, async_handler_1.default)(async (req, _res, ne
         });
         const role = (await rolesService.readOne(req.accountability.role));
         if (role && role.enforce_tfa) {
-            const existingPermission = await ((_b = req.accountability.permissions) === null || _b === void 0 ? void 0 : _b.find((p) => p.collection === 'directus_users' && p.action === 'update'));
+            const existingPermission = await req.accountability.permissions?.find((p) => p.collection === 'directus_users' && p.action === 'update');
             if (existingPermission) {
                 existingPermission.fields = ['tfa_secret'];
                 existingPermission.permissions = { id: { _eq: req.accountability.user } };
@@ -302,8 +297,7 @@ router.post('/me/tfa/enable/', (0, async_handler_1.default)(async (req, _res, ne
     return next();
 }), respond_1.respond);
 router.post('/me/tfa/disable', (0, async_handler_1.default)(async (req, _res, next) => {
-    var _a, _b;
-    if (!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
     if (!req.body.otp) {
@@ -316,7 +310,7 @@ router.post('/me/tfa/disable', (0, async_handler_1.default)(async (req, _res, ne
         });
         const role = (await rolesService.readOne(req.accountability.role));
         if (role && role.enforce_tfa) {
-            const existingPermission = await ((_b = req.accountability.permissions) === null || _b === void 0 ? void 0 : _b.find((p) => p.collection === 'directus_users' && p.action === 'update'));
+            const existingPermission = await req.accountability.permissions?.find((p) => p.collection === 'directus_users' && p.action === 'update');
             if (existingPermission) {
                 existingPermission.fields = ['tfa_secret'];
                 existingPermission.permissions = { id: { _eq: req.accountability.user } };
@@ -348,18 +342,17 @@ router.post('/me/tfa/disable', (0, async_handler_1.default)(async (req, _res, ne
     return next();
 }), respond_1.respond);
 router.post('/:pk/tfa/disable', (0, async_handler_1.default)(async (req, _res, next) => {
-    var _a;
-    if (!((_a = req.accountability) === null || _a === void 0 ? void 0 : _a.user)) {
+    if (!req.accountability?.user) {
         throw new exceptions_1.InvalidCredentialsException();
     }
-    if (!req.accountability.admin || !req.params.pk) {
+    if (!req.accountability.admin || !req.params['pk']) {
         throw new exceptions_1.ForbiddenException();
     }
     const service = new services_1.TFAService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    await service.disableTFA(req.params.pk);
+    await service.disableTFA(req.params['pk']);
     return next();
 }), respond_1.respond);
 exports.default = router;

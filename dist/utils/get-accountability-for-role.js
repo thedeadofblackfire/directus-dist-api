@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAccountabilityForRole = void 0;
-const get_permissions_1 = require("./get-permissions");
 const exceptions_1 = require("../exceptions");
+const get_permissions_1 = require("./get-permissions");
 async function getAccountabilityForRole(role, context) {
     let generatedAccountability = context.accountability;
     if (role === null) {

@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthDriver = void 0;
 class AuthDriver {
+    knex;
+    schema;
     constructor(options, _config) {
         this.knex = options.knex;
         this.schema = options.schema;

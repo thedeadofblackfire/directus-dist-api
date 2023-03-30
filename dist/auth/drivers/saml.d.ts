@@ -1,5 +1,5 @@
 import { UsersService } from '../../services';
-import { AuthDriverOptions, User } from '../../types';
+import type { AuthDriverOptions, User } from '../../types';
 import { LocalAuthDriver } from './local';
 export declare class SAMLAuthDriver extends LocalAuthDriver {
     idp: any;

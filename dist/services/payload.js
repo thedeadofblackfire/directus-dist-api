@@ -21,100 +21,12 @@ const items_1 = require("./items");
  * handled correctly.
  */
 class PayloadService {
+    accountability;
+    knex;
+    helpers;
+    collection;
+    schema;
     constructor(collection, options) {
-        this.transformers = {
-            async hash({ action, value }) {
-                if (!value)
-                    return;
-                if (action === 'create' || action === 'update') {
-                    return await (0, generate_hash_1.generateHash)(String(value));
-                }
-                return value;
-            },
-            async uuid({ action, value }) {
-                if (action === 'create' && !value) {
-                    return (0, uuid_1.v4)();
-                }
-                return value;
-            },
-            async 'cast-boolean'({ action, value }) {
-                if (action === 'read') {
-                    if (value === true || value === 1 || value === '1') {
-                        return true;
-                    }
-                    else if (value === false || value === 0 || value === '0') {
-                        return false;
-                    }
-                    else if (value === null || value === '') {
-                        return null;
-                    }
-                }
-                return value;
-            },
-            async 'cast-json'({ action, value }) {
-                if (action === 'read') {
-                    if (typeof value === 'string') {
-                        try {
-                            return (0, utils_1.parseJSON)(value);
-                        }
-                        catch {
-                            return value;
-                        }
-                    }
-                }
-                return value;
-            },
-            async conceal({ action, value }) {
-                if (action === 'read')
-                    return value ? '**********' : null;
-                return value;
-            },
-            async 'user-created'({ action, value, accountability }) {
-                if (action === 'create')
-                    return (accountability === null || accountability === void 0 ? void 0 : accountability.user) || null;
-                return value;
-            },
-            async 'user-updated'({ action, value, accountability }) {
-                if (action === 'update')
-                    return (accountability === null || accountability === void 0 ? void 0 : accountability.user) || null;
-                return value;
-            },
-            async 'role-created'({ action, value, accountability }) {
-                if (action === 'create')
-                    return (accountability === null || accountability === void 0 ? void 0 : accountability.role) || null;
-                return value;
-            },
-            async 'role-updated'({ action, value, accountability }) {
-                if (action === 'update')
-                    return (accountability === null || accountability === void 0 ? void 0 : accountability.role) || null;
-                return value;
-            },
-            async 'date-created'({ action, value, helpers }) {
-                if (action === 'create')
-                    return new Date(helpers.date.writeTimestamp(new Date().toISOString()));
-                return value;
-            },
-            async 'date-updated'({ action, value, helpers }) {
-                if (action === 'update')
-                    return new Date(helpers.date.writeTimestamp(new Date().toISOString()));
-                return value;
-            },
-            async 'cast-csv'({ action, value }) {
-                if (Array.isArray(value) === false && typeof value !== 'string')
-                    return;
-                if (action === 'read') {
-                    if (Array.isArray(value))
-                        return value;
-                    if (value === '')
-                        return [];
-                    return value.split(',');
-                }
-                if (Array.isArray(value)) {
-                    return value.join(',');
-                }
-                return value;
-            },
-        };
         this.accountability = options.accountability || null;
         this.knex = options.knex || (0, database_1.default)();
         this.helpers = (0, helpers_1.getHelpers)(this.knex);
@@ -122,6 +34,99 @@ class PayloadService {
         this.schema = options.schema;
         return this;
     }
+    transformers = {
+        async hash({ action, value }) {
+            if (!value)
+                return;
+            if (action === 'create' || action === 'update') {
+                return await (0, generate_hash_1.generateHash)(String(value));
+            }
+            return value;
+        },
+        async uuid({ action, value }) {
+            if (action === 'create' && !value) {
+                return (0, uuid_1.v4)();
+            }
+            return value;
+        },
+        async 'cast-boolean'({ action, value }) {
+            if (action === 'read') {
+                if (value === true || value === 1 || value === '1') {
+                    return true;
+                }
+                else if (value === false || value === 0 || value === '0') {
+                    return false;
+                }
+                else if (value === null || value === '') {
+                    return null;
+                }
+            }
+            return value;
+        },
+        async 'cast-json'({ action, value }) {
+            if (action === 'read') {
+                if (typeof value === 'string') {
+                    try {
+                        return (0, utils_1.parseJSON)(value);
+                    }
+                    catch {
+                        return value;
+                    }
+                }
+            }
+            return value;
+        },
+        async conceal({ action, value }) {
+            if (action === 'read')
+                return value ? '**********' : null;
+            return value;
+        },
+        async 'user-created'({ action, value, accountability }) {
+            if (action === 'create')
+                return accountability?.user || null;
+            return value;
+        },
+        async 'user-updated'({ action, value, accountability }) {
+            if (action === 'update')
+                return accountability?.user || null;
+            return value;
+        },
+        async 'role-created'({ action, value, accountability }) {
+            if (action === 'create')
+                return accountability?.role || null;
+            return value;
+        },
+        async 'role-updated'({ action, value, accountability }) {
+            if (action === 'update')
+                return accountability?.role || null;
+            return value;
+        },
+        async 'date-created'({ action, value, helpers }) {
+            if (action === 'create')
+                return new Date(helpers.date.writeTimestamp(new Date().toISOString()));
+            return value;
+        },
+        async 'date-updated'({ action, value, helpers }) {
+            if (action === 'update')
+                return new Date(helpers.date.writeTimestamp(new Date().toISOString()));
+            return value;
+        },
+        async 'cast-csv'({ action, value }) {
+            if (Array.isArray(value) === false && typeof value !== 'string')
+                return;
+            if (action === 'read') {
+                if (Array.isArray(value))
+                    return value;
+                if (value === '')
+                    return [];
+                return value.split(',');
+            }
+            if (Array.isArray(value)) {
+                return value.join(',');
+            }
+            return value;
+        },
+    };
     async processValues(action, payload) {
         const processedPayload = (0, utils_1.toArray)(payload);
         if (processedPayload.length === 0)
@@ -303,7 +308,6 @@ class PayloadService {
      * Recursively save/update all nested related Any-to-One items
      */
     async processA2O(data, opts) {
-        var _a, _b;
         const relations = this.schema.relations.filter((relation) => {
             return relation.collection === this.collection;
         });
@@ -316,7 +320,7 @@ class PayloadService {
         });
         for (const relation of relationsToProcess) {
             // If the required a2o configuration fields are missing, this is a m2o instead of an a2o
-            if (!((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_collection_field) || !((_b = relation.meta) === null || _b === void 0 ? void 0 : _b.one_allowed_collections))
+            if (!relation.meta?.one_collection_field || !relation.meta?.one_allowed_collections)
                 continue;
             const relatedCollection = payload[relation.meta.one_collection_field];
             if (!relatedCollection) {
@@ -348,16 +352,16 @@ class PayloadService {
                 if (Object.keys(fieldsToUpdate).length > 0) {
                     await itemsService.updateOne(relatedPrimaryKey, relatedRecord, {
                         onRevisionCreate: (pk) => revisions.push(pk),
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                        emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        emitEvents: opts?.emitEvents,
                     });
                 }
             }
             else {
                 relatedPrimaryKey = await itemsService.createOne(relatedRecord, {
                     onRevisionCreate: (pk) => revisions.push(pk),
-                    bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                    emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                    bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                    emitEvents: opts?.emitEvents,
                 });
             }
             // Overwrite the nested object with just the primary key, so the parent level can be saved correctly
@@ -408,16 +412,16 @@ class PayloadService {
                 if (Object.keys(fieldsToUpdate).length > 0) {
                     await itemsService.updateOne(relatedPrimaryKey, relatedRecord, {
                         onRevisionCreate: (pk) => revisions.push(pk),
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                        emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        emitEvents: opts?.emitEvents,
                     });
                 }
             }
             else {
                 relatedPrimaryKey = await itemsService.createOne(relatedRecord, {
                     onRevisionCreate: (pk) => revisions.push(pk),
-                    bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                    emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                    bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                    emitEvents: opts?.emitEvents,
                 });
             }
             // Overwrite the nested object with just the primary key, so the parent level can be saved correctly
@@ -437,8 +441,7 @@ class PayloadService {
         const payload = (0, lodash_1.cloneDeep)(data);
         // Only process related records that are actually in the payload
         const relationsToProcess = relations.filter((relation) => {
-            var _a;
-            if (!((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_field))
+            if (!relation.meta?.one_field)
                 return false;
             return relation.meta.one_field in payload;
         });
@@ -498,8 +501,8 @@ class PayloadService {
                 }
                 savedPrimaryKeys.push(...(await itemsService.upsertMany(recordsToUpsert, {
                     onRevisionCreate: (pk) => revisions.push(pk),
-                    bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                    emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                    bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                    emitEvents: opts?.emitEvents,
                 })));
                 const query = {
                     filter: {
@@ -521,15 +524,15 @@ class PayloadService {
                 if (relation.meta.one_deselect_action === 'delete') {
                     // There's no revision for a deletion
                     await itemsService.deleteByQuery(query, {
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                        emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        emitEvents: opts?.emitEvents,
                     });
                 }
                 else {
                     await itemsService.updateByQuery(query, { [relation.field]: null }, {
                         onRevisionCreate: (pk) => revisions.push(pk),
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                        emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        emitEvents: opts?.emitEvents,
                     });
                 }
             }
@@ -553,7 +556,7 @@ class PayloadService {
                             const record = (0, lodash_1.cloneDeep)(item);
                             // add sort field value if it is not supplied in the item
                             if (parent !== null && record[sortField] === undefined) {
-                                record[sortField] = (highestOrderNumber === null || highestOrderNumber === void 0 ? void 0 : highestOrderNumber.max) ? highestOrderNumber.max + index + 1 : index + 1;
+                                record[sortField] = highestOrderNumber?.max ? highestOrderNumber.max + index + 1 : index + 1;
                             }
                             return {
                                 ...record,
@@ -569,8 +572,8 @@ class PayloadService {
                     }
                     await itemsService.createMany(createPayload, {
                         onRevisionCreate: (pk) => revisions.push(pk),
-                        bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                        emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                        bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                        emitEvents: opts?.emitEvents,
                     });
                 }
                 if (alterations.update) {
@@ -581,8 +584,8 @@ class PayloadService {
                             [relation.field]: parent || payload[currentPrimaryKeyField],
                         }, {
                             onRevisionCreate: (pk) => revisions.push(pk),
-                            bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                            emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                            bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                            emitEvents: opts?.emitEvents,
                         });
                     }
                 }
@@ -605,15 +608,15 @@ class PayloadService {
                     };
                     if (relation.meta.one_deselect_action === 'delete') {
                         await itemsService.deleteByQuery(query, {
-                            bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                            emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                            bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                            emitEvents: opts?.emitEvents,
                         });
                     }
                     else {
                         await itemsService.updateByQuery(query, { [relation.field]: null }, {
                             onRevisionCreate: (pk) => revisions.push(pk),
-                            bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
-                            emitEvents: opts === null || opts === void 0 ? void 0 : opts.emitEvents,
+                            bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                            emitEvents: opts?.emitEvents,
                         });
                     }
                 }
@@ -626,10 +629,9 @@ class PayloadService {
      * between delta and data
      */
     async prepareDelta(data) {
-        var _a;
         let payload = (0, lodash_1.cloneDeep)(data);
         for (const key in payload) {
-            if ((_a = payload[key]) === null || _a === void 0 ? void 0 : _a.isRawInstance) {
+            if (payload[key]?.isRawInstance) {
                 payload[key] = payload[key].bindings[0];
             }
         }

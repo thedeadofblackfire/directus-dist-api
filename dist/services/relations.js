@@ -27,19 +27,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RelationsService = void 0;
-const relations_1 = require("../database/system-data/relations");
-const exceptions_1 = require("../exceptions");
+const schema_1 = __importDefault(require("@directus/schema"));
 const utils_1 = require("@directus/shared/utils");
+const cache_1 = require("../cache");
+const database_1 = __importStar(require("../database"));
+const helpers_1 = require("../database/helpers");
+const relations_1 = require("../database/system-data/relations");
+const emitter_1 = __importDefault(require("../emitter"));
+const exceptions_1 = require("../exceptions");
+const get_default_index_name_1 = require("../utils/get-default-index-name");
+const get_schema_1 = require("../utils/get-schema");
 const items_1 = require("./items");
 const permissions_1 = require("./permissions");
-const schema_1 = __importDefault(require("@directus/schema"));
-const database_1 = __importStar(require("../database"));
-const get_default_index_name_1 = require("../utils/get-default-index-name");
-const cache_1 = require("../cache");
-const helpers_1 = require("../database/helpers");
-const emitter_1 = __importDefault(require("../emitter"));
-const get_schema_1 = require("../utils/get-schema");
 class RelationsService {
+    knex;
+    permissionsService;
+    schemaInspector;
+    accountability;
+    schema;
+    relationsItemService;
+    systemCache;
+    helpers;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.permissionsService = new permissions_1.PermissionsService(options);
@@ -83,12 +91,11 @@ class RelationsService {
         return await this.filterForbidden(results);
     }
     async readOne(collection, field) {
-        var _a;
         if (this.accountability && this.accountability.admin !== true) {
             if (this.hasReadAccess === false) {
                 throw new exceptions_1.ForbiddenException();
             }
-            const permissions = (_a = this.accountability.permissions) === null || _a === void 0 ? void 0 : _a.find((permission) => {
+            const permissions = this.accountability.permissions?.find((permission) => {
                 return permission.action === 'read' && permission.collection === collection;
             });
             if (!permissions || !permissions.fields)
@@ -167,13 +174,12 @@ class RelationsService {
             await this.knex.transaction(async (trx) => {
                 if (relation.related_collection) {
                     await trx.schema.alterTable(relation.collection, async (table) => {
-                        var _a;
                         this.alterType(table, relation);
                         const constraintName = (0, get_default_index_name_1.getDefaultIndexName)('foreign', relation.collection, relation.field);
                         const builder = table
                             .foreign(relation.field, constraintName)
                             .references(`${relation.related_collection}.${this.schema.collections[relation.related_collection].primary}`);
-                        if ((_a = relation.schema) === null || _a === void 0 ? void 0 : _a.on_delete) {
+                        if (relation.schema?.on_delete) {
                             builder.onDelete(relation.schema.on_delete);
                         }
                     });
@@ -186,7 +192,7 @@ class RelationsService {
                     // happens in `filterForbidden` down below
                 });
                 await relationsItemService.createOne(metaRow, {
-                    bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                    bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                 });
             });
         }
@@ -194,10 +200,10 @@ class RelationsService {
             if (runPostColumnChange) {
                 await this.helpers.schema.postColumnChange();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -232,10 +238,9 @@ class RelationsService {
             await this.knex.transaction(async (trx) => {
                 if (existingRelation.related_collection) {
                     await trx.schema.alterTable(collection, async (table) => {
-                        var _a;
                         let constraintName = (0, get_default_index_name_1.getDefaultIndexName)('foreign', collection, field);
                         // If the FK already exists in the DB, drop it first
-                        if (existingRelation === null || existingRelation === void 0 ? void 0 : existingRelation.schema) {
+                        if (existingRelation?.schema) {
                             constraintName = existingRelation.schema.constraint_name || constraintName;
                             table.dropForeign(field, constraintName);
                             constraintName = this.helpers.schema.constraintName(constraintName);
@@ -245,7 +250,7 @@ class RelationsService {
                         const builder = table
                             .foreign(field, constraintName || undefined)
                             .references(`${existingRelation.related_collection}.${this.schema.collections[existingRelation.related_collection].primary}`);
-                        if ((_a = relation.schema) === null || _a === void 0 ? void 0 : _a.on_delete) {
+                        if (relation.schema?.on_delete) {
                             builder.onDelete(relation.schema.on_delete);
                         }
                     });
@@ -258,9 +263,9 @@ class RelationsService {
                     // happens in `filterForbidden` down below
                 });
                 if (relation.meta) {
-                    if (existingRelation === null || existingRelation === void 0 ? void 0 : existingRelation.meta) {
+                    if (existingRelation?.meta) {
                         await relationsItemService.updateOne(existingRelation.meta.id, relation.meta, {
-                            bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                            bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         });
                     }
                     else {
@@ -270,7 +275,7 @@ class RelationsService {
                             many_field: relation.field,
                             one_collection: existingRelation.related_collection || null,
                         }, {
-                            bypassEmitAction: (params) => (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
+                            bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         });
                     }
                 }
@@ -280,10 +285,10 @@ class RelationsService {
             if (runPostColumnChange) {
                 await this.helpers.schema.postColumnChange();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -313,10 +318,9 @@ class RelationsService {
         const nestedActionEvents = [];
         try {
             await this.knex.transaction(async (trx) => {
-                var _a;
                 const existingConstraints = await this.schemaInspector.foreignKeys();
                 const constraintNames = existingConstraints.map((key) => key.constraint_name);
-                if (((_a = existingRelation.schema) === null || _a === void 0 ? void 0 : _a.constraint_name) &&
+                if (existingRelation.schema?.constraint_name &&
                     constraintNames.includes(existingRelation.schema.constraint_name)) {
                     await trx.schema.alterTable(existingRelation.collection, (table) => {
                         table.dropForeign(existingRelation.field, existingRelation.schema.constraint_name);
@@ -337,7 +341,7 @@ class RelationsService {
                         accountability: this.accountability,
                     },
                 };
-                if (opts === null || opts === void 0 ? void 0 : opts.bypassEmitAction) {
+                if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(actionEvent);
                 }
                 else {
@@ -349,10 +353,10 @@ class RelationsService {
             if (runPostColumnChange) {
                 await this.helpers.schema.postColumnChange();
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.autoPurgeSystemCache) !== false) {
-                await (0, cache_1.clearSystemCache)();
+            if (opts?.autoPurgeSystemCache !== false) {
+                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
             }
-            if ((opts === null || opts === void 0 ? void 0 : opts.emitEvents) !== false && nestedActionEvents.length > 0) {
+            if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
                 const updatedSchema = await (0, get_schema_1.getSchema)();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
@@ -365,10 +369,9 @@ class RelationsService {
      * Whether or not the current user has read access to relations
      */
     get hasReadAccess() {
-        var _a, _b;
-        return !!((_b = (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.permissions) === null || _b === void 0 ? void 0 : _b.find((permission) => {
+        return !!this.accountability?.permissions?.find((permission) => {
             return permission.collection === 'directus_relations' && permission.action === 'read';
-        }));
+        });
     }
     /**
      * Combine raw schema foreign key information with Directus relations meta rows to form final
@@ -400,11 +403,10 @@ class RelationsService {
             return !results.find((relation) => relation.meta === meta);
         })
             .map((meta) => {
-            var _a;
             return {
                 collection: meta.many_collection,
                 field: meta.many_field,
-                related_collection: (_a = meta.one_collection) !== null && _a !== void 0 ? _a : null,
+                related_collection: meta.one_collection ?? null,
                 schema: null,
                 meta: meta,
             };
@@ -417,16 +419,16 @@ class RelationsService {
      * permissions to
      */
     async filterForbidden(relations) {
-        var _a, _b, _c;
-        if (this.accountability === null || ((_a = this.accountability) === null || _a === void 0 ? void 0 : _a.admin) === true)
+        if (this.accountability === null || this.accountability?.admin === true)
             return relations;
-        const allowedCollections = (_c = (_b = this.accountability.permissions) === null || _b === void 0 ? void 0 : _b.filter((permission) => {
+        const allowedCollections = this.accountability.permissions
+            ?.filter((permission) => {
             return permission.action === 'read';
-        }).map(({ collection }) => collection)) !== null && _c !== void 0 ? _c : [];
+        })
+            .map(({ collection }) => collection) ?? [];
         const allowedFields = this.permissionsService.getAllowedFields('read');
         relations = (0, utils_1.toArray)(relations);
         return relations.filter((relation) => {
-            var _a, _b, _c;
             let collectionsAllowed = true;
             let fieldsAllowed = true;
             if (allowedCollections.includes(relation.collection) === false) {
@@ -435,20 +437,20 @@ class RelationsService {
             if (relation.related_collection && allowedCollections.includes(relation.related_collection) === false) {
                 collectionsAllowed = false;
             }
-            if (((_a = relation.meta) === null || _a === void 0 ? void 0 : _a.one_allowed_collections) &&
-                ((_b = relation.meta) === null || _b === void 0 ? void 0 : _b.one_allowed_collections.every((collection) => allowedCollections.includes(collection))) === false) {
+            if (relation.meta?.one_allowed_collections &&
+                relation.meta?.one_allowed_collections.every((collection) => allowedCollections.includes(collection)) === false) {
                 collectionsAllowed = false;
             }
             if (!allowedFields[relation.collection] ||
-                (allowedFields[relation.collection].includes('*') === false &&
-                    allowedFields[relation.collection].includes(relation.field) === false)) {
+                (allowedFields[relation.collection]?.includes('*') === false &&
+                    allowedFields[relation.collection]?.includes(relation.field) === false)) {
                 fieldsAllowed = false;
             }
             if (relation.related_collection &&
-                ((_c = relation.meta) === null || _c === void 0 ? void 0 : _c.one_field) &&
+                relation.meta?.one_field &&
                 (!allowedFields[relation.related_collection] ||
-                    (allowedFields[relation.related_collection].includes('*') === false &&
-                        allowedFields[relation.related_collection].includes(relation.meta.one_field) === false))) {
+                    (allowedFields[relation.related_collection]?.includes('*') === false &&
+                        allowedFields[relation.related_collection]?.includes(relation.meta.one_field) === false))) {
                 fieldsAllowed = false;
             }
             return collectionsAllowed && fieldsAllowed;

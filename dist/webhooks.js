@@ -18,7 +18,7 @@ async function init() {
     await register();
     const messenger = (0, messenger_1.getMessenger)();
     messenger.subscribe('webhooks', (event) => {
-        if (event.type === 'reload') {
+        if (event['type'] === 'reload') {
             reloadQueue.enqueue(async () => {
                 await reload();
             });
@@ -53,7 +53,7 @@ function unregister() {
 exports.unregister = unregister;
 function createHandler(webhook, event) {
     return async (meta, context) => {
-        if (webhook.collections.includes(meta.collection) === false)
+        if (webhook.collections.includes(meta['collection']) === false)
             return;
         const axios = await (0, index_1.getAxios)();
         const webhookPayload = {
@@ -82,7 +82,7 @@ function createHandler(webhook, event) {
 }
 function mergeHeaders(headerArray) {
     const headers = {};
-    for (const { header, value } of headerArray !== null && headerArray !== void 0 ? headerArray : []) {
+    for (const { header, value } of headerArray ?? []) {
         headers[header] = value;
     }
     return headers;

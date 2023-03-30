@@ -1,12 +1,12 @@
 import SchemaInspector from '@directus/schema';
-import { Accountability, Field, RawField, SchemaOverview, Type } from '@directus/shared/types';
-import Keyv from 'keyv';
-import { Knex } from 'knex';
-import { Column } from 'knex-schema-inspector/dist/types/column';
+import type { Accountability, Field, RawField, SchemaOverview, Type } from '@directus/shared/types';
+import type Keyv from 'keyv';
+import type { Knex } from 'knex';
+import type { Column } from 'knex-schema-inspector/dist/types/column';
 import { Helpers } from '../database/helpers';
 import { ItemsService } from '../services/items';
 import { PayloadService } from '../services/payload';
-import { AbstractServiceOptions, MutationOptions } from '../types';
+import type { AbstractServiceOptions, MutationOptions } from '../types';
 export declare class FieldsService {
     knex: Knex;
     helpers: Helpers;

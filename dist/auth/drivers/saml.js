@@ -45,12 +45,16 @@ const local_1 = require("./local");
 // tell samlify to use validator...
 samlify.setSchemaValidator(validator);
 class SAMLAuthDriver extends local_1.LocalAuthDriver {
+    idp;
+    sp;
+    usersService;
+    config;
     constructor(options, config) {
         super(options, config);
         this.config = config;
         this.usersService = new services_1.UsersService({ knex: this.knex, schema: this.schema });
-        this.sp = samlify.ServiceProvider((0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config.provider.toUpperCase()}_SP`));
-        this.idp = samlify.IdentityProvider((0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config.provider.toUpperCase()}_IDP`));
+        this.sp = samlify.ServiceProvider((0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config['provider'].toUpperCase()}_SP`));
+        this.idp = samlify.IdentityProvider((0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config['provider'].toUpperCase()}_IDP`));
     }
     async fetchUserID(identifier) {
         const user = await this.knex
@@ -58,12 +62,12 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
             .from('directus_users')
             .whereRaw('LOWER(??) = ?', ['external_identifier', identifier.toLowerCase()])
             .first();
-        return user === null || user === void 0 ? void 0 : user.id;
+        return user?.id;
     }
     async getUserID(payload) {
         const { provider, emailKey, identifierKey, givenNameKey, familyNameKey, allowPublicRegistration } = this.config;
-        const email = payload[emailKey !== null && emailKey !== void 0 ? emailKey : 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
-        const identifier = payload[identifierKey !== null && identifierKey !== void 0 ? identifierKey : 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+        const email = payload[emailKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
+        const identifier = payload[identifierKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
         const userID = await this.fetchUserID(identifier);
         if (userID)
             return userID;
@@ -71,8 +75,8 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
             logger_1.default.trace(`[SAML] User doesn't exist, and public registration not allowed for provider "${provider}"`);
             throw new exceptions_2.InvalidCredentialsException();
         }
-        const firstName = payload[givenNameKey !== null && givenNameKey !== void 0 ? givenNameKey : 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
-        const lastName = payload[familyNameKey !== null && familyNameKey !== void 0 ? familyNameKey : 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
+        const firstName = payload[givenNameKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
+        const lastName = payload[familyNameKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
         try {
             return await this.usersService.createOne({
                 provider,
@@ -80,7 +84,7 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
                 last_name: lastName,
                 email: email,
                 external_identifier: identifier.toLowerCase(),
-                role: this.config.defaultRoleId,
+                role: this.config['defaultRoleId'],
             });
         }
         catch (error) {
@@ -107,8 +111,8 @@ function createSAMLAuthRouter(providerName) {
         const { sp, idp } = (0, auth_1.getAuthProvider)(providerName);
         const { context: url } = await sp.createLoginRequest(idp, 'redirect');
         const parsedUrl = new URL(url);
-        if (req.query.redirect) {
-            parsedUrl.searchParams.append('RelayState', req.query.redirect);
+        if (req.query['redirect']) {
+            parsedUrl.searchParams.append('RelayState', req.query['redirect']);
         }
         return res.redirect(parsedUrl.toString());
     }));
@@ -116,24 +120,23 @@ function createSAMLAuthRouter(providerName) {
         const { sp, idp } = (0, auth_1.getAuthProvider)(providerName);
         const { context } = await sp.createLogoutRequest(idp, 'redirect', req.body);
         const authService = new services_1.AuthenticationService({ accountability: req.accountability, schema: req.schema });
-        if (req.cookies[env_1.default.REFRESH_TOKEN_COOKIE_NAME]) {
-            const currentRefreshToken = req.cookies[env_1.default.REFRESH_TOKEN_COOKIE_NAME];
+        if (req.cookies[env_1.default['REFRESH_TOKEN_COOKIE_NAME']]) {
+            const currentRefreshToken = req.cookies[env_1.default['REFRESH_TOKEN_COOKIE_NAME']];
             if (currentRefreshToken) {
                 await authService.logout(currentRefreshToken);
-                res.clearCookie(env_1.default.REFRESH_TOKEN_COOKIE_NAME, constants_1.COOKIE_OPTIONS);
+                res.clearCookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], constants_1.COOKIE_OPTIONS);
             }
         }
         return res.redirect(context);
     }));
     router.post('/acs', express_1.default.urlencoded({ extended: false }), (0, async_handler_1.default)(async (req, res, next) => {
-        var _a;
-        const relayState = (_a = req.body) === null || _a === void 0 ? void 0 : _a.RelayState;
+        const relayState = req.body?.RelayState;
         try {
             const { sp, idp } = (0, auth_1.getAuthProvider)(providerName);
             const { extract } = await sp.parseLoginResponse(idp, 'post', req);
             const authService = new services_1.AuthenticationService({ accountability: req.accountability, schema: req.schema });
             const { accessToken, refreshToken, expires } = await authService.login(providerName, extract.attributes);
-            res.locals.payload = {
+            res.locals['payload'] = {
                 data: {
                     access_token: accessToken,
                     refresh_token: refreshToken,
@@ -141,7 +144,7 @@ function createSAMLAuthRouter(providerName) {
                 },
             };
             if (relayState) {
-                res.cookie(env_1.default.REFRESH_TOKEN_COOKIE_NAME, refreshToken, constants_1.COOKIE_OPTIONS);
+                res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, constants_1.COOKIE_OPTIONS);
                 return res.redirect(relayState);
             }
             return next();

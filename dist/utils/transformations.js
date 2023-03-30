@@ -4,9 +4,8 @@ exports.maybeExtractFormat = exports.resolvePreset = void 0;
 const lodash_1 = require("lodash");
 // Extract transforms from a preset
 function resolvePreset(input, file) {
-    var _a;
     // Do the format conversion last
-    return [extractResize(input), ...((_a = input.transforms) !== null && _a !== void 0 ? _a : []), extractToFormat(input, file)].filter((transform) => transform !== undefined);
+    return [extractResize(input), ...(input.transforms ?? []), extractToFormat(input, file)].filter((transform) => transform !== undefined);
 }
 exports.resolvePreset = resolvePreset;
 function extractOptions(keys, numberKeys = [], booleanKeys = []) {
@@ -49,9 +48,8 @@ function extractResize(input) {
  * Try to extract a file format from an array of `Transformation`'s.
  */
 function maybeExtractFormat(transforms) {
-    var _a;
     const toFormats = transforms.filter((t) => t[0] === 'toFormat');
     const lastToFormat = toFormats[toFormats.length - 1];
-    return lastToFormat ? (_a = lastToFormat[1]) === null || _a === void 0 ? void 0 : _a.toString() : undefined;
+    return lastToFormat ? lastToFormat[1]?.toString() : undefined;
 }
 exports.maybeExtractFormat = maybeExtractFormat;

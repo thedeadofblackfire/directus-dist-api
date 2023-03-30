@@ -4,13 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const vitest_1 = require("vitest");
+require("../../src/types/express.d.ts");
 const database_1 = __importDefault(require("../database"));
 const emitter_1 = __importDefault(require("../emitter"));
 const env_1 = __importDefault(require("../env"));
 const exceptions_1 = require("../exceptions");
 const authenticate_1 = require("./authenticate");
-require("../../src/types/express.d.ts");
-const vitest_1 = require("vitest");
 vitest_1.vi.mock('../../src/database');
 vitest_1.vi.mock('../../src/env', () => {
     const MOCK_ENV = {
@@ -83,7 +83,7 @@ vitest_1.vi.mock('../../src/env', () => {
         admin_access: adminAccess,
         share,
         share_scope: shareScope,
-    }, env_1.default.SECRET, { issuer: 'directus' });
+    }, env_1.default['SECRET'], { issuer: 'directus' });
     const req = {
         ip: '127.0.0.1',
         get: vitest_1.vi.fn((string) => {
@@ -122,7 +122,7 @@ vitest_1.vi.mock('../../src/env', () => {
         admin_access: 0,
         share,
         share_scope: shareScope,
-    }, env_1.default.SECRET, { issuer: 'directus' });
+    }, env_1.default['SECRET'], { issuer: 'directus' });
     await (0, authenticate_1.handler)(req, res, next);
     (0, vitest_1.expect)(req.accountability).toEqual({
         user: userID,

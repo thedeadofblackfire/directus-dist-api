@@ -15,13 +15,13 @@ const get_cache_headers_1 = require("../utils/get-cache-headers");
 const get_milliseconds_1 = require("../utils/get-milliseconds");
 const router = (0, express_1.Router)();
 router.get('/:type', (0, async_handler_1.default)(async (req, res, next) => {
-    const type = (0, utils_1.depluralize)(req.params.type);
+    const type = (0, utils_1.depluralize)(req.params['type']);
     if (!(0, utils_1.isIn)(type, constants_1.EXTENSION_TYPES)) {
         throw new exceptions_1.RouteNotFoundException(req.path);
     }
     const extensionManager = (0, extensions_1.getExtensionManager)();
     const extensions = extensionManager.getExtensionsList(type);
-    res.locals.payload = {
+    res.locals['payload'] = {
         data: extensions,
     };
     return next();
@@ -33,7 +33,7 @@ router.get('/sources/index.js', (0, async_handler_1.default)(async (req, res) =>
         throw new exceptions_1.RouteNotFoundException(req.path);
     }
     res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-    res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default.EXTENSIONS_CACHE_TTL), false, false));
+    res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default['EXTENSIONS_CACHE_TTL']), false, false));
     res.setHeader('Vary', 'Origin, Cache-Control');
     res.end(extensionSource);
 }));

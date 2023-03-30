@@ -6,7 +6,6 @@ const get_accountability_for_role_1 = require("../../utils/get-accountability-fo
 exports.default = (0, utils_1.defineOperationApi)({
     id: 'item-create',
     handler: async ({ collection, payload, emitEvents, permissions }, { accountability, database, getSchema }) => {
-        var _a;
         const schema = await getSchema({ database });
         let customAccountability;
         if (!permissions || permissions === '$trigger') {
@@ -26,7 +25,7 @@ exports.default = (0, utils_1.defineOperationApi)({
             accountability: customAccountability,
             knex: database,
         });
-        const payloadObject = (_a = (0, utils_1.optionToObject)(payload)) !== null && _a !== void 0 ? _a : null;
+        const payloadObject = (0, utils_1.optionToObject)(payload) ?? null;
         let result;
         if (!payloadObject) {
             result = null;

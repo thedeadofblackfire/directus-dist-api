@@ -1,5 +1,5 @@
-import { Aggregate, Filter, Query, SchemaOverview } from '@directus/shared/types';
-import { Knex } from 'knex';
+import type { Aggregate, Filter, Query, SchemaOverview } from '@directus/shared/types';
+import type { Knex } from 'knex';
 import { AliasMap } from './get-column-path';
 export declare const generateAlias: (size?: number | undefined) => string;
 /**
@@ -8,7 +8,7 @@ export declare const generateAlias: (size?: number | undefined) => string;
 export default function applyQuery(knex: Knex, collection: string, dbQuery: Knex.QueryBuilder, query: Query, schema: SchemaOverview, options?: {
     aliasMap?: AliasMap;
     isInnerQuery?: boolean;
-    hasMultiRelationalSort?: boolean;
+    hasMultiRelationalSort?: boolean | undefined;
 }): {
     query: Knex.QueryBuilder<any, any>;
     hasMultiRelationalFilter: boolean;

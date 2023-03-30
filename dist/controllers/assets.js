@@ -52,8 +52,8 @@ router.get('/:pk/:filename?',
             throw new exceptions_1.InvalidQueryException(`"transforms" Parameter needs to be a JSON array of allowed transformations.`);
         }
         // Check against ASSETS_TRANSFORM_MAX_OPERATIONS
-        if (transforms.length > Number(env_1.default.ASSETS_TRANSFORM_MAX_OPERATIONS)) {
-            throw new exceptions_1.InvalidQueryException(`"transforms" Parameter is only allowed ${env_1.default.ASSETS_TRANSFORM_MAX_OPERATIONS} transformations.`);
+        if (transforms.length > Number(env_1.default['ASSETS_TRANSFORM_MAX_OPERATIONS'])) {
+            throw new exceptions_1.InvalidQueryException(`"transforms" Parameter is only allowed ${env_1.default['ASSETS_TRANSFORM_MAX_OPERATIONS']} transformations.`);
         }
         // Check the transformations are valid
         transforms.forEach((transform) => {
@@ -62,33 +62,33 @@ router.get('/:pk/:filename?',
                 throw new exceptions_1.InvalidQueryException(`"transforms" Parameter does not allow "${name}" as a transformation.`);
             }
         });
-        transformation.transforms = transforms;
+        transformation['transforms'] = transforms;
     }
-    const systemKeys = constants_1.SYSTEM_ASSET_ALLOW_LIST.map((transformation) => transformation.key);
+    const systemKeys = constants_1.SYSTEM_ASSET_ALLOW_LIST.map((transformation) => transformation['key']);
     const allKeys = [
         ...systemKeys,
-        ...(assetSettings.storage_asset_presets || []).map((transformation) => transformation.key),
+        ...(assetSettings.storage_asset_presets || []).map((transformation) => transformation['key']),
     ];
     // For use in the next request handler
-    res.locals.shortcuts = [...constants_1.SYSTEM_ASSET_ALLOW_LIST, ...(assetSettings.storage_asset_presets || [])];
-    res.locals.transformation = transformation;
+    res.locals['shortcuts'] = [...constants_1.SYSTEM_ASSET_ALLOW_LIST, ...(assetSettings.storage_asset_presets || [])];
+    res.locals['transformation'] = transformation;
     if (Object.keys(transformation).length === 0 ||
-        ('transforms' in transformation && transformation.transforms.length === 0)) {
+        ('transforms' in transformation && transformation['transforms'].length === 0)) {
         return next();
     }
     if (assetSettings.storage_asset_transform === 'all') {
-        if (transformation.key && allKeys.includes(transformation.key) === false) {
-            throw new exceptions_1.InvalidQueryException(`Key "${transformation.key}" isn't configured.`);
+        if (transformation['key'] && allKeys.includes(transformation['key']) === false) {
+            throw new exceptions_1.InvalidQueryException(`Key "${transformation['key']}" isn't configured.`);
         }
         return next();
     }
     else if (assetSettings.storage_asset_transform === 'presets') {
-        if (allKeys.includes(transformation.key))
+        if (allKeys.includes(transformation['key']))
             return next();
         throw new exceptions_1.InvalidQueryException(`Only configured presets can be used in asset generation.`);
     }
     else {
-        if (transformation.key && systemKeys.includes(transformation.key))
+        if (transformation['key'] && systemKeys.includes(transformation['key']))
             return next();
         throw new exceptions_1.InvalidQueryException(`Dynamic asset generation has been disabled for this project.`);
     }
@@ -103,31 +103,36 @@ router.get('/:pk/:filename?',
 }), 
 // Return file
 (0, async_handler_1.default)(async (req, res) => {
-    var _a, _b;
-    const id = (_a = req.params.pk) === null || _a === void 0 ? void 0 : _a.substring(0, 36);
+    const id = req.params['pk'].substring(0, 36);
     const service = new services_1.AssetsService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    const transformation = res.locals.transformation.key
-        ? res.locals.shortcuts.find((transformation) => transformation.key === res.locals.transformation.key)
-        : res.locals.transformation;
+    const transformation = res.locals['transformation'].key
+        ? res.locals['shortcuts'].find((transformation) => transformation['key'] === res.locals['transformation'].key)
+        : res.locals['transformation'];
     let range = undefined;
     if (req.headers.range) {
         const rangeParts = /bytes=([0-9]*)-([0-9]*)/.exec(req.headers.range);
-        range = {
-            start: (rangeParts === null || rangeParts === void 0 ? void 0 : rangeParts[1]) ? Number(rangeParts[1]) : undefined,
-            end: (rangeParts === null || rangeParts === void 0 ? void 0 : rangeParts[2]) ? Number(rangeParts[2]) : undefined,
-        };
-        if (Number.isNaN(range.start) || Number.isNaN(range.end)) {
-            throw new exceptions_1.RangeNotSatisfiableException(range);
+        if (rangeParts && rangeParts.length > 1) {
+            range = {};
+            if (rangeParts[1]) {
+                range.start = Number(rangeParts[1]);
+                if (Number.isNaN(range.start))
+                    throw new exceptions_1.RangeNotSatisfiableException(range);
+            }
+            if (rangeParts[2]) {
+                range.end = Number(rangeParts[2]);
+                if (Number.isNaN(range.end))
+                    throw new exceptions_1.RangeNotSatisfiableException(range);
+            }
         }
     }
     const { stream, file, stat } = await service.getAsset(id, transformation, range);
-    res.attachment((_b = req.params.filename) !== null && _b !== void 0 ? _b : file.filename_download);
+    res.attachment(req.params['filename'] ?? file.filename_download);
     res.setHeader('Content-Type', file.type);
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default.ASSETS_CACHE_TTL), false, true));
+    res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default['ASSETS_CACHE_TTL']), false, true));
     const unixTime = Date.parse(file.modified_on);
     if (!Number.isNaN(unixTime)) {
         const lastModifiedDate = new Date(unixTime);
@@ -176,5 +181,6 @@ router.get('/:pk/:filename?',
             });
         }
     });
+    return undefined;
 }));
 exports.default = router;

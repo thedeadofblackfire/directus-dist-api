@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.down = exports.up = void 0;
-const logger_1 = __importDefault(require("../../logger"));
 const knex_schema_inspector_1 = __importDefault(require("knex-schema-inspector"));
+const logger_1 = __importDefault(require("../../logger"));
 /**
  * Things to keep in mind:
  *
@@ -93,7 +93,7 @@ async function up(knex) {
                 fk.foreign_key_column === constraint.references.split('.')[1]);
             try {
                 await knex.schema.alterTable(update.table, (table) => {
-                    table.dropForeign([constraint.column], (existingForeignKey === null || existingForeignKey === void 0 ? void 0 : existingForeignKey.constraint_name) || undefined);
+                    table.dropForeign([constraint.column], existingForeignKey?.constraint_name || undefined);
                 });
             }
             catch (err) {

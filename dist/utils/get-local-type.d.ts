@@ -1,4 +1,4 @@
-import { FieldMeta, Type } from '@directus/shared/types';
+import type { FieldMeta, Type } from '@directus/shared/types';
 export default function getLocalType(column?: {
     data_type: string;
     numeric_precision?: null | number;

@@ -44,9 +44,9 @@ const folders_1 = __importDefault(require("./controllers/folders"));
 const graphql_1 = __importDefault(require("./controllers/graphql"));
 const items_1 = __importDefault(require("./controllers/items"));
 const not_found_1 = __importDefault(require("./controllers/not-found"));
-const panels_1 = __importDefault(require("./controllers/panels"));
 const notifications_1 = __importDefault(require("./controllers/notifications"));
 const operations_1 = __importDefault(require("./controllers/operations"));
+const panels_1 = __importDefault(require("./controllers/panels"));
 const permissions_1 = __importDefault(require("./controllers/permissions"));
 const presets_1 = __importDefault(require("./controllers/presets"));
 const relations_1 = __importDefault(require("./controllers/relations"));
@@ -55,10 +55,10 @@ const roles_1 = __importDefault(require("./controllers/roles"));
 const schema_1 = __importDefault(require("./controllers/schema"));
 const server_1 = __importDefault(require("./controllers/server"));
 const settings_1 = __importDefault(require("./controllers/settings"));
+const shares_1 = __importDefault(require("./controllers/shares"));
 const users_1 = __importDefault(require("./controllers/users"));
 const utils_1 = __importDefault(require("./controllers/utils"));
 const webhooks_1 = __importDefault(require("./controllers/webhooks"));
-const shares_1 = __importDefault(require("./controllers/shares"));
 const database_1 = require("./database");
 const emitter_1 = __importDefault(require("./emitter"));
 const env_1 = __importDefault(require("./env"));
@@ -67,34 +67,34 @@ const extensions_2 = require("./extensions");
 const flows_2 = require("./flows");
 const logger_1 = __importStar(require("./logger"));
 const authenticate_1 = __importDefault(require("./middleware/authenticate"));
-const get_permissions_1 = __importDefault(require("./middleware/get-permissions"));
 const cache_1 = __importDefault(require("./middleware/cache"));
 const check_ip_1 = require("./middleware/check-ip");
 const cors_1 = __importDefault(require("./middleware/cors"));
 const error_handler_1 = __importDefault(require("./middleware/error-handler"));
 const extract_token_1 = __importDefault(require("./middleware/extract-token"));
-const rate_limiter_ip_1 = __importDefault(require("./middleware/rate-limiter-ip"));
+const get_permissions_1 = __importDefault(require("./middleware/get-permissions"));
 const rate_limiter_global_1 = __importDefault(require("./middleware/rate-limiter-global"));
+const rate_limiter_ip_1 = __importDefault(require("./middleware/rate-limiter-ip"));
 const sanitize_query_1 = __importDefault(require("./middleware/sanitize-query"));
 const schema_2 = __importDefault(require("./middleware/schema"));
+const lodash_1 = require("lodash");
+const auth_2 = require("./auth");
+const cache_2 = require("./cache");
+const get_config_from_env_1 = require("./utils/get-config-from-env");
 const track_1 = require("./utils/track");
+const url_1 = require("./utils/url");
 const validate_env_1 = require("./utils/validate-env");
 const validate_storage_1 = require("./utils/validate-storage");
 const webhooks_2 = require("./webhooks");
-const cache_2 = require("./cache");
-const auth_2 = require("./auth");
-const url_1 = require("./utils/url");
-const get_config_from_env_1 = require("./utils/get-config-from-env");
-const lodash_1 = require("lodash");
 async function createApp() {
     const helmet = await import('helmet');
     (0, validate_env_1.validateEnv)(['KEY', 'SECRET']);
     //var url = require('url');
     //logger.warn('document.location '+JSON.stringify(document.location));
-    if (!new url_1.Url(env_1.default.PUBLIC_URL).isAbsolute()) {
+    if (!new url_1.Url(env_1.default['PUBLIC_URL']).isAbsolute()) {
         logger_1.default.warn('PUBLIC_URL should be a full URL');
     }
-    if (!env_1.default.SERVERLESS) {
+    if (!env_1.default['SERVERLESS']) {
         await (0, validate_storage_1.validateStorage)();
         await (0, database_1.validateDatabaseConnection)();
         await (0, database_1.validateDatabaseExtensions)();
@@ -117,7 +117,7 @@ async function createApp() {
     await flowManager.initialize();
     const app = (0, express_1.default)();
     app.disable('x-powered-by');
-    app.set('trust proxy', env_1.default.IP_TRUST_PROXY);
+    app.set('trust proxy', env_1.default['IP_TRUST_PROXY']);
     app.set('query parser', (str) => qs_1.default.parse(str, { depth: 10 }));
     app.use(helmet.contentSecurityPolicy((0, lodash_1.merge)({
         useDefaults: true,
@@ -137,7 +137,7 @@ async function createApp() {
             connectSrc: ["'self'", 'https://*'],
         },
     }, (0, get_config_from_env_1.getConfigFromEnv)('CONTENT_SECURITY_POLICY_'))));
-    if (env_1.default.HSTS_ENABLED) {
+    if (env_1.default['HSTS_ENABLED']) {
         app.use(helmet.hsts((0, get_config_from_env_1.getConfigFromEnv)('HSTS_', ['HSTS_ENABLED'])));
     }
     await emitter_1.default.emitInit('app.before', { app });
@@ -145,15 +145,15 @@ async function createApp() {
     app.use(logger_1.expressLogger);
     app.use((_req, res, next) => {
         //res.setHeader('X-Powered-By', 'Directus');
-        res.setHeader('X-Powered-By', (env_1.default.PUBLIC_POWERBY) ? env_1.default.PUBLIC_POWERBY : 'Directus');
+        res.setHeader('X-Powered-By', (env_1.default['PUBLIC_POWERBY']) ? env_1.default['PUBLIC_POWERBY'] : 'Directus');
         next();
     });
-    if (env_1.default.CORS_ENABLED === true) {
+    if (env_1.default['CORS_ENABLED'] === true) {
         app.use(cors_1.default);
     }
     app.use((req, res, next) => {
         express_1.default.json({
-            limit: env_1.default.MAX_PAYLOAD_SIZE,
+            limit: env_1.default['MAX_PAYLOAD_SIZE'],
         })(req, res, (err) => {
             if (err) {
                 return next(new exceptions_1.InvalidPayloadException(err.message));
@@ -164,8 +164,8 @@ async function createApp() {
     app.use((0, cookie_parser_1.default)());
     app.use(extract_token_1.default);
     app.get('/', (_req, res, next) => {
-        if (env_1.default.ROOT_REDIRECT) {
-            res.redirect(env_1.default.ROOT_REDIRECT);
+        if (env_1.default['ROOT_REDIRECT']) {
+            res.redirect(env_1.default['ROOT_REDIRECT']);
         }
         else {
             next();
@@ -174,11 +174,11 @@ async function createApp() {
     app.get('/robots.txt', (_, res) => {
         res.set('Content-Type', 'text/plain');
         res.status(200);
-        res.send(env_1.default.ROBOTS_TXT);
+        res.send(env_1.default['ROBOTS_TXT']);
     });
-    if (env_1.default.SERVE_APP) {
+    if (env_1.default['SERVE_APP']) {
         const adminPath = require.resolve('@directus/app');
-        const adminUrl = new url_1.Url(env_1.default.PUBLIC_URL).addPath('admin');
+        const adminUrl = new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin');
         const embeds = extensionManager.getEmbeds();
         // Set the App's base path according to the APIs public URL
         const html = await fs_extra_1.default.readFile(adminPath, 'utf8');
@@ -200,15 +200,15 @@ async function createApp() {
         app.use('/admin/*', sendHtml);
     }
     // use the rate limiter - all routes for now
-    if (env_1.default.RATE_LIMITER_GLOBAL_ENABLED === true) {
+    if (env_1.default['RATE_LIMITER_GLOBAL_ENABLED'] === true) {
         app.use(rate_limiter_global_1.default);
     }
-    if (env_1.default.RATE_LIMITER_ENABLED === true) {
+    if (env_1.default['RATE_LIMITER_ENABLED'] === true) {
         app.use(rate_limiter_ip_1.default);
     }
-    app.get('/server/ping', (req, res) => res.send('pong'));
+    app.get('/server/ping', (_req, res) => res.send('pong'));
     app.use(authenticate_1.default);
-    if (!env_1.default.SERVERLESS) {
+    if (!env_1.default['SERVERLESS']) {
         app.use(check_ip_1.checkIP);
     }
     app.use(sanitize_query_1.default);

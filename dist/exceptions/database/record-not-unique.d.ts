@@ -2,7 +2,7 @@ import { BaseException } from '@directus/shared/exceptions';
 type Extensions = {
     collection: string;
     field: string | null;
-    invalid?: string;
+    invalid?: string | undefined;
 };
 export declare class RecordNotUniqueException extends BaseException {
     constructor(field: string | null, extensions?: Extensions);

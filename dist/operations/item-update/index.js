@@ -7,7 +7,6 @@ const sanitize_query_1 = require("../../utils/sanitize-query");
 exports.default = (0, utils_1.defineOperationApi)({
     id: 'item-update',
     handler: async ({ collection, key, payload, query, emitEvents, permissions }, { accountability, database, getSchema }) => {
-        var _a;
         const schema = await getSchema({ database });
         let customAccountability;
         if (!permissions || permissions === '$trigger') {
@@ -27,7 +26,7 @@ exports.default = (0, utils_1.defineOperationApi)({
             accountability: customAccountability,
             knex: database,
         });
-        const payloadObject = (_a = (0, utils_1.optionToObject)(payload)) !== null && _a !== void 0 ? _a : null;
+        const payloadObject = (0, utils_1.optionToObject)(payload) ?? null;
         const queryObject = query ? (0, utils_1.optionToObject)(query) : {};
         const sanitizedQueryObject = (0, sanitize_query_1.sanitizeQuery)(queryObject, customAccountability);
         if (!payloadObject) {

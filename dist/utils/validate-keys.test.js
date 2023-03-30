@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const validate_keys_1 = require("../../src/utils/validate-keys");
 const uuid_1 = require("uuid");
 const vitest_1 = require("vitest");
+const validate_keys_1 = require("../../src/utils/validate-keys");
 const schema = {
     collections: {
         pk_integer: {

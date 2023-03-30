@@ -1,4 +1,4 @@
-import { AbstractServiceOptions, Item, LoginResult, MutationOptions, PrimaryKey } from '../types';
+import type { AbstractServiceOptions, Item, LoginResult, MutationOptions, PrimaryKey } from '../types';
 import { AuthorizationService } from './authorization';
 import { ItemsService } from './items';
 export declare class SharesService extends ItemsService {

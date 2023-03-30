@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const merge_permissions_1 = require("../../src/utils/merge-permissions");
 const vitest_1 = require("vitest");
+const merge_permissions_1 = require("../../src/utils/merge-permissions");
 const fullFilter = {};
 const conditionalFilter = { user: { id: { _eq: '$CURRENT_USER' } } };
 const conditionalFilter2 = { count: { _gt: 42 } };

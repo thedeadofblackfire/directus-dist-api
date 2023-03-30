@@ -16,29 +16,28 @@ const get_date_formatted_1 = require("../utils/get-date-formatted");
 const get_milliseconds_1 = require("../utils/get-milliseconds");
 const get_string_byte_size_1 = require("../utils/get-string-byte-size");
 exports.respond = (0, async_handler_1.default)(async (req, res) => {
-    var _a, _b, _c, _d, _e;
     const { cache } = (0, cache_1.getCache)();
     let exceedsMaxSize = false;
-    if (env_1.default.CACHE_VALUE_MAX_SIZE !== false) {
-        const valueSize = res.locals.payload ? (0, get_string_byte_size_1.stringByteSize)(JSON.stringify(res.locals.payload)) : 0;
-        const maxSize = (0, bytes_1.parse)(env_1.default.CACHE_VALUE_MAX_SIZE);
+    if (env_1.default['CACHE_VALUE_MAX_SIZE'] !== false) {
+        const valueSize = res.locals['payload'] ? (0, get_string_byte_size_1.stringByteSize)(JSON.stringify(res.locals['payload'])) : 0;
+        const maxSize = (0, bytes_1.parse)(env_1.default['CACHE_VALUE_MAX_SIZE']);
         exceedsMaxSize = valueSize > maxSize;
     }
-    if ((req.method.toLowerCase() === 'get' || ((_a = req.originalUrl) === null || _a === void 0 ? void 0 : _a.startsWith('/graphql'))) &&
-        env_1.default.CACHE_ENABLED === true &&
+    if ((req.method.toLowerCase() === 'get' || req.originalUrl?.startsWith('/graphql')) &&
+        env_1.default['CACHE_ENABLED'] === true &&
         cache &&
         !req.sanitizedQuery.export &&
-        res.locals.cache !== false &&
+        res.locals['cache'] !== false &&
         exceedsMaxSize === false) {
         const key = (0, get_cache_key_1.getCacheKey)(req);
         try {
-            await (0, cache_1.setCacheValue)(cache, key, res.locals.payload, (0, get_milliseconds_1.getMilliseconds)(env_1.default.CACHE_TTL));
-            await (0, cache_1.setCacheValue)(cache, `${key}__expires_at`, { exp: Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default.CACHE_TTL, 0) });
+            await (0, cache_1.setCacheValue)(cache, key, res.locals['payload'], (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL']));
+            await (0, cache_1.setCacheValue)(cache, `${key}__expires_at`, { exp: Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL'], 0) });
         }
         catch (err) {
             logger_1.default.warn(err, `[cache] Couldn't set key ${key}. ${err}`);
         }
-        res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default.CACHE_TTL), true, true));
+        res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL']), true, true));
         res.setHeader('Vary', 'Origin, Cache-Control');
     }
     else {
@@ -47,7 +46,7 @@ exports.respond = (0, async_handler_1.default)(async (req, res) => {
         res.setHeader('Vary', 'Origin, Cache-Control');
     }
     if (req.sanitizedQuery.export) {
-        const exportService = new services_1.ExportService({ accountability: req.accountability, schema: req.schema });
+        const exportService = new services_1.ExportService({ accountability: req.accountability ?? null, schema: req.schema });
         let filename = '';
         if (req.collection) {
             filename += req.collection;
@@ -59,29 +58,29 @@ exports.respond = (0, async_handler_1.default)(async (req, res) => {
         if (req.sanitizedQuery.export === 'json') {
             res.attachment(`${filename}.json`);
             res.set('Content-Type', 'application/json');
-            return res.status(200).send(exportService.transform((_b = res.locals.payload) === null || _b === void 0 ? void 0 : _b.data, 'json'));
+            return res.status(200).send(exportService.transform(res.locals['payload']?.data, 'json'));
         }
         if (req.sanitizedQuery.export === 'xml') {
             res.attachment(`${filename}.xml`);
             res.set('Content-Type', 'text/xml');
-            return res.status(200).send(exportService.transform((_c = res.locals.payload) === null || _c === void 0 ? void 0 : _c.data, 'xml'));
+            return res.status(200).send(exportService.transform(res.locals['payload']?.data, 'xml'));
         }
         if (req.sanitizedQuery.export === 'csv') {
             res.attachment(`${filename}.csv`);
             res.set('Content-Type', 'text/csv');
-            return res.status(200).send(exportService.transform((_d = res.locals.payload) === null || _d === void 0 ? void 0 : _d.data, 'csv'));
+            return res.status(200).send(exportService.transform(res.locals['payload']?.data, 'csv'));
         }
         if (req.sanitizedQuery.export === 'yaml') {
             res.attachment(`${filename}.yaml`);
             res.set('Content-Type', 'text/yaml');
-            return res.status(200).send(exportService.transform((_e = res.locals.payload) === null || _e === void 0 ? void 0 : _e.data, 'yaml'));
+            return res.status(200).send(exportService.transform(res.locals['payload']?.data, 'yaml'));
         }
     }
-    if (Buffer.isBuffer(res.locals.payload)) {
-        return res.end(res.locals.payload);
+    if (Buffer.isBuffer(res.locals['payload'])) {
+        return res.end(res.locals['payload']);
     }
-    else if (res.locals.payload) {
-        return res.json(res.locals.payload);
+    else if (res.locals['payload']) {
+        return res.json(res.locals['payload']);
     }
     else {
         return res.status(204).end();

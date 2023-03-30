@@ -22,6 +22,10 @@ const settings_1 = require("./settings");
 const tfa_1 = require("./tfa");
 const loginAttemptsLimiter = (0, rate_limiter_1.createRateLimiter)('RATE_LIMITER', { duration: 0 });
 class AuthenticationService {
+    knex;
+    accountability;
+    activityService;
+    schema;
     constructor(options) {
         this.knex = options.knex || (0, database_1.default)();
         this.accountability = options.accountability || null;
@@ -35,9 +39,8 @@ class AuthenticationService {
      * to handle password existence checks elsewhere
      */
     async login(providerName = constants_1.DEFAULT_AUTH_PROVIDER, payload, otp) {
-        var _a, _b, _c;
         const { nanoid } = await import('nanoid');
-        const STALL_TIME = env_1.default.LOGIN_STALL_TIME;
+        const STALL_TIME = env_1.default['LOGIN_STALL_TIME'];
         const timeStart = perf_hooks_1.performance.now();
         const provider = (0, auth_1.getAuthProvider)(providerName);
         let userId;
@@ -56,7 +59,7 @@ class AuthenticationService {
             .first();
         const updatedPayload = await emitter_1.default.emitFilter('auth.login', payload, {
             status: 'pending',
-            user: user === null || user === void 0 ? void 0 : user.id,
+            user: user?.id,
             provider: providerName,
         }, {
             database: this.knex,
@@ -67,7 +70,7 @@ class AuthenticationService {
             emitter_1.default.emitAction('auth.login', {
                 payload: updatedPayload,
                 status,
-                user: user === null || user === void 0 ? void 0 : user.id,
+                user: user?.id,
                 provider: providerName,
             }, {
                 database: this.knex,
@@ -75,9 +78,9 @@ class AuthenticationService {
                 accountability: this.accountability,
             });
         };
-        if ((user === null || user === void 0 ? void 0 : user.status) !== 'active') {
+        if (user?.status !== 'active') {
             emitStatus('fail');
-            if ((user === null || user === void 0 ? void 0 : user.status) === 'suspended') {
+            if (user?.status === 'suspended') {
                 await (0, stall_1.stall)(STALL_TIME, timeStart);
                 throw new exceptions_1.UserSuspendedException();
             }
@@ -139,7 +142,7 @@ class AuthenticationService {
         };
         const customClaims = await emitter_1.default.emitFilter('auth.jwt', tokenPayload, {
             status: 'pending',
-            user: user === null || user === void 0 ? void 0 : user.id,
+            user: user?.id,
             provider: providerName,
             type: 'login',
         }, {
@@ -147,19 +150,19 @@ class AuthenticationService {
             schema: this.schema,
             accountability: this.accountability,
         });
-        const accessToken = jsonwebtoken_1.default.sign(customClaims, env_1.default.SECRET, {
-            expiresIn: env_1.default.ACCESS_TOKEN_TTL,
+        const accessToken = jsonwebtoken_1.default.sign(customClaims, env_1.default['SECRET'], {
+            expiresIn: env_1.default['ACCESS_TOKEN_TTL'],
             issuer: 'directus',
         });
         const refreshToken = nanoid(64);
-        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default.REFRESH_TOKEN_TTL, 0));
+        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL'], 0));
         await this.knex('directus_sessions').insert({
             token: refreshToken,
             user: user.id,
             expires: refreshTokenExpiration,
-            ip: (_a = this.accountability) === null || _a === void 0 ? void 0 : _a.ip,
-            user_agent: (_b = this.accountability) === null || _b === void 0 ? void 0 : _b.userAgent,
-            origin: (_c = this.accountability) === null || _c === void 0 ? void 0 : _c.origin,
+            ip: this.accountability?.ip,
+            user_agent: this.accountability?.userAgent,
+            origin: this.accountability?.origin,
         });
         await this.knex('directus_sessions').delete().where('expires', '<', new Date());
         if (this.accountability) {
@@ -182,7 +185,7 @@ class AuthenticationService {
         return {
             accessToken,
             refreshToken,
-            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default.ACCESS_TOKEN_TTL),
+            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default['ACCESS_TOKEN_TTL']),
             id: user.id,
         };
     }
@@ -277,12 +280,12 @@ class AuthenticationService {
             schema: this.schema,
             accountability: this.accountability,
         });
-        const accessToken = jsonwebtoken_1.default.sign(customClaims, env_1.default.SECRET, {
-            expiresIn: env_1.default.ACCESS_TOKEN_TTL,
+        const accessToken = jsonwebtoken_1.default.sign(customClaims, env_1.default['SECRET'], {
+            expiresIn: env_1.default['ACCESS_TOKEN_TTL'],
             issuer: 'directus',
         });
         const newRefreshToken = nanoid(64);
-        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default.REFRESH_TOKEN_TTL, 0));
+        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL'], 0));
         await this.knex('directus_sessions')
             .update({
             token: newRefreshToken,
@@ -295,7 +298,7 @@ class AuthenticationService {
         return {
             accessToken,
             refreshToken: newRefreshToken,
-            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default.ACCESS_TOKEN_TTL),
+            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default['ACCESS_TOKEN_TTL']),
             id: record.user_id,
         };
     }
