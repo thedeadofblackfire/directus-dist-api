@@ -1,68 +1,78 @@
 {
-  "name": "directus",
-  "version": "9.24.0",
-  "description": "Directus is a real-time API and App dashboard for managing SQL database content",
-  "keywords": [
-    "directus",
-    "realtime",
-    "database",
-    "content",
-    "api",
-    "rest",
-    "graphql",
-    "app",
-    "dashboard",
-    "headless",
-    "cms",
-    "mysql",
-    "postgresql",
-    "cockroachdb",
-    "sqlite",
-    "framework",
-    "vue"
-  ],
-  "homepage": "https://directus.io",
-  "bugs": {
-    "url": "https://github.com/directus/directus/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/directus/directus.git",
-    "directory": "api"
-  },
-  "funding": "https://github.com/directus/directus?sponsor=1",
-  "license": "GPL-3.0-only",
-  "author": {
-    "name": "Monospace Inc",
-    "email": "info@monospace.io",
-    "url": "https://monospace.io"
-  },
-  "maintainers": [
-    {
-      "name": "Rijk van Zanten",
-      "email": "rijkvanzanten@me.com",
-      "url": "https://github.com/rijkvanzanten"
-    },
-    {
-      "name": "Ben Haynes",
-      "email": "ben@rngr.org",
-      "url": "https://github.com/benhaynes"
-    }
-  ],
-  "exports": {
-    ".": "./dist/index.js",
-    "./*": "./dist/*.js",
-    "./package.json": "./package.json"
-  },
-  "main": "dist/index.js",
-  "bin": {
-    "directus": "cli.js"
-  },
-  "files": [
-    "dist",
-    "!**/*.test.js",
-    "!**/__*__/"
-  ],
+	"name": "directus",
+	"version": "9.24.0",
+	"description": "Directus is a real-time API and App dashboard for managing SQL database content",
+	"type": "module",
+	"keywords": [
+		"directus",
+		"realtime",
+		"database",
+		"content",
+		"api",
+		"rest",
+		"graphql",
+		"app",
+		"dashboard",
+		"headless",
+		"cms",
+		"mysql",
+		"postgresql",
+		"cockroachdb",
+		"sqlite",
+		"framework",
+		"vue"
+	],
+	"homepage": "https://directus.io",
+	"bugs": {
+		"url": "https://github.com/directus/directus/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/directus/directus.git",
+		"directory": "api"
+	},
+	"funding": "https://github.com/directus/directus?sponsor=1",
+	"license": "GPL-3.0-only",
+	"author": {
+		"name": "Monospace Inc",
+		"email": "info@monospace.io",
+		"url": "https://monospace.io"
+	},
+	"maintainers": [
+		{
+			"name": "Rijk van Zanten",
+			"email": "rijkvanzanten@me.com",
+			"url": "https://github.com/rijkvanzanten"
+		},
+		{
+			"name": "Ben Haynes",
+			"email": "ben@rngr.org",
+			"url": "https://github.com/benhaynes"
+		}
+	],
+	"exports": {
+		".": "./dist/index.js",
+		"./*": "./dist/*.js",
+		"./package.json": "./package.json"
+	},
+	"main": "dist/index.js",
+	"bin": {
+		"directus": "cli.js"
+	},
+	"files": [
+		"dist",
+		"!**/*.test.js",
+		"!**/__*__/"
+	],
+	"scripts": {
+		"build": "tsc --build && copyfiles \"src/**/*.{yaml,liquid}\" -u 1 dist",
+		"cli": "NODE_ENV=development SERVE_APP=false node --loader @esbuild-kit/esm-loader src/cli/run.ts",
+		"dev": "NODE_ENV=development SERVE_APP=false node --loader @esbuild-kit/esm-loader --watch --inspect=0 src/start.ts",
+		"start": "node cli.js start",
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"test:watch": "vitest"
+	},
   "dependencies": {
     "@authenio/samlify-node-xmllint": "2.0.0",
     "@aws-sdk/client-ses": "3.292.0",
@@ -216,14 +226,5 @@
   },
   "engines": {
     "node": ">=12.20.0"
-  },
-  "scripts": {
-    "build": "tsc --build && copyfiles \"src/**/*.{yaml,liquid}\" -u 1 dist",
-    "cli": "NODE_ENV=development SERVE_APP=false ts-node --script-mode --transpile-only src/cli/run.ts",
-    "dev": "NODE_ENV=development SERVE_APP=false ts-node-dev --files --transpile-only --respawn --watch \".env\" --inspect=0 --exit-child -- src/start.ts",
-    "start": "node cli.js start",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest"
   }
 }
