@@ -1,5 +1,5 @@
+import type { SchemaOverview } from '@directus/types';
 import Keyv from 'keyv';
-import type { SchemaOverview } from '@directus/shared/types';
 export declare function getCache(): {
     cache: Keyv | null;
     systemCache: Keyv;

@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const helpers_1 = require("../helpers");
-async function up(knex) {
-    const helper = (0, helpers_1.getHelpers)(knex).schema;
+import { getHelpers } from '../helpers/index.js';
+export async function up(knex) {
+    const helper = getHelpers(knex).schema;
     await knex.schema.alterTable('directus_users', (table) => {
         table.dropUnique(['email']);
     });
@@ -22,9 +19,8 @@ async function up(knex) {
         table.json('data');
     });
 }
-exports.up = up;
-async function down(knex) {
-    const helper = (0, helpers_1.getHelpers)(knex).schema;
+export async function down(knex) {
+    const helper = getHelpers(knex).schema;
     await knex.schema.alterTable('directus_users', (table) => {
         table.dropColumn('provider');
         table.dropColumn('external_identifier');
@@ -37,4 +33,3 @@ async function down(knex) {
         table.dropColumn('data');
     });
 }
-exports.down = down;

@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRelationInfo = void 0;
-const get_relation_type_1 = require("./get-relation-type");
+import { getRelationType } from './get-relation-type.js';
 function checkImplicitRelation(field) {
     if (field.startsWith('$FOLLOW(') && field.endsWith(')')) {
         return field.slice(8, -1).split(',');
     }
     return null;
 }
-function getRelationInfo(relations, collection, field) {
+export function getRelationInfo(relations, collection, field) {
     if (field.startsWith('$FOLLOW') && field.length > 500) {
         throw new Error(`Implicit $FOLLOW statement is too big to parse. Got: "${field.substring(500)}..."`);
     }
@@ -43,7 +40,6 @@ function getRelationInfo(relations, collection, field) {
         return ((relation.collection === collection && relation.field === field) ||
             (relation.related_collection === collection && relation.meta?.one_field === field));
     }) ?? null;
-    const relationType = relation ? (0, get_relation_type_1.getRelationType)({ relation, collection, field }) : null;
+    const relationType = relation ? getRelationType({ relation, collection, field }) : null;
     return { relation, relationType };
 }
-exports.getRelationInfo = getRelationInfo;

@@ -1,4 +1,4 @@
-import type { Relation, SchemaOverview } from '@directus/shared/types';
+import type { Relation, SchemaOverview } from '@directus/types';
 export type AliasMap = {
     [key: string]: {
         alias: string;

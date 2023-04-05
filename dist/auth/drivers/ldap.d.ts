@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { Client } from 'ldapjs';
-import { UsersService } from '../../services';
-import type { AuthDriverOptions, User } from '../../types';
-import { AuthDriver } from '../auth';
+import type { Client } from 'ldapjs';
+import { UsersService } from '../../services/users.js';
+import type { AuthDriverOptions, User } from '../../types/index.js';
+import { AuthDriver } from '../auth.js';
 export declare class LDAPAuthDriver extends AuthDriver {
     bindClient: Client;
     usersService: UsersService;

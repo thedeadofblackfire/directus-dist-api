@@ -1,28 +1,22 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.handler = void 0;
-const lodash_1 = require("lodash");
-const database_1 = __importDefault(require("../database"));
-const emitter_1 = __importDefault(require("../emitter"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const get_ip_from_req_1 = require("../utils/get-ip-from-req");
-const is_directus_jwt_1 = __importDefault(require("../utils/is-directus-jwt"));
-const jwt_1 = require("../utils/jwt");
+import { isEqual } from 'lodash-es';
+import getDatabase from '../database/index.js';
+import emitter from '../emitter.js';
+import env from '../env.js';
+import { InvalidCredentialsException } from '../exceptions/index.js';
+import asyncHandler from '../utils/async-handler.js';
+import { getIPFromReq } from '../utils/get-ip-from-req.js';
+import isDirectusJWT from '../utils/is-directus-jwt.js';
+import { verifyAccessJWT } from '../utils/jwt.js';
 /**
  * Verify the passed JWT and assign the user ID and role to `req`
  */
-const handler = async (req, _res, next) => {
+export const handler = async (req, _res, next) => {
     const defaultAccountability = {
         user: null,
         role: null,
         admin: false,
         app: false,
-        ip: (0, get_ip_from_req_1.getIPFromReq)(req),
+        ip: getIPFromReq(req),
     };
     const userAgent = req.get('user-agent');
     if (userAgent)
@@ -30,22 +24,22 @@ const handler = async (req, _res, next) => {
     const origin = req.get('origin');
     if (origin)
         defaultAccountability.origin = origin;
-    const database = (0, database_1.default)();
-    const customAccountability = await emitter_1.default.emitFilter('authenticate', defaultAccountability, {
+    const database = getDatabase();
+    const customAccountability = await emitter.emitFilter('authenticate', defaultAccountability, {
         req,
     }, {
         database,
         schema: null,
         accountability: null,
     });
-    if (customAccountability && (0, lodash_1.isEqual)(customAccountability, defaultAccountability) === false) {
+    if (customAccountability && isEqual(customAccountability, defaultAccountability) === false) {
         req.accountability = customAccountability;
         return next();
     }
     req.accountability = defaultAccountability;
     if (req.token) {
-        if ((0, is_directus_jwt_1.default)(req.token)) {
-            const payload = (0, jwt_1.verifyAccessJWT)(req.token, env_1.default['SECRET']);
+        if (isDirectusJWT(req.token)) {
+            const payload = verifyAccessJWT(req.token, env['SECRET']);
             req.accountability.role = payload.role;
             req.accountability.admin = payload.admin_access === true || payload.admin_access == 1;
             req.accountability.app = payload.app_access === true || payload.app_access == 1;
@@ -68,7 +62,7 @@ const handler = async (req, _res, next) => {
             })
                 .first();
             if (!user) {
-                throw new exceptions_1.InvalidCredentialsException();
+                throw new InvalidCredentialsException();
             }
             req.accountability.user = user.id;
             req.accountability.role = user.role;
@@ -78,5 +72,4 @@ const handler = async (req, _res, next) => {
     }
     return next();
 };
-exports.handler = handler;
-exports.default = (0, async_handler_1.default)(exports.handler);
+export default asyncHandler(handler);

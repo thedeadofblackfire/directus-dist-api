@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphQLStringOrFloat = void 0;
-const graphql_1 = require("graphql");
+import { GraphQLScalarType, Kind } from 'graphql';
 /**
  * Adopted from https://kamranicus.com/handling-multiple-scalar-types-in-graphql/
  */
-exports.GraphQLStringOrFloat = new graphql_1.GraphQLScalarType({
+export const GraphQLStringOrFloat = new GraphQLScalarType({
     name: 'GraphQLStringOrFloat',
     description: 'A Float or a String',
     serialize(value) {
@@ -22,10 +19,10 @@ exports.GraphQLStringOrFloat = new graphql_1.GraphQLScalarType({
     },
     parseLiteral(ast) {
         switch (ast.kind) {
-            case graphql_1.Kind.INT:
-            case graphql_1.Kind.FLOAT:
+            case Kind.INT:
+            case Kind.FLOAT:
                 return Number(ast.value);
-            case graphql_1.Kind.STRING:
+            case Kind.STRING:
                 return ast.value;
             default:
                 throw new Error('Value must be either a String or a Float');

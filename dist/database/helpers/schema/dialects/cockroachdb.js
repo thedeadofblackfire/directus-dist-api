@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SchemaHelperCockroachDb = void 0;
-const types_1 = require("../types");
-class SchemaHelperCockroachDb extends types_1.SchemaHelper {
+import { SchemaHelper } from '../types.js';
+export class SchemaHelperCockroachDb extends SchemaHelper {
     async changeToType(table, column, type, options = {}) {
         await this.changeToTypeByCopy(table, column, type, options);
     }
@@ -18,4 +15,3 @@ class SchemaHelperCockroachDb extends types_1.SchemaHelper {
         }
     }
 }
-exports.SchemaHelperCockroachDb = SchemaHelperCockroachDb;

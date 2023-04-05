@@ -1,6 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseXmp = exports.parseIptc = void 0;
 const IPTC_ENTRY_TYPES = new Map([
     [0x78, 'caption'],
     [0x6e, 'credit'],
@@ -14,7 +11,7 @@ const IPTC_ENTRY_TYPES = new Map([
     [0x0f, 'category'],
 ]);
 const IPTC_ENTRY_MARKER = Buffer.from([0x1c, 0x02]);
-function parseIptc(buffer) {
+export function parseIptc(buffer) {
     if (!Buffer.isBuffer(buffer))
         return {};
     const iptc = {};
@@ -45,8 +42,7 @@ function parseIptc(buffer) {
     }
     return iptc;
 }
-exports.parseIptc = parseIptc;
-function parseXmp(buffer) {
+export function parseXmp(buffer) {
     const xmp = {};
     ['title', 'description', 'rights', 'creator', 'subject'].forEach((x) => {
         const tagRegex = new RegExp(`<dc:${x}>(.*?)</dc:${x}>`, 'smig'), tagMatches = tagRegex.exec(buffer.toString());
@@ -70,4 +66,3 @@ function parseXmp(buffer) {
     });
     return xmp;
 }
-exports.parseXmp = parseXmp;

@@ -1,9 +1,9 @@
 /**
  * Generate an AST based on a given collection and query
  */
-import type { Accountability, PermissionsAction, Query, SchemaOverview } from '@directus/shared/types';
+import type { Accountability, PermissionsAction, Query, SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
-import type { AST } from '../types';
+import type { AST } from '../types/index.js';
 type GetASTOptions = {
     accountability?: Accountability | null;
     action?: PermissionsAction;

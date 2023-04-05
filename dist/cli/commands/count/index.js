@@ -1,14 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const database_1 = __importDefault(require("../../../database"));
-const logger_1 = __importDefault(require("../../../logger"));
-async function count(collection) {
-    const database = (0, database_1.default)();
+import getDatabase from '../../../database/index.js';
+import logger from '../../../logger.js';
+export default async function count(collection) {
+    const database = getDatabase();
     if (!collection) {
-        logger_1.default.error('Collection is required');
+        logger.error('Collection is required');
         process.exit(1);
     }
     try {
@@ -19,9 +14,8 @@ async function count(collection) {
         process.exit(0);
     }
     catch (err) {
-        logger_1.default.error(err);
+        logger.error(err);
         database.destroy();
         process.exit(1);
     }
 }
-exports.default = count;

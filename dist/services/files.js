@@ -1,30 +1,23 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FilesService = void 0;
-const utils_1 = require("@directus/shared/utils");
-const encodeurl_1 = __importDefault(require("encodeurl"));
-const exif_reader_1 = __importDefault(require("exif-reader"));
-const icc_1 = require("icc");
-const lodash_1 = require("lodash");
-const mime_types_1 = require("mime-types");
-const promises_1 = require("node:stream/promises");
-const path_1 = __importDefault(require("path"));
-const sharp_1 = __importDefault(require("sharp"));
-const url_1 = __importDefault(require("url"));
-const emitter_1 = __importDefault(require("../emitter"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const logger_1 = __importDefault(require("../logger"));
-const index_1 = require("../request/index");
-const storage_1 = require("../storage");
-const parse_image_metadata_1 = require("../utils/parse-image-metadata");
-const items_1 = require("./items");
-// @ts-ignore
-const format_title_1 = __importDefault(require("@directus/format-title"));
-class FilesService extends items_1.ItemsService {
+import { toArray } from '@directus/utils';
+import encodeURL from 'encodeurl';
+import exif from 'exif-reader';
+import { parse as parseIcc } from 'icc';
+import { clone, pick } from 'lodash-es';
+import { extension } from 'mime-types';
+import { pipeline } from 'node:stream/promises';
+import path from 'path';
+import sharp from 'sharp';
+import url from 'url';
+import emitter from '../emitter.js';
+import env from '../env.js';
+import { ForbiddenException, InvalidPayloadException, ServiceUnavailableException } from '../exceptions/index.js';
+import logger from '../logger.js';
+import { getAxios } from '../request/index.js';
+import { getStorage } from '../storage/index.js';
+import { parseIptc, parseXmp } from '../utils/parse-image-metadata.js';
+import { ItemsService } from './items.js';
+import formatTitle from '@directus/format-title';
+export class FilesService extends ItemsService {
     constructor(options) {
         super('directus_files', options);
     }
@@ -32,7 +25,7 @@ class FilesService extends items_1.ItemsService {
      * Upload a single new file to the configured storage adapter
      */
     async uploadOne(stream, data, primaryKey, opts) {
-        const storage = await (0, storage_1.getStorage)();
+        const storage = await getStorage();
         let existingFile = {};
         if (primaryKey !== undefined) {
             existingFile =
@@ -42,7 +35,7 @@ class FilesService extends items_1.ItemsService {
                     .where({ id: primaryKey })
                     .first()) ?? {};
         }
-        const payload = { ...existingFile, ...(0, lodash_1.clone)(data) };
+        const payload = { ...existingFile, ...clone(data) };
         if ('folder' in payload === false) {
             const settings = await this.knex.select('storage_default_folder').from('directus_settings').first();
             if (settings?.storage_default_folder) {
@@ -61,7 +54,7 @@ class FilesService extends items_1.ItemsService {
         else {
             primaryKey = await this.createOne(payload, { emitEvents: false });
         }
-        const fileExtension = path_1.default.extname(payload.filename_download) || (payload.type && '.' + (0, mime_types_1.extension)(payload.type)) || '';
+        const fileExtension = path.extname(payload.filename_download) || (payload.type && '.' + extension(payload.type)) || '';
         payload.filename_disk = primaryKey + (fileExtension || '');
         if (!payload.type) {
             payload.type = 'application/octet-stream';
@@ -70,9 +63,9 @@ class FilesService extends items_1.ItemsService {
             await storage.location(data.storage).write(payload.filename_disk, stream, payload.type);
         }
         catch (err) {
-            logger_1.default.warn(`Couldn't save file ${payload.filename_disk}`);
-            logger_1.default.warn(err);
-            throw new exceptions_1.ServiceUnavailableException(`Couldn't save file ${payload.filename_disk}`, { service: 'files' });
+            logger.warn(`Couldn't save file ${payload.filename_disk}`);
+            logger.warn(err);
+            throw new ServiceUnavailableException(`Couldn't save file ${payload.filename_disk}`, { service: 'files' });
         }
         const { size } = await storage.location(data.storage).stat(payload.filename_disk);
         payload.filesize = size;
@@ -88,16 +81,16 @@ class FilesService extends items_1.ItemsService {
         }
         // We do this in a service without accountability. Even if you don't have update permissions to the file,
         // we still want to be able to set the extracted values from the file on create
-        const sudoService = new items_1.ItemsService('directus_files', {
+        const sudoService = new ItemsService('directus_files', {
             knex: this.knex,
             schema: this.schema,
         });
         await sudoService.updateOne(primaryKey, payload, { emitEvents: false });
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         if (opts?.emitEvents !== false) {
-            emitter_1.default.emitAction('files.upload', {
+            emitter.emitAction('files.upload', {
                 payload,
                 key: primaryKey,
                 collection: this.collection,
@@ -112,9 +105,9 @@ class FilesService extends items_1.ItemsService {
     /**
      * Extract metadata from a buffer's content
      */
-    async getMetadata(stream, allowList = env_1.default['FILE_METADATA_ALLOW_LIST']) {
+    async getMetadata(stream, allowList = env['FILE_METADATA_ALLOW_LIST']) {
         return new Promise((resolve, reject) => {
-            (0, promises_1.pipeline)(stream, (0, sharp_1.default)().metadata(async (err, sharpMetadata) => {
+            pipeline(stream, sharp().metadata(async (err, sharpMetadata) => {
                 if (err) {
                     reject(err);
                     return;
@@ -132,7 +125,7 @@ class FilesService extends items_1.ItemsService {
                 const fullMetadata = {};
                 if (sharpMetadata.exif) {
                     try {
-                        const { image, thumbnail, interoperability, ...rest } = (0, exif_reader_1.default)(sharpMetadata.exif);
+                        const { image, thumbnail, interoperability, ...rest } = exif(sharpMetadata.exif);
                         if (image) {
                             fullMetadata.ifd0 = image;
                         }
@@ -145,35 +138,35 @@ class FilesService extends items_1.ItemsService {
                         Object.assign(fullMetadata, rest);
                     }
                     catch (err) {
-                        logger_1.default.warn(`Couldn't extract EXIF metadata from file`);
-                        logger_1.default.warn(err);
+                        logger.warn(`Couldn't extract EXIF metadata from file`);
+                        logger.warn(err);
                     }
                 }
                 if (sharpMetadata.icc) {
                     try {
-                        fullMetadata.icc = (0, icc_1.parse)(sharpMetadata.icc);
+                        fullMetadata.icc = parseIcc(sharpMetadata.icc);
                     }
                     catch (err) {
-                        logger_1.default.warn(`Couldn't extract ICC profile data from file`);
-                        logger_1.default.warn(err);
+                        logger.warn(`Couldn't extract ICC profile data from file`);
+                        logger.warn(err);
                     }
                 }
                 if (sharpMetadata.iptc) {
                     try {
-                        fullMetadata.iptc = (0, parse_image_metadata_1.parseIptc)(sharpMetadata.iptc);
+                        fullMetadata.iptc = parseIptc(sharpMetadata.iptc);
                     }
                     catch (err) {
-                        logger_1.default.warn(`Couldn't extract IPTC Photo Metadata from file`);
-                        logger_1.default.warn(err);
+                        logger.warn(`Couldn't extract IPTC Photo Metadata from file`);
+                        logger.warn(err);
                     }
                 }
                 if (sharpMetadata.xmp) {
                     try {
-                        fullMetadata.xmp = (0, parse_image_metadata_1.parseXmp)(sharpMetadata.xmp);
+                        fullMetadata.xmp = parseXmp(sharpMetadata.xmp);
                     }
                     catch (err) {
-                        logger_1.default.warn(`Couldn't extract XMP data from file`);
-                        logger_1.default.warn(err);
+                        logger.warn(`Couldn't extract XMP data from file`);
+                        logger.warn(err);
                     }
                 }
                 if (fullMetadata?.iptc?.['Caption'] && typeof fullMetadata.iptc['Caption'] === 'string') {
@@ -189,7 +182,7 @@ class FilesService extends items_1.ItemsService {
                     metadata.metadata = fullMetadata;
                 }
                 else {
-                    metadata.metadata = (0, lodash_1.pick)(fullMetadata, allowList);
+                    metadata.metadata = pick(fullMetadata, allowList);
                 }
                 // Fix (incorrectly parsed?) values starting / ending with spaces,
                 // limited to one level and string values only
@@ -210,28 +203,28 @@ class FilesService extends items_1.ItemsService {
     async importOne(importURL, body) {
         const fileCreatePermissions = this.accountability?.permissions?.find((permission) => permission.collection === 'directus_files' && permission.action === 'create');
         if (this.accountability && this.accountability?.admin !== true && !fileCreatePermissions) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         let fileResponse;
         try {
-            const axios = await (0, index_1.getAxios)();
-            fileResponse = await axios.get((0, encodeurl_1.default)(importURL), {
+            const axios = await getAxios();
+            fileResponse = await axios.get(encodeURL(importURL), {
                 responseType: 'stream',
             });
         }
         catch (err) {
-            logger_1.default.warn(err, `Couldn't fetch file from URL "${importURL}"`);
-            throw new exceptions_1.ServiceUnavailableException(`Couldn't fetch file from url "${importURL}"`, {
+            logger.warn(err, `Couldn't fetch file from URL "${importURL}"`);
+            throw new ServiceUnavailableException(`Couldn't fetch file from url "${importURL}"`, {
                 service: 'external-file',
             });
         }
-        const parsedURL = url_1.default.parse(fileResponse.request.res.responseUrl);
-        const filename = decodeURI(path_1.default.basename(parsedURL.pathname));
+        const parsedURL = url.parse(fileResponse.request.res.responseUrl);
+        const filename = decodeURI(path.basename(parsedURL.pathname));
         const payload = {
             filename_download: filename,
-            storage: (0, utils_1.toArray)(env_1.default['STORAGE_LOCATIONS'])[0],
+            storage: toArray(env['STORAGE_LOCATIONS'])[0],
             type: fileResponse.headers['content-type'],
-            title: (0, format_title_1.default)(filename),
+            title: formatTitle(filename),
             ...(body || {}),
         };
         return await this.uploadOne(fileResponse.data, payload);
@@ -242,7 +235,7 @@ class FilesService extends items_1.ItemsService {
      */
     async createOne(data, opts) {
         if (!data.type) {
-            throw new exceptions_1.InvalidPayloadException(`"type" is required`);
+            throw new InvalidPayloadException(`"type" is required`);
         }
         const key = await super.createOne(data, opts);
         return key;
@@ -258,10 +251,10 @@ class FilesService extends items_1.ItemsService {
      * Delete multiple files
      */
     async deleteMany(keys, opts) {
-        const storage = await (0, storage_1.getStorage)();
+        const storage = await getStorage();
         const files = await super.readMany(keys, { fields: ['id', 'storage'], limit: -1 });
         if (!files) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         await super.deleteMany(keys);
         for (const file of files) {
@@ -271,10 +264,9 @@ class FilesService extends items_1.ItemsService {
                 await disk.delete(filepath);
             }
         }
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return keys;
     }
 }
-exports.FilesService = FilesService;

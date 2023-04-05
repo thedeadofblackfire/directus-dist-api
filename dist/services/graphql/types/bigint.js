@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphQLBigInt = void 0;
-const graphql_1 = require("graphql");
-exports.GraphQLBigInt = new graphql_1.GraphQLScalarType({
+import { GraphQLScalarType, Kind } from 'graphql';
+export const GraphQLBigInt = new GraphQLScalarType({
     name: 'GraphQLBigInt',
     description: 'BigInt value',
     serialize(value) {
@@ -22,7 +19,7 @@ exports.GraphQLBigInt = new graphql_1.GraphQLScalarType({
         return parseNumberValue(value);
     },
     parseLiteral(ast) {
-        if (ast.kind !== graphql_1.Kind.STRING) {
+        if (ast.kind !== Kind.STRING) {
             throw new Error('Value must be a String');
         }
         return parseNumberValue(ast.value);

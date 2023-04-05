@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 const localTypeMap = {
     // Shared
     boolean: 'boolean',
@@ -95,7 +93,7 @@ const localTypeMap = {
     // SQLite
     integerfirst: 'integer',
 };
-function getLocalType(column, field) {
+export default function getLocalType(column, field) {
     if (!column)
         return 'alias';
     const dataType = column.data_type.toLowerCase();
@@ -128,4 +126,3 @@ function getLocalType(column, field) {
     }
     return type ?? 'unknown';
 }
-exports.default = getLocalType;

@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.databaseQuestions = void 0;
-const path_1 = __importDefault(require("path"));
+import path from 'path';
 const filename = ({ filepath }) => ({
     type: 'input',
     name: 'filename',
     message: 'Database File Path:',
-    default: path_1.default.join(filepath, 'data.db'),
+    default: path.join(filepath, 'data.db'),
 });
 const host = () => ({
     type: 'input',
@@ -61,7 +55,7 @@ const ssl = () => ({
     message: 'Enable SSL:',
     default: false,
 });
-exports.databaseQuestions = {
+export const databaseQuestions = {
     sqlite3: [filename],
     mysql: [host, port, database, user, password],
     pg: [host, port, database, user, password, ssl],

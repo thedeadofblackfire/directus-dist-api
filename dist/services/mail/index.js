@@ -1,23 +1,19 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MailService = void 0;
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const liquidjs_1 = require("liquidjs");
-const path_1 = __importDefault(require("path"));
-const database_1 = __importDefault(require("../../database"));
-const env_1 = __importDefault(require("../../env"));
-const exceptions_1 = require("../../exceptions");
-const logger_1 = __importDefault(require("../../logger"));
-const mailer_1 = __importDefault(require("../../mailer"));
-const url_1 = require("../../utils/url");
-const liquidEngine = new liquidjs_1.Liquid({
-    root: [path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'templates'), path_1.default.resolve(__dirname, 'templates')],
+import fse from 'fs-extra';
+import { Liquid } from 'liquidjs';
+import path from 'path';
+import getDatabase from '../../database/index.js';
+import env from '../../env.js';
+import { InvalidPayloadException } from '../../exceptions/index.js';
+import logger from '../../logger.js';
+import getMailer from '../../mailer.js';
+import { Url } from '../../utils/url.js';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const liquidEngine = new Liquid({
+    root: [path.resolve(env['EXTENSIONS_PATH'], 'templates'), path.resolve(__dirname, 'templates')],
     extname: '.liquid',
 });
-class MailService {
+export class MailService {
     schema;
     accountability;
     knex;
@@ -25,13 +21,13 @@ class MailService {
     constructor(opts) {
         this.schema = opts.schema;
         this.accountability = opts.accountability || null;
-        this.knex = opts?.knex || (0, database_1.default)();
-        this.mailer = (0, mailer_1.default)();
-        if (env_1.default['EMAIL_VERIFY_SETUP']) {
+        this.knex = opts?.knex || getDatabase();
+        this.mailer = getMailer();
+        if (env['EMAIL_VERIFY_SETUP']) {
             this.mailer.verify((error) => {
                 if (error) {
-                    logger_1.default.warn(`Email connection failed:`);
-                    logger_1.default.warn(error);
+                    logger.warn(`Email connection failed:`);
+                    logger.warn(error);
                 }
             });
         }
@@ -40,7 +36,7 @@ class MailService {
         const { template, ...emailOptions } = options;
         let { html } = options;
         const defaultTemplateData = await this.getDefaultTemplateData();
-        const from = `${defaultTemplateData.projectName} <${options.from || env_1.default['EMAIL_FROM']}>`;
+        const from = `${defaultTemplateData.projectName} <${options.from || env['EMAIL_FROM']}>`;
         if (template) {
             let templateData = template.data;
             templateData = {
@@ -60,13 +56,13 @@ class MailService {
         return info;
     }
     async renderTemplate(template, variables) {
-        const customTemplatePath = path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'templates', template + '.liquid');
-        const systemTemplatePath = path_1.default.join(__dirname, 'templates', template + '.liquid');
-        const templatePath = (await fs_extra_1.default.pathExists(customTemplatePath)) ? customTemplatePath : systemTemplatePath;
-        if ((await fs_extra_1.default.pathExists(templatePath)) === false) {
-            throw new exceptions_1.InvalidPayloadException(`Template "${template}" doesn't exist.`);
+        const customTemplatePath = path.resolve(env['EXTENSIONS_PATH'], 'templates', template + '.liquid');
+        const systemTemplatePath = path.join(__dirname, 'templates', template + '.liquid');
+        const templatePath = (await fse.pathExists(customTemplatePath)) ? customTemplatePath : systemTemplatePath;
+        if ((await fse.pathExists(templatePath)) === false) {
+            throw new InvalidPayloadException(`Template "${template}" doesn't exist.`);
         }
-        const templateString = await fs_extra_1.default.readFile(templatePath, 'utf8');
+        const templateString = await fse.readFile(templatePath, 'utf8');
         const html = await liquidEngine.parseAndRender(templateString, variables);
         return html;
     }
@@ -82,7 +78,7 @@ class MailService {
             projectUrl: projectInfo?.project_url || '',
         };
         function getProjectLogoURL(logoID) {
-            const projectLogoUrl = new url_1.Url(env_1.default['PUBLIC_URL']);
+            const projectLogoUrl = new Url(env['PUBLIC_URL']);
             if (logoID) {
                 projectLogoUrl.addPath('assets', logoID);
             }
@@ -93,4 +89,3 @@ class MailService {
         }
     }
 }
-exports.MailService = MailService;

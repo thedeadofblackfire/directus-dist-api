@@ -1,18 +1,14 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAxios = exports._cache = void 0;
-const request_interceptor_1 = require("./request-interceptor");
-const response_interceptor_1 = require("./response-interceptor");
-exports._cache = {
+import { requestInterceptor } from './request-interceptor.js';
+import { responseInterceptor } from './response-interceptor.js';
+export const _cache = {
     axiosInstance: null,
 };
-async function getAxios() {
-    if (!exports._cache.axiosInstance) {
+export async function getAxios() {
+    if (!_cache.axiosInstance) {
         const axios = (await import('axios')).default;
-        exports._cache.axiosInstance = axios.create();
-        exports._cache.axiosInstance.interceptors.request.use(request_interceptor_1.requestInterceptor);
-        exports._cache.axiosInstance.interceptors.response.use(response_interceptor_1.responseInterceptor);
+        _cache.axiosInstance = axios.create();
+        _cache.axiosInstance.interceptors.request.use(requestInterceptor);
+        _cache.axiosInstance.interceptors.response.use(responseInterceptor);
     }
-    return exports._cache.axiosInstance;
+    return _cache.axiosInstance;
 }
-exports.getAxios = getAxios;

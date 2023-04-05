@@ -1,14 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const utils_1 = require("@directus/shared/utils");
-const env_1 = __importDefault(require("../env"));
-const logger_1 = __importDefault(require("../logger"));
-const get_local_type_1 = __importDefault(require("./get-local-type"));
-function getDefaultValue(column) {
-    const type = (0, get_local_type_1.default)(column);
+import { parseJSON } from '@directus/utils';
+import env from '../env.js';
+import logger from '../logger.js';
+import getLocalType from './get-local-type.js';
+export default function getDefaultValue(column) {
+    const type = getLocalType(column);
     const defaultValue = column.default_value ?? null;
     if (defaultValue === null)
         return null;
@@ -28,7 +23,6 @@ function getDefaultValue(column) {
             return defaultValue;
     }
 }
-exports.default = getDefaultValue;
 function castToBoolean(value) {
     if (typeof value === 'boolean')
         return value;
@@ -49,11 +43,11 @@ function castToObject(value) {
         return value;
     if (typeof value === 'string') {
         try {
-            return (0, utils_1.parseJSON)(value);
+            return parseJSON(value);
         }
         catch (err) {
-            if (env_1.default['NODE_ENV'] === 'development') {
-                logger_1.default.error(err);
+            if (env['NODE_ENV'] === 'development') {
+                logger.error(err);
             }
             return value;
         }

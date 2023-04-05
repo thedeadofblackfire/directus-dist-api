@@ -1,16 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractError = void 0;
-const database_1 = __importDefault(require("../../../database"));
-const contains_null_values_1 = require("../contains-null-values");
-const invalid_foreign_key_1 = require("../invalid-foreign-key");
-const not_null_violation_1 = require("../not-null-violation");
-const record_not_unique_1 = require("../record-not-unique");
-const value_out_of_range_1 = require("../value-out-of-range");
-const value_too_long_1 = require("../value-too-long");
+import getDatabase from '../../../database/index.js';
+import { ContainsNullValuesException } from '../contains-null-values.js';
+import { InvalidForeignKeyException } from '../invalid-foreign-key.js';
+import { NotNullViolationException } from '../not-null-violation.js';
+import { RecordNotUniqueException } from '../record-not-unique.js';
+import { ValueOutOfRangeException } from '../value-out-of-range.js';
+import { ValueTooLongException } from '../value-too-long.js';
 var MSSQLErrorCodes;
 (function (MSSQLErrorCodes) {
     MSSQLErrorCodes[MSSQLErrorCodes["FOREIGN_KEY_VIOLATION"] = 547] = "FOREIGN_KEY_VIOLATION";
@@ -19,7 +13,7 @@ var MSSQLErrorCodes;
     MSSQLErrorCodes[MSSQLErrorCodes["UNIQUE_VIOLATION"] = 2601] = "UNIQUE_VIOLATION";
     MSSQLErrorCodes[MSSQLErrorCodes["VALUE_LIMIT_VIOLATION"] = 2628] = "VALUE_LIMIT_VIOLATION";
 })(MSSQLErrorCodes || (MSSQLErrorCodes = {}));
-async function extractError(error) {
+export async function extractError(error) {
     switch (error.number) {
         case MSSQLErrorCodes.UNIQUE_VIOLATION:
         case 2627:
@@ -35,7 +29,6 @@ async function extractError(error) {
     }
     return error;
 }
-exports.extractError = extractError;
 async function uniqueViolation(error) {
     /**
      * NOTE:
@@ -58,7 +51,7 @@ async function uniqueViolation(error) {
     let collection = quoteMatches[0].slice(1, -1);
     let field = null;
     if (keyName) {
-        const database = (0, database_1.default)();
+        const database = getDatabase();
         const constraintUsage = await database
             .select('sys.columns.name as field', database.raw('OBJECT_NAME(??) as collection', ['sys.columns.object_id']))
             .from('sys.indexes')
@@ -78,7 +71,7 @@ async function uniqueViolation(error) {
         field = constraintUsage?.field;
     }
     const invalid = parenMatches[parenMatches.length - 1]?.slice(1, -1);
-    return new record_not_unique_1.RecordNotUniqueException(field, {
+    return new RecordNotUniqueException(field, {
         collection,
         field,
         invalid,
@@ -101,7 +94,7 @@ function numericValueOutOfRange(error) {
     const field = null;
     const parts = error.message.split(' ');
     const invalid = parts[parts.length - 1].slice(0, -1);
-    return new value_out_of_range_1.ValueOutOfRangeException(field, {
+    return new ValueOutOfRangeException(field, {
         collection,
         field,
         invalid,
@@ -116,7 +109,7 @@ function valueLimitViolation(error) {
         return error;
     const collection = bracketMatches[0].slice(1, -1);
     const field = quoteMatches[1].slice(1, -1);
-    return new value_too_long_1.ValueTooLongException(field, {
+    return new ValueTooLongException(field, {
         collection,
         field,
     });
@@ -131,9 +124,9 @@ function notNullViolation(error) {
     const collection = bracketMatches[0].slice(1, -1);
     const field = quoteMatches[0].slice(1, -1);
     if (error.message.includes('Cannot insert the value NULL into column')) {
-        return new contains_null_values_1.ContainsNullValuesException(field, { collection, field });
+        return new ContainsNullValuesException(field, { collection, field });
     }
-    return new not_null_violation_1.NotNullViolationException(field, {
+    return new NotNullViolationException(field, {
         collection,
         field,
     });
@@ -152,7 +145,7 @@ function foreignKeyViolation(error) {
     const underscoreParts = underscoreMatches[0].split('__');
     const collection = underscoreParts[1];
     const field = underscoreParts[2];
-    return new invalid_foreign_key_1.InvalidForeignKeyException(field, {
+    return new InvalidForeignKeyException(field, {
         collection,
         field,
     });

@@ -1,39 +1,34 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const knex_1 = __importDefault(require("knex"));
-const knex_mock_client_1 = require("knex-mock-client");
-const services_1 = require("../../src/services");
-const helpers_1 = require("../../src/database/helpers");
-const vitest_1 = require("vitest");
-vitest_1.vi.mock('../../src/database/index', () => ({
-    getDatabaseClient: vitest_1.vi.fn().mockReturnValue('postgres'),
+import knex from 'knex';
+import { MockClient, createTracker } from 'knex-mock-client';
+import { PayloadService } from '../../src/services/index.js';
+import { getHelpers } from '../../src/database/helpers/index.js';
+import { describe, beforeAll, afterEach, it, expect, vi, beforeEach } from 'vitest';
+vi.mock('../../src/database/index', () => ({
+    getDatabaseClient: vi.fn().mockReturnValue('postgres'),
 }));
-(0, vitest_1.describe)('Integration Tests', () => {
+describe('Integration Tests', () => {
     let db;
     let tracker;
-    (0, vitest_1.beforeAll)(async () => {
-        db = vitest_1.vi.mocked((0, knex_1.default)({ client: knex_mock_client_1.MockClient }));
-        tracker = (0, knex_mock_client_1.createTracker)(db);
+    beforeAll(async () => {
+        db = vi.mocked(knex.default({ client: MockClient }));
+        tracker = createTracker(db);
     });
-    (0, vitest_1.afterEach)(() => {
+    afterEach(() => {
         tracker.reset();
     });
-    (0, vitest_1.describe)('Services / PayloadService', () => {
-        (0, vitest_1.describe)('transformers', () => {
+    describe('Services / PayloadService', () => {
+        describe('transformers', () => {
             let service;
             let helpers;
-            (0, vitest_1.beforeEach)(() => {
-                service = new services_1.PayloadService('test', {
+            beforeEach(() => {
+                service = new PayloadService('test', {
                     knex: db,
                     schema: { collections: {}, relations: [] },
                 });
-                helpers = (0, helpers_1.getHelpers)(db);
+                helpers = getHelpers(db);
             });
-            (0, vitest_1.describe)('csv', () => {
-                (0, vitest_1.it)('Returns undefined for illegal values', async () => {
+            describe('csv', () => {
+                it('Returns undefined for illegal values', async () => {
                     const result = await service.transformers['cast-csv']({
                         value: 123,
                         action: 'read',
@@ -42,9 +37,9 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         specials: [],
                         helpers,
                     });
-                    (0, vitest_1.expect)(result).toBe(undefined);
+                    expect(result).toBe(undefined);
                 });
-                (0, vitest_1.it)('Returns [] for empty strings', async () => {
+                it('Returns [] for empty strings', async () => {
                     const result = await service.transformers['cast-csv']({
                         value: '',
                         action: 'read',
@@ -53,9 +48,9 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         specials: [],
                         helpers,
                     });
-                    (0, vitest_1.expect)(result).toMatchObject([]);
+                    expect(result).toMatchObject([]);
                 });
-                (0, vitest_1.it)('Returns array values as is', async () => {
+                it('Returns array values as is', async () => {
                     const result = await service.transformers['cast-csv']({
                         value: ['test', 'directus'],
                         action: 'read',
@@ -64,9 +59,9 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         specials: [],
                         helpers,
                     });
-                    (0, vitest_1.expect)(result).toEqual(['test', 'directus']);
+                    expect(result).toEqual(['test', 'directus']);
                 });
-                (0, vitest_1.it)('Splits the CSV string', async () => {
+                it('Splits the CSV string', async () => {
                     const result = await service.transformers['cast-csv']({
                         value: 'test,directus',
                         action: 'read',
@@ -75,9 +70,9 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         specials: [],
                         helpers,
                     });
-                    (0, vitest_1.expect)(result).toMatchObject(['test', 'directus']);
+                    expect(result).toMatchObject(['test', 'directus']);
                 });
-                (0, vitest_1.it)('Saves array values as joined string', async () => {
+                it('Saves array values as joined string', async () => {
                     const result = await service.transformers['cast-csv']({
                         value: ['test', 'directus'],
                         action: 'create',
@@ -86,9 +81,9 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         specials: [],
                         helpers,
                     });
-                    (0, vitest_1.expect)(result).toBe('test,directus');
+                    expect(result).toBe('test,directus');
                 });
-                (0, vitest_1.it)('Saves string values as is', async () => {
+                it('Saves string values as is', async () => {
                     const result = await service.transformers['cast-csv']({
                         value: 'test,directus',
                         action: 'create',
@@ -97,17 +92,17 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         specials: [],
                         helpers,
                     });
-                    (0, vitest_1.expect)(result).toBe('test,directus');
+                    expect(result).toBe('test,directus');
                 });
             });
         });
-        (0, vitest_1.describe)('processDates', () => {
+        describe('processDates', () => {
             let service;
             const dateFieldId = 'date_field';
             const dateTimeFieldId = 'datetime_field';
             const timestampFieldId = 'timestamp_field';
-            (0, vitest_1.beforeEach)(() => {
-                service = new services_1.PayloadService('test', {
+            beforeEach(() => {
+                service = new PayloadService('test', {
                     knex: db,
                     schema: {
                         collections: {
@@ -168,8 +163,8 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                     },
                 });
             });
-            (0, vitest_1.describe)('processes dates', () => {
-                (0, vitest_1.it)('with zero values', () => {
+            describe('processes dates', () => {
+                it('with zero values', () => {
                     const result = service.processDates([
                         {
                             [dateFieldId]: '0000-00-00',
@@ -177,7 +172,7 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                             [timestampFieldId]: '0000-00-00 00:00:00.000',
                         },
                     ], 'read');
-                    (0, vitest_1.expect)(result).toMatchObject([
+                    expect(result).toMatchObject([
                         {
                             [dateFieldId]: null,
                             [dateTimeFieldId]: null,
@@ -185,7 +180,7 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         },
                     ]);
                 });
-                (0, vitest_1.it)('with typical values', () => {
+                it('with typical values', () => {
                     const result = service.processDates([
                         {
                             [dateFieldId]: '2022-01-10',
@@ -193,7 +188,7 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                             [timestampFieldId]: '1980-12-08 00:11:22.333',
                         },
                     ], 'read');
-                    (0, vitest_1.expect)(result).toMatchObject([
+                    expect(result).toMatchObject([
                         {
                             [dateFieldId]: '2022-01-10',
                             [dateTimeFieldId]: '2021-10-01T12:34:56',
@@ -201,7 +196,7 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                         },
                     ]);
                 });
-                (0, vitest_1.it)('with date object values', () => {
+                it('with date object values', () => {
                     const result = service.processDates([
                         {
                             [dateFieldId]: new Date(1666777777000),
@@ -209,7 +204,7 @@ vitest_1.vi.mock('../../src/database/index', () => ({
                             [timestampFieldId]: new Date(1666555444333),
                         },
                     ], 'read');
-                    (0, vitest_1.expect)(result).toMatchObject([
+                    expect(result).toMatchObject([
                         {
                             [dateFieldId]: toLocalISOString(new Date(1666777777000)).slice(0, 10),
                             [dateTimeFieldId]: toLocalISOString(new Date(1666666666000)),

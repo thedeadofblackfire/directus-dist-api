@@ -1,9 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.systemRelationRows = void 0;
-const lodash_1 = require("lodash");
-const require_yaml_1 = require("../../../utils/require-yaml");
-const systemData = (0, require_yaml_1.requireYAML)(require.resolve('./relations.yaml'));
-exports.systemRelationRows = systemData.data.map((row) => {
-    return (0, lodash_1.merge)({ system: true }, systemData.defaults, row);
+import { merge } from 'lodash-es';
+import { requireYAML } from '../../../utils/require-yaml.js';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const systemData = requireYAML(resolve(__dirname, './relations.yaml'));
+export const systemRelationRows = systemData.data.map((row) => {
+    return merge({ system: true }, systemData.defaults, row);
 });

@@ -1,26 +1,20 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SharesService = void 0;
-const argon2_1 = __importDefault(require("argon2"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const get_milliseconds_1 = require("../utils/get-milliseconds");
-const md_1 = require("../utils/md");
-const url_1 = require("../utils/url");
-const user_name_1 = require("../utils/user-name");
-const authorization_1 = require("./authorization");
-const items_1 = require("./items");
-const mail_1 = require("./mail");
-const users_1 = require("./users");
-class SharesService extends items_1.ItemsService {
+import argon2 from 'argon2';
+import jwt from 'jsonwebtoken';
+import env from '../env.js';
+import { ForbiddenException, InvalidCredentialsException } from '../exceptions/index.js';
+import { getMilliseconds } from '../utils/get-milliseconds.js';
+import { md } from '../utils/md.js';
+import { Url } from '../utils/url.js';
+import { userName } from '../utils/user-name.js';
+import { AuthorizationService } from './authorization.js';
+import { ItemsService } from './items.js';
+import { MailService } from './mail/index.js';
+import { UsersService } from './users.js';
+export class SharesService extends ItemsService {
     authorizationService;
     constructor(options) {
         super('directus_shares', options);
-        this.authorizationService = new authorization_1.AuthorizationService({
+        this.authorizationService = new AuthorizationService({
             accountability: this.accountability,
             knex: this.knex,
             schema: this.schema,
@@ -57,10 +51,10 @@ class SharesService extends items_1.ItemsService {
         })
             .first();
         if (!record) {
-            throw new exceptions_1.InvalidCredentialsException();
+            throw new InvalidCredentialsException();
         }
-        if (record.share_password && !(await argon2_1.default.verify(record.share_password, payload['password']))) {
-            throw new exceptions_1.InvalidCredentialsException();
+        if (record.share_password && !(await argon2.verify(record.share_password, payload['password']))) {
+            throw new InvalidCredentialsException();
         }
         await this.knex('directus_shares')
             .update({ times_used: record.share_times_used + 1 })
@@ -75,12 +69,12 @@ class SharesService extends items_1.ItemsService {
                 collection: record.share_collection,
             },
         };
-        const accessToken = jsonwebtoken_1.default.sign(tokenPayload, env_1.default['SECRET'], {
-            expiresIn: env_1.default['ACCESS_TOKEN_TTL'],
+        const accessToken = jwt.sign(tokenPayload, env['SECRET'], {
+            expiresIn: env['ACCESS_TOKEN_TTL'],
             issuer: 'directus',
         });
         const refreshToken = nanoid(64);
-        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL'], 0));
+        const refreshTokenExpiration = new Date(Date.now() + getMilliseconds(env['REFRESH_TOKEN_TTL'], 0));
         await this.knex('directus_sessions').insert({
             token: refreshToken,
             expires: refreshTokenExpiration,
@@ -93,7 +87,7 @@ class SharesService extends items_1.ItemsService {
         return {
             accessToken,
             refreshToken,
-            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default['ACCESS_TOKEN_TTL']),
+            expires: getMilliseconds(env['ACCESS_TOKEN_TTL']),
         };
     }
     /**
@@ -102,35 +96,34 @@ class SharesService extends items_1.ItemsService {
      */
     async invite(payload) {
         if (!this.accountability?.user)
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         const share = await this.readOne(payload.share, { fields: ['collection'] });
-        const usersService = new users_1.UsersService({
+        const usersService = new UsersService({
             knex: this.knex,
             schema: this.schema,
         });
-        const mailService = new mail_1.MailService({ schema: this.schema, accountability: this.accountability });
+        const mailService = new MailService({ schema: this.schema, accountability: this.accountability });
         const userInfo = await usersService.readOne(this.accountability.user, {
             fields: ['first_name', 'last_name', 'email', 'id'],
         });
         const message = `
 Hello!
 
-${(0, user_name_1.userName)(userInfo)} has invited you to view an item in ${share['collection']}.
+${userName(userInfo)} has invited you to view an item in ${share['collection']}.
 
-[Open](${new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'shared', payload.share).toString()})
+[Open](${new Url(env['PUBLIC_URL']).addPath('admin', 'shared', payload.share).toString()})
 `;
         for (const email of payload.emails) {
             await mailService.send({
                 template: {
                     name: 'base',
                     data: {
-                        html: (0, md_1.md)(message),
+                        html: md(message),
                     },
                 },
                 to: email,
-                subject: `${(0, user_name_1.userName)(userInfo)} has shared an item with you`,
+                subject: `${userName(userInfo)} has shared an item with you`,
             });
         }
     }
 }
-exports.SharesService = SharesService;

@@ -1,17 +1,14 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.systemFieldRows = void 0;
 //import fse from 'fs-extra';
-const lodash_1 = require("lodash");
-//import path from 'path';
-const get_auth_providers_1 = require("../../../utils/get-auth-providers");
-const require_yaml_1 = require("../../../utils/require-yaml");
-// @ts-ignore
-const format_title_1 = __importDefault(require("@directus/format-title"));
-const defaults = (0, require_yaml_1.requireYAML)(require.resolve('./_defaults.yaml'));
+import { merge } from 'lodash-es';
+import path from 'path';
+import { getAuthProviders } from '../../../utils/get-auth-providers.js';
+import { requireYAML } from '../../../utils/require-yaml.js';
+import formatTitle from '@directus/format-title';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+//const defaults = requireYAML(require.resolve('./_defaults.yaml')); // previous version works
+const defaults = requireYAML(path.join(__dirname, './_defaults.yaml'));
 //const fieldData = fse.readdirSync(path.resolve(__dirname)); // original
 //const fieldData = fse.readdirSync(process.cwd()+'/dist/database/system-data/fields');
 const fieldData = [
@@ -82,28 +79,26 @@ if (process.env?.VERCEL || (process.env?.VERCEL_REGION && process.env.VERCEL_REG
 }
 */
 //console.log('__fieldData__', process.env?.VERCEL_REGION, fieldData);
-exports.systemFieldRows = [];
+export const systemFieldRows = [];
 for (const filepath of fieldData) {
     if (filepath.includes('_defaults') || filepath.includes('index'))
         continue;
-    //console.log(path.resolve(__dirname, filepath));
-    //const systemFields = requireYAML(path.resolve(__dirname, filepath));
-    const systemFields = (0, require_yaml_1.requireYAML)(require.resolve('./' + filepath));
-    //const systemFields = requireYAML(process.cwd()+'/dist/database/system-data/fields/'+filepath);
+    //const systemFields = requireYAML(path.resolve(__dirname, filepath)); // original
+    const systemFields = requireYAML(require.resolve('./' + filepath));
     systemFields['fields'].forEach((field, index) => {
-        const systemField = (0, lodash_1.merge)({ system: true }, defaults, field, {
+        const systemField = merge({ system: true }, defaults, field, {
             collection: systemFields['table'],
             sort: index + 1,
         });
         // Dynamically populate auth providers field
         if (systemField.collection === 'directus_users' && systemField.field === 'provider') {
-            (0, get_auth_providers_1.getAuthProviders)().forEach(({ name }) => {
+            getAuthProviders().forEach(({ name }) => {
                 systemField.options?.['choices']?.push({
-                    text: (0, format_title_1.default)(name),
+                    text: formatTitle(name),
                     value: name,
                 });
             });
         }
-        exports.systemFieldRows.push(systemField);
+        systemFieldRows.push(systemField);
     });
 }

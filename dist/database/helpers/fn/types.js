@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FnHelper = void 0;
-const apply_query_1 = require("../../../utils/apply-query");
-const types_1 = require("../types");
-class FnHelper extends types_1.DatabaseHelper {
+import { applyFilter } from '../../../utils/apply-query.js';
+import { DatabaseHelper } from '../types.js';
+export class FnHelper extends DatabaseHelper {
     schema;
     constructor(knex, schema) {
         super(knex);
@@ -22,9 +19,8 @@ class FnHelper extends types_1.DatabaseHelper {
             .from(relation.collection)
             .where(relation.field, '=', this.knex.raw(`??.??`, [table, currentPrimary]));
         if (options?.query?.filter) {
-            countQuery = (0, apply_query_1.applyFilter)(this.knex, this.schema, countQuery, options.query.filter, relation.collection, {}).query;
+            countQuery = applyFilter(this.knex, this.schema, countQuery, options.query.filter, relation.collection, {}).query;
         }
         return this.knex.raw('(' + countQuery.toQuery() + ')');
     }
 }
-exports.FnHelper = FnHelper;

@@ -1,18 +1,12 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateIP = void 0;
-const node_os_1 = __importDefault(require("node:os"));
-const env_1 = require("../env");
-const validateIP = async (ip, url) => {
-    const env = (0, env_1.getEnv)();
+import os from 'node:os';
+import { getEnv } from '../env.js';
+export const validateIP = async (ip, url) => {
+    const env = getEnv();
     if (env['IMPORT_IP_DENY_LIST'].includes(ip)) {
         throw new Error(`Requested URL "${url}" resolves to a denied IP address`);
     }
     if (env['IMPORT_IP_DENY_LIST'].includes('0.0.0.0')) {
-        const networkInterfaces = node_os_1.default.networkInterfaces();
+        const networkInterfaces = os.networkInterfaces();
         for (const networkInfo of Object.values(networkInterfaces)) {
             if (!networkInfo)
                 continue;
@@ -24,4 +18,3 @@ const validateIP = async (ip, url) => {
         }
     }
 };
-exports.validateIP = validateIP;

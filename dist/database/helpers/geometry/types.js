@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GeometryHelper = void 0;
-const wellknown_1 = require("wellknown");
-const types_1 = require("../types");
-class GeometryHelper extends types_1.DatabaseHelper {
+import { stringify as geojsonToWKT } from 'wellknown';
+import { DatabaseHelper } from '../types.js';
+export class GeometryHelper extends DatabaseHelper {
     supported() {
         return true;
     }
@@ -24,7 +21,7 @@ class GeometryHelper extends types_1.DatabaseHelper {
         return this.knex.raw('st_geomfromtext(?, 4326)', text);
     }
     fromGeoJSON(geojson) {
-        return this.fromText((0, wellknown_1.stringify)(geojson));
+        return this.fromText(geojsonToWKT(geojson));
     }
     _intersects(key, geojson) {
         const geometry = this.fromGeoJSON(geojson);
@@ -50,4 +47,3 @@ class GeometryHelper extends types_1.DatabaseHelper {
         return this.knex.raw('st_astext(st_collect(??.??))', [table, column]);
     }
 }
-exports.GeometryHelper = GeometryHelper;

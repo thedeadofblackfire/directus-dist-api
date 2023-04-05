@@ -1,67 +1,37 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFlowManager = void 0;
-const sharedExceptions = __importStar(require("@directus/shared/exceptions"));
-const types_1 = require("@directus/shared/types");
-const utils_1 = require("@directus/shared/utils");
-const fast_redact_1 = __importDefault(require("fast-redact"));
-const lodash_1 = require("lodash");
-const micromustache_1 = require("micromustache");
-const node_cron_1 = require("node-cron");
-const database_1 = __importDefault(require("./database"));
-const emitter_1 = __importDefault(require("./emitter"));
-const env_1 = __importDefault(require("./env"));
-const exceptions = __importStar(require("./exceptions"));
-const logger_1 = __importDefault(require("./logger"));
-const messenger_1 = require("./messenger");
-const services = __importStar(require("./services"));
-const services_1 = require("./services");
-const activity_1 = require("./services/activity");
-const revisions_1 = require("./services/revisions");
-const construct_flow_tree_1 = require("./utils/construct-flow-tree");
-const get_schema_1 = require("./utils/get-schema");
-const job_queue_1 = require("./utils/job-queue");
-const map_values_deep_1 = require("./utils/map-values-deep");
+import * as sharedExceptions from '@directus/exceptions';
+import { Action, } from '@directus/types';
+import { applyOptionsData, isValidJSON, parseJSON, toArray } from '@directus/utils';
+import fastRedact from 'fast-redact';
+import { omit, pick } from 'lodash-es';
+import { get } from 'micromustache';
+import { schedule, validate } from 'node-cron';
+import getDatabase from './database/index.js';
+import emitter from './emitter.js';
+import env from './env.js';
+import * as exceptions from './exceptions/index.js';
+import logger from './logger.js';
+import { getMessenger } from './messenger.js';
+import { ActivityService } from './services/activity.js';
+import * as services from './services/index.js';
+import { FlowsService } from './services/flows.js';
+import { RevisionsService } from './services/revisions.js';
+import { constructFlowTree } from './utils/construct-flow-tree.js';
+import { getSchema } from './utils/get-schema.js';
+import { JobQueue } from './utils/job-queue.js';
+import { mapValuesDeep } from './utils/map-values-deep.js';
 let flowManager;
-const redactLogs = (0, fast_redact_1.default)({
+const redactLogs = fastRedact({
     censor: '--redacted--',
     paths: ['*.headers.authorization', '*.access_token', '*.headers.cookie'],
     serialize: false,
 });
-function getFlowManager() {
+export function getFlowManager() {
     if (flowManager) {
         return flowManager;
     }
     flowManager = new FlowManager();
     return flowManager;
 }
-exports.getFlowManager = getFlowManager;
 const TRIGGER_KEY = '$trigger';
 const ACCOUNTABILITY_KEY = '$accountability';
 const LAST_KEY = '$last';
@@ -74,8 +44,8 @@ class FlowManager {
     webhookFlowHandlers = {};
     reloadQueue;
     constructor() {
-        this.reloadQueue = new job_queue_1.JobQueue();
-        const messenger = (0, messenger_1.getMessenger)();
+        this.reloadQueue = new JobQueue();
+        const messenger = getMessenger();
         messenger.subscribe('flows', (event) => {
             if (event['type'] === 'reload') {
                 this.reloadQueue.enqueue(async () => {
@@ -84,7 +54,7 @@ class FlowManager {
                         await this.load();
                     }
                     else {
-                        logger_1.default.warn('Flows have to be loaded before they can be reloaded');
+                        logger.warn('Flows have to be loaded before they can be reloaded');
                     }
                 });
             }
@@ -96,7 +66,7 @@ class FlowManager {
         }
     }
     async reload() {
-        const messenger = (0, messenger_1.getMessenger)();
+        const messenger = getMessenger();
         messenger.publish('flows', { type: 'reload' });
     }
     addOperation(id, operation) {
@@ -107,7 +77,7 @@ class FlowManager {
     }
     async runOperationFlow(id, data, context) {
         if (!(id in this.operationFlowHandlers)) {
-            logger_1.default.warn(`Couldn't find operation triggered flow with id "${id}"`);
+            logger.warn(`Couldn't find operation triggered flow with id "${id}"`);
             return null;
         }
         const handler = this.operationFlowHandlers[id];
@@ -115,30 +85,30 @@ class FlowManager {
     }
     async runWebhookFlow(id, data, context) {
         if (!(id in this.webhookFlowHandlers)) {
-            logger_1.default.warn(`Couldn't find webhook or manual triggered flow with id "${id}"`);
+            logger.warn(`Couldn't find webhook or manual triggered flow with id "${id}"`);
             throw new exceptions.ForbiddenException();
         }
         const handler = this.webhookFlowHandlers[id];
         return handler(data, context);
     }
     async load() {
-        const flowsService = new services_1.FlowsService({ knex: (0, database_1.default)(), schema: await (0, get_schema_1.getSchema)() });
+        const flowsService = new FlowsService({ knex: getDatabase(), schema: await getSchema() });
         const flows = await flowsService.readByQuery({
             filter: { status: { _eq: 'active' } },
             fields: ['*', 'operations.*'],
             limit: -1,
         });
-        const flowTrees = flows.map((flow) => (0, construct_flow_tree_1.constructFlowTree)(flow));
+        const flowTrees = flows.map((flow) => constructFlowTree(flow));
         for (const flow of flowTrees) {
             if (flow.trigger === 'event') {
                 let events = [];
                 if (flow.options?.['scope']) {
-                    events = (0, utils_1.toArray)(flow.options['scope'])
+                    events = toArray(flow.options['scope'])
                         .map((scope) => {
                         if (['items.create', 'items.update', 'items.delete'].includes(scope)) {
                             if (!flow.options?.['collections'])
                                 return [];
-                            return (0, utils_1.toArray)(flow.options['collections']).map((collection) => {
+                            return toArray(flow.options['collections']).map((collection) => {
                                 if (collection.startsWith('directus_')) {
                                     const action = scope.split('.')[1];
                                     return collection.substring(9) + '.' + action;
@@ -154,9 +124,9 @@ class FlowManager {
                     const handler = (payload, meta, context) => this.executeFlow(flow, { payload, ...meta }, {
                         accountability: context['accountability'],
                         database: context['database'],
-                        getSchema: context['schema'] ? () => context['schema'] : get_schema_1.getSchema,
+                        getSchema: context['schema'] ? () => context['schema'] : getSchema,
                     });
-                    events.forEach((event) => emitter_1.default.onFilter(event, handler));
+                    events.forEach((event) => emitter.onFilter(event, handler));
                     this.triggerHandlers.push({
                         id: flow.id,
                         events: events.map((event) => ({ type: 'filter', name: event, handler })),
@@ -165,10 +135,10 @@ class FlowManager {
                 else if (flow.options['type'] === 'action') {
                     const handler = (meta, context) => this.executeFlow(flow, meta, {
                         accountability: context['accountability'],
-                        database: (0, database_1.default)(),
-                        getSchema: context['schema'] ? () => context['schema'] : get_schema_1.getSchema,
+                        database: getDatabase(),
+                        getSchema: context['schema'] ? () => context['schema'] : getSchema,
                     });
-                    events.forEach((event) => emitter_1.default.onAction(event, handler));
+                    events.forEach((event) => emitter.onAction(event, handler));
                     this.triggerHandlers.push({
                         id: flow.id,
                         events: events.map((event) => ({ type: 'action', name: event, handler })),
@@ -176,19 +146,19 @@ class FlowManager {
                 }
             }
             else if (flow.trigger === 'schedule') {
-                if ((0, node_cron_1.validate)(flow.options['cron'])) {
-                    const task = (0, node_cron_1.schedule)(flow.options['cron'], async () => {
+                if (validate(flow.options['cron'])) {
+                    const task = schedule(flow.options['cron'], async () => {
                         try {
                             await this.executeFlow(flow);
                         }
                         catch (error) {
-                            logger_1.default.error(error);
+                            logger.error(error);
                         }
                     });
                     this.triggerHandlers.push({ id: flow.id, events: [{ type: flow.trigger, task }] });
                 }
                 else {
-                    logger_1.default.warn(`Couldn't register cron trigger. Provided cron is invalid: ${flow.options['cron']}`);
+                    logger.warn(`Couldn't register cron trigger. Provided cron is invalid: ${flow.options['cron']}`);
                 }
             }
             else if (flow.trigger === 'operation') {
@@ -215,15 +185,15 @@ class FlowManager {
                     const enabledCollections = flow.options?.['collections'] ?? [];
                     const targetCollection = data?.['body'].collection;
                     if (!targetCollection) {
-                        logger_1.default.warn(`Manual trigger requires "collection" to be specified in the payload`);
+                        logger.warn(`Manual trigger requires "collection" to be specified in the payload`);
                         throw new exceptions.ForbiddenException();
                     }
                     if (enabledCollections.length === 0) {
-                        logger_1.default.warn(`There is no collections configured for this manual trigger`);
+                        logger.warn(`There is no collections configured for this manual trigger`);
                         throw new exceptions.ForbiddenException();
                     }
                     if (!enabledCollections.includes(targetCollection)) {
-                        logger_1.default.warn(`Specified collection must be one of: ${enabledCollections.join(', ')}.`);
+                        logger.warn(`Specified collection must be one of: ${enabledCollections.join(', ')}.`);
                         throw new exceptions.ForbiddenException();
                     }
                     if (flow.options['async']) {
@@ -246,10 +216,10 @@ class FlowManager {
             trigger.events.forEach((event) => {
                 switch (event.type) {
                     case 'filter':
-                        emitter_1.default.offFilter(event.name, event.handler);
+                        emitter.offFilter(event.name, event.handler);
                         break;
                     case 'action':
-                        emitter_1.default.offAction(event.name, event.handler);
+                        emitter.offAction(event.name, event.handler);
                         break;
                     case 'schedule':
                         event.task.stop();
@@ -263,13 +233,13 @@ class FlowManager {
         this.isLoaded = false;
     }
     async executeFlow(flow, data = null, context = {}) {
-        const database = context['database'] ?? (0, database_1.default)();
-        const schema = context['schema'] ?? (await (0, get_schema_1.getSchema)({ database }));
+        const database = context['database'] ?? getDatabase();
+        const schema = context['schema'] ?? (await getSchema({ database }));
         const keyedData = {
             [TRIGGER_KEY]: data,
             [LAST_KEY]: data,
             [ACCOUNTABILITY_KEY]: context?.['accountability'] ?? null,
-            [ENV_KEY]: (0, lodash_1.pick)(env_1.default, env_1.default['FLOWS_ENV_ALLOW_LIST'] ? (0, utils_1.toArray)(env_1.default['FLOWS_ENV_ALLOW_LIST']) : []),
+            [ENV_KEY]: pick(env, env['FLOWS_ENV_ALLOW_LIST'] ? toArray(env['FLOWS_ENV_ALLOW_LIST']) : []),
         };
         let nextOperation = flow.operation;
         let lastOperationStatus = 'unknown';
@@ -283,13 +253,13 @@ class FlowManager {
             nextOperation = successor;
         }
         if (flow.accountability !== null) {
-            const activityService = new activity_1.ActivityService({
+            const activityService = new ActivityService({
                 knex: database,
                 schema: schema,
             });
             const accountability = context?.['accountability'];
             const activity = await activityService.createOne({
-                action: types_1.Action.RUN,
+                action: Action.RUN,
                 user: accountability?.user ?? null,
                 collection: 'directus_flows',
                 ip: accountability?.ip ?? null,
@@ -298,7 +268,7 @@ class FlowManager {
                 item: flow.id,
             });
             if (flow.accountability === 'all') {
-                const revisionsService = new revisions_1.RevisionsService({
+                const revisionsService = new RevisionsService({
                     knex: database,
                     schema: schema,
                 });
@@ -308,7 +278,7 @@ class FlowManager {
                     item: flow.id,
                     data: {
                         steps: steps,
-                        data: redactLogs((0, lodash_1.omit)(keyedData, '$accountability.permissions')), // Permissions is a ton of data, and is just a copy of what's in the directus_permissions table
+                        data: redactLogs(omit(keyedData, '$accountability.permissions')), // Permissions is a ton of data, and is just a copy of what's in the directus_permissions table
                     },
                 });
             }
@@ -320,25 +290,25 @@ class FlowManager {
             return keyedData;
         }
         else if (flow.options['return']) {
-            return (0, micromustache_1.get)(keyedData, flow.options['return']);
+            return get(keyedData, flow.options['return']);
         }
         return undefined;
     }
     async executeOperation(operation, keyedData, context = {}) {
         if (!(operation.type in this.operations)) {
-            logger_1.default.warn(`Couldn't find operation ${operation.type}`);
+            logger.warn(`Couldn't find operation ${operation.type}`);
             return { successor: null, status: 'unknown', data: null, options: null };
         }
         const handler = this.operations[operation.type];
-        const options = (0, utils_1.applyOptionsData)(operation.options, keyedData);
+        const options = applyOptionsData(operation.options, keyedData);
         try {
             let result = await handler(options, {
                 services,
                 exceptions: { ...exceptions, ...sharedExceptions },
-                env: env_1.default,
-                database: (0, database_1.default)(),
-                logger: logger_1.default,
-                getSchema: get_schema_1.getSchema,
+                env,
+                database: getDatabase(),
+                logger,
+                getSchema,
                 data: keyedData,
                 accountability: null,
                 ...context,
@@ -348,7 +318,7 @@ class FlowManager {
             // JSON structures don't allow for undefined values, so we need to replace them with null
             // Otherwise the applyOptionsData function will not work correctly on the next operation
             if (typeof result === 'object' && result !== null) {
-                result = (0, map_values_deep_1.mapValuesDeep)(result, (_, value) => (value === undefined ? null : value));
+                result = mapValuesDeep(result, (_, value) => (value === undefined ? null : value));
             }
             return { successor: operation.resolve, status: 'resolve', data: result ?? null, options };
         }
@@ -360,7 +330,7 @@ class FlowManager {
             }
             else if (typeof error === 'string') {
                 // If the error is a JSON string, parse it and use that as the error data
-                data = (0, utils_1.isValidJSON)(error) ? (0, utils_1.parseJSON)(error) : error;
+                data = isValidJSON(error) ? parseJSON(error) : error;
             }
             else {
                 // If error is plain object, use this as the error data and otherwise fallback to null

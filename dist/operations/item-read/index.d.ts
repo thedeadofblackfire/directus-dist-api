@@ -1,4 +1,4 @@
-import type { PrimaryKey } from '@directus/shared/types';
+import type { PrimaryKey } from '@directus/types';
 type Options = {
     collection: string;
     key?: PrimaryKey | PrimaryKey[] | null;
@@ -6,5 +6,5 @@ type Options = {
     emitEvents: boolean;
     permissions: string;
 };
-declare const _default: import("@directus/shared/types").OperationApiConfig<Options>;
+declare const _default: import("@directus/types").OperationApiConfig<Options>;
 export default _default;

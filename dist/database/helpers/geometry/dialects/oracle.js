@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GeometryHelperOracle = void 0;
-const types_1 = require("../types");
-class GeometryHelperOracle extends types_1.GeometryHelper {
+import { GeometryHelper } from '../types.js';
+export class GeometryHelperOracle extends GeometryHelper {
     isTrue(expression) {
         return expression.wrap(``, ` = 'TRUE'`);
     }
@@ -36,4 +33,3 @@ class GeometryHelperOracle extends types_1.GeometryHelper {
         return this.knex.raw(`concat('geometrycollection(', listagg(?, ', '), ')'`, this.asText(table, column));
     }
 }
-exports.GeometryHelperOracle = GeometryHelperOracle;

@@ -1,47 +1,18 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.CollectionsService = void 0;
-const schema_1 = __importDefault(require("@directus/schema"));
-const utils_1 = require("@directus/shared/utils");
-const lodash_1 = require("lodash");
-const cache_1 = require("../cache");
-const constants_1 = require("../constants");
-const database_1 = __importStar(require("../database"));
-const helpers_1 = require("../database/helpers");
-const collections_1 = require("../database/system-data/collections");
-const emitter_1 = __importDefault(require("../emitter"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const fields_1 = require("../services/fields");
-const items_1 = require("../services/items");
-const get_schema_1 = require("../utils/get-schema");
-class CollectionsService {
+import { createInspector } from '@directus/schema';
+import { addFieldFlag } from '@directus/utils';
+import { omit } from 'lodash-es';
+import { clearSystemCache, getCache } from '../cache.js';
+import { ALIAS_TYPES } from '../constants.js';
+import getDatabase, { getSchemaInspector } from '../database/index.js';
+import { getHelpers } from '../database/helpers/index.js';
+import { systemCollectionRows } from '../database/system-data/collections/index.js';
+import emitter from '../emitter.js';
+import env from '../env.js';
+import { ForbiddenException, InvalidPayloadException } from '../exceptions/index.js';
+import { FieldsService } from '../services/fields.js';
+import { ItemsService } from '../services/items.js';
+import { getSchema } from '../utils/get-schema.js';
+export class CollectionsService {
     knex;
     helpers;
     accountability;
@@ -50,12 +21,12 @@ class CollectionsService {
     cache;
     systemCache;
     constructor(options) {
-        this.knex = options.knex || (0, database_1.default)();
-        this.helpers = (0, helpers_1.getHelpers)(this.knex);
+        this.knex = options.knex || getDatabase();
+        this.helpers = getHelpers(this.knex);
         this.accountability = options.accountability || null;
-        this.schemaInspector = options.knex ? (0, schema_1.default)(options.knex) : (0, database_1.getSchemaInspector)();
+        this.schemaInspector = options.knex ? createInspector(options.knex) : getSchemaInspector();
         this.schema = options.schema;
-        const { cache, systemCache } = (0, cache_1.getCache)();
+        const { cache, systemCache } = getCache();
         this.cache = cache;
         this.systemCache = systemCache;
     }
@@ -64,12 +35,12 @@ class CollectionsService {
      */
     async createOne(payload, opts) {
         if (this.accountability && this.accountability.admin !== true) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         if (!payload.collection)
-            throw new exceptions_1.InvalidPayloadException(`"collection" is required`);
+            throw new InvalidPayloadException(`"collection" is required`);
         if (payload.collection.startsWith('directus_')) {
-            throw new exceptions_1.InvalidPayloadException(`Collections can't start with "directus_"`);
+            throw new InvalidPayloadException(`Collections can't start with "directus_"`);
         }
         const nestedActionEvents = [];
         try {
@@ -79,7 +50,7 @@ class CollectionsService {
                 ...Object.keys(this.schema.collections),
             ];
             if (existingCollections.includes(payload.collection)) {
-                throw new exceptions_1.InvalidPayloadException(`Collection "${payload.collection}" already exists.`);
+                throw new InvalidPayloadException(`Collection "${payload.collection}" already exists.`);
             }
             // Create the collection/fields in a transaction so it'll be reverted in case of errors or
             // permission problems. This might not work reliably in MySQL, as it doesn't support DDL in
@@ -117,19 +88,19 @@ class CollectionsService {
                         // Add flag for specific database type overrides
                         const flagToAdd = this.helpers.date.fieldFlagForField(field.type);
                         if (flagToAdd) {
-                            (0, utils_1.addFieldFlag)(field, flagToAdd);
+                            addFieldFlag(field, flagToAdd);
                         }
                         return field;
                     });
-                    const fieldsService = new fields_1.FieldsService({ knex: trx, schema: this.schema });
+                    const fieldsService = new FieldsService({ knex: trx, schema: this.schema });
                     await trx.schema.createTable(payload.collection, (table) => {
                         for (const field of payload.fields) {
-                            if (field.type && constants_1.ALIAS_TYPES.includes(field.type) === false) {
+                            if (field.type && ALIAS_TYPES.includes(field.type) === false) {
                                 fieldsService.addColumnToTable(table, field);
                             }
                         }
                     });
-                    const fieldItemsService = new items_1.ItemsService('directus_fields', {
+                    const fieldItemsService = new ItemsService('directus_fields', {
                         knex: trx,
                         accountability: this.accountability,
                         schema: this.schema,
@@ -140,7 +111,7 @@ class CollectionsService {
                     });
                 }
                 if (payload.meta) {
-                    const collectionItemsService = new items_1.ItemsService('directus_collections', {
+                    const collectionItemsService = new ItemsService('directus_collections', {
                         knex: trx,
                         accountability: this.accountability,
                         schema: this.schema,
@@ -157,17 +128,17 @@ class CollectionsService {
             return payload.collection;
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -198,17 +169,17 @@ class CollectionsService {
             return collections;
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -217,7 +188,7 @@ class CollectionsService {
      * Read all collections. Currently doesn't support any query.
      */
     async readByQuery() {
-        const collectionItemsService = new items_1.ItemsService('directus_collections', {
+        const collectionItemsService = new ItemsService('directus_collections', {
             knex: this.knex,
             schema: this.schema,
             accountability: this.accountability,
@@ -226,7 +197,7 @@ class CollectionsService {
         let meta = (await collectionItemsService.readByQuery({
             limit: -1,
         }));
-        meta.push(...collections_1.systemCollectionRows);
+        meta.push(...systemCollectionRows);
         if (this.accountability && this.accountability.admin !== true) {
             const collectionsGroups = meta.reduce((meta, item) => ({
                 ...meta,
@@ -270,8 +241,8 @@ class CollectionsService {
                 });
             }
         }
-        if (env_1.default['DB_EXCLUDE_TABLES']) {
-            return collections.filter((collection) => env_1.default['DB_EXCLUDE_TABLES'].includes(collection.collection) === false);
+        if (env['DB_EXCLUDE_TABLES']) {
+            return collections.filter((collection) => env['DB_EXCLUDE_TABLES'].includes(collection.collection) === false);
         }
         return collections;
     }
@@ -281,7 +252,7 @@ class CollectionsService {
     async readOne(collectionKey) {
         const result = await this.readMany([collectionKey]);
         if (result.length === 0)
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         return result[0];
     }
     /**
@@ -296,7 +267,7 @@ class CollectionsService {
                 const collectionsYouHavePermissionToRead = permissions.map(({ collection }) => collection);
                 for (const collectionKey of collectionKeys) {
                     if (collectionsYouHavePermissionToRead.includes(collectionKey) === false) {
-                        throw new exceptions_1.ForbiddenException();
+                        throw new ForbiddenException();
                     }
                 }
             }
@@ -309,11 +280,11 @@ class CollectionsService {
      */
     async updateOne(collectionKey, data, opts) {
         if (this.accountability && this.accountability.admin !== true) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         const nestedActionEvents = [];
         try {
-            const collectionItemsService = new items_1.ItemsService('directus_collections', {
+            const collectionItemsService = new ItemsService('directus_collections', {
                 knex: this.knex,
                 accountability: this.accountability,
                 schema: this.schema,
@@ -342,17 +313,17 @@ class CollectionsService {
             return collectionKey;
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -362,10 +333,10 @@ class CollectionsService {
      */
     async updateBatch(data, opts) {
         if (this.accountability && this.accountability.admin !== true) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         if (!Array.isArray(data)) {
-            throw new exceptions_1.InvalidPayloadException('Input should be an array of collection changes.');
+            throw new InvalidPayloadException('Input should be an array of collection changes.');
         }
         const collectionKey = 'collection';
         const collectionKeys = [];
@@ -379,8 +350,8 @@ class CollectionsService {
                 });
                 for (const payload of data) {
                     if (!payload[collectionKey])
-                        throw new exceptions_1.InvalidPayloadException(`Collection in update misses collection key.`);
-                    await collectionItemsService.updateOne(payload[collectionKey], (0, lodash_1.omit)(payload, collectionKey), {
+                        throw new InvalidPayloadException(`Collection in update misses collection key.`);
+                    await collectionItemsService.updateOne(payload[collectionKey], omit(payload, collectionKey), {
                         autoPurgeCache: false,
                         autoPurgeSystemCache: false,
                         bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
@@ -390,17 +361,17 @@ class CollectionsService {
             });
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -411,7 +382,7 @@ class CollectionsService {
      */
     async updateMany(collectionKeys, data, opts) {
         if (this.accountability && this.accountability.admin !== true) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         const nestedActionEvents = [];
         try {
@@ -432,17 +403,17 @@ class CollectionsService {
             return collectionKeys;
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -453,14 +424,14 @@ class CollectionsService {
      */
     async deleteOne(collectionKey, opts) {
         if (this.accountability && this.accountability.admin !== true) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         const nestedActionEvents = [];
         try {
             const collections = await this.readByQuery();
             const collectionToBeDeleted = collections.find((collection) => collection.collection === collectionKey);
             if (!!collectionToBeDeleted === false) {
-                throw new exceptions_1.ForbiddenException();
+                throw new ForbiddenException();
             }
             await this.knex.transaction(async (trx) => {
                 if (collectionToBeDeleted.schema) {
@@ -469,7 +440,7 @@ class CollectionsService {
                 // Make sure this collection isn't used as a group in any other collections
                 await trx('directus_collections').update({ group: null }).where({ group: collectionKey });
                 if (collectionToBeDeleted.meta) {
-                    const collectionItemsService = new items_1.ItemsService('directus_collections', {
+                    const collectionItemsService = new ItemsService('directus_collections', {
                         knex: trx,
                         accountability: this.accountability,
                         schema: this.schema,
@@ -479,7 +450,7 @@ class CollectionsService {
                     });
                 }
                 if (collectionToBeDeleted.schema) {
-                    const fieldsService = new fields_1.FieldsService({
+                    const fieldsService = new FieldsService({
                         knex: trx,
                         accountability: this.accountability,
                         schema: this.schema,
@@ -535,17 +506,17 @@ class CollectionsService {
             return collectionKey;
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -555,7 +526,7 @@ class CollectionsService {
      */
     async deleteMany(collectionKeys, opts) {
         if (this.accountability && this.accountability.admin !== true) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         const nestedActionEvents = [];
         try {
@@ -576,20 +547,19 @@ class CollectionsService {
             return collectionKeys;
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
             if (opts?.autoPurgeSystemCache !== false) {
-                await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+                await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
             }
             if (opts?.emitEvents !== false && nestedActionEvents.length > 0) {
-                const updatedSchema = await (0, get_schema_1.getSchema)();
+                const updatedSchema = await getSchema();
                 for (const nestedActionEvent of nestedActionEvents) {
                     nestedActionEvent.context.schema = updatedSchema;
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
     }
 }
-exports.CollectionsService = CollectionsService;

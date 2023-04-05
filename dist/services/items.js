@@ -1,25 +1,18 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ItemsService = void 0;
-const types_1 = require("@directus/shared/types");
-const lodash_1 = require("lodash");
-const cache_1 = require("../cache");
-const database_1 = __importDefault(require("../database"));
-const helpers_1 = require("../database/helpers");
-const run_ast_1 = __importDefault(require("../database/run-ast"));
-const emitter_1 = __importDefault(require("../emitter"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const translate_1 = require("../exceptions/database/translate");
-const get_ast_from_query_1 = __importDefault(require("../utils/get-ast-from-query"));
-const validate_keys_1 = require("../utils/validate-keys");
-const authorization_1 = require("./authorization");
-const index_1 = require("./index");
-const payload_1 = require("./payload");
-class ItemsService {
+import { Action } from '@directus/types';
+import { assign, clone, cloneDeep, omit, pick, without } from 'lodash-es';
+import { getCache } from '../cache.js';
+import { getHelpers } from '../database/helpers/index.js';
+import getDatabase from '../database/index.js';
+import runAST from '../database/run-ast.js';
+import emitter from '../emitter.js';
+import env from '../env.js';
+import { translateDatabaseError } from '../exceptions/database/translate.js';
+import { ForbiddenException, InvalidPayloadException } from '../exceptions/index.js';
+import getASTFromQuery from '../utils/get-ast-from-query.js';
+import { validateKeys } from '../utils/validate-keys.js';
+import { AuthorizationService } from './authorization.js';
+import { PayloadService } from './payload.js';
+export class ItemsService {
     collection;
     knex;
     accountability;
@@ -28,16 +21,16 @@ class ItemsService {
     cache;
     constructor(collection, options) {
         this.collection = collection;
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.accountability = options.accountability || null;
         this.eventScope = this.collection.startsWith('directus_') ? this.collection.substring(9) : 'items';
         this.schema = options.schema;
-        this.cache = (0, cache_1.getCache)().cache;
+        this.cache = getCache().cache;
         return this;
     }
     async getKeysByQuery(query) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        const readQuery = (0, lodash_1.cloneDeep)(query);
+        const readQuery = cloneDeep(query);
         readQuery.fields = [primaryKeyField];
         // Allow unauthenticated access
         const itemsService = new ItemsService(this.collection, {
@@ -53,12 +46,14 @@ class ItemsService {
      * Create a single new item.
      */
     async createOne(data, opts) {
+        const { ActivityService } = await import('./activity.js');
+        const { RevisionsService } = await import('./revisions.js');
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const fields = Object.keys(this.schema.collections[this.collection].fields);
         const aliases = Object.values(this.schema.collections[this.collection].fields)
             .filter((field) => field.alias === true)
             .map((field) => field.field);
-        const payload = (0, lodash_1.cloneDeep)(data);
+        const payload = cloneDeep(data);
         const nestedActionEvents = [];
         // By wrapping the logic in a transaction, we make sure we automatically roll back all the
         // changes in the DB if any of the parts contained within throws an error. This also means
@@ -66,12 +61,12 @@ class ItemsService {
         // update tree
         const primaryKey = await this.knex.transaction(async (trx) => {
             // We're creating new services instances so they can use the transaction as their Knex interface
-            const payloadService = new payload_1.PayloadService(this.collection, {
+            const payloadService = new PayloadService(this.collection, {
                 accountability: this.accountability,
                 knex: trx,
                 schema: this.schema,
             });
-            const authorizationService = new authorization_1.AuthorizationService({
+            const authorizationService = new AuthorizationService({
                 accountability: this.accountability,
                 knex: trx,
                 schema: this.schema,
@@ -79,7 +74,7 @@ class ItemsService {
             // Run all hooks that are attached to this event so the end user has the chance to augment the
             // item that is about to be saved
             const payloadAfterHooks = opts?.emitEvents !== false
-                ? await emitter_1.default.emitFilter(this.eventScope === 'items'
+                ? await emitter.emitFilter(this.eventScope === 'items'
                     ? ['items.create', `${this.collection}.items.create`]
                     : `${this.eventScope}.create`, payload, {
                     collection: this.collection,
@@ -90,14 +85,14 @@ class ItemsService {
                 })
                 : payload;
             const payloadWithPresets = this.accountability
-                ? await authorizationService.validatePayload('create', this.collection, payloadAfterHooks)
+                ? authorizationService.validatePayload('create', this.collection, payloadAfterHooks)
                 : payloadAfterHooks;
             if (opts?.preMutationException) {
                 throw opts.preMutationException;
             }
             const { payload: payloadWithM2O, revisions: revisionsM2O, nestedActionEvents: nestedActionEventsM2O, } = await payloadService.processM2O(payloadWithPresets, opts);
             const { payload: payloadWithA2O, revisions: revisionsA2O, nestedActionEvents: nestedActionEventsA2O, } = await payloadService.processA2O(payloadWithM2O, opts);
-            const payloadWithoutAliases = (0, lodash_1.pick)(payloadWithA2O, (0, lodash_1.without)(fields, ...aliases));
+            const payloadWithoutAliases = pick(payloadWithA2O, without(fields, ...aliases));
             const payloadWithTypeCasting = await payloadService.processValues('create', payloadWithoutAliases);
             // In case of manual string / UUID primary keys, the PK already exists in the object we're saving.
             let primaryKey = payloadWithTypeCasting[primaryKeyField];
@@ -109,14 +104,14 @@ class ItemsService {
                     .then((result) => result[0]);
                 const returnedKey = typeof result === 'object' ? result[primaryKeyField] : result;
                 if (this.schema.collections[this.collection].fields[primaryKeyField].type === 'uuid') {
-                    primaryKey = (0, helpers_1.getHelpers)(trx).schema.formatUUID(primaryKey ?? returnedKey);
+                    primaryKey = getHelpers(trx).schema.formatUUID(primaryKey ?? returnedKey);
                 }
                 else {
                     primaryKey = primaryKey ?? returnedKey;
                 }
             }
             catch (err) {
-                throw await (0, translate_1.translateDatabaseError)(err);
+                throw await translateDatabaseError(err);
             }
             // Most database support returning, those who don't tend to return the PK anyways
             // (MySQL/SQLite). In case the primary key isn't know yet, we'll do a best-attempt at
@@ -135,12 +130,12 @@ class ItemsService {
             nestedActionEvents.push(...nestedActionEventsO2M);
             // If this is an authenticated action, and accountability tracking is enabled, save activity row
             if (this.accountability && this.schema.collections[this.collection].accountability !== null) {
-                const activityService = new index_1.ActivityService({
+                const activityService = new ActivityService({
                     knex: trx,
                     schema: this.schema,
                 });
                 const activity = await activityService.createOne({
-                    action: types_1.Action.CREATE,
+                    action: Action.CREATE,
                     user: this.accountability.user,
                     collection: this.collection,
                     ip: this.accountability.ip,
@@ -150,7 +145,7 @@ class ItemsService {
                 });
                 // If revisions are tracked, create revisions record
                 if (this.schema.collections[this.collection].accountability === 'all') {
-                    const revisionsService = new index_1.RevisionsService({
+                    const revisionsService = new RevisionsService({
                         knex: trx,
                         schema: this.schema,
                     });
@@ -185,7 +180,7 @@ class ItemsService {
                     collection: this.collection,
                 },
                 context: {
-                    database: (0, database_1.default)(),
+                    database: getDatabase(),
                     schema: this.schema,
                     accountability: this.accountability,
                 },
@@ -194,18 +189,18 @@ class ItemsService {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
-                emitter_1.default.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
+                emitter.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
             for (const nestedActionEvent of nestedActionEvents) {
                 if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKey;
@@ -238,11 +233,11 @@ class ItemsService {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKeys;
@@ -252,7 +247,7 @@ class ItemsService {
      */
     async readByQuery(query, opts) {
         const updatedQuery = opts?.emitEvents !== false
-            ? await emitter_1.default.emitFilter(this.eventScope === 'items'
+            ? await emitter.emitFilter(this.eventScope === 'items'
                 ? ['items.query', `${this.collection}.items.query`]
                 : `${this.eventScope}.query`, query, {
                 collection: this.collection,
@@ -262,7 +257,7 @@ class ItemsService {
                 accountability: this.accountability,
             })
             : query;
-        let ast = await (0, get_ast_from_query_1.default)(this.collection, updatedQuery, this.schema, {
+        let ast = await getASTFromQuery(this.collection, updatedQuery, this.schema, {
             accountability: this.accountability,
             // By setting the permissions action, you can read items using the permissions for another
             // operation's permissions. This is used to dynamically check if you have update/delete
@@ -271,23 +266,23 @@ class ItemsService {
             knex: this.knex,
         });
         if (this.accountability && this.accountability.admin !== true) {
-            const authorizationService = new authorization_1.AuthorizationService({
+            const authorizationService = new AuthorizationService({
                 accountability: this.accountability,
                 knex: this.knex,
                 schema: this.schema,
             });
             ast = await authorizationService.processAST(ast, opts?.permissionsAction);
         }
-        const records = await (0, run_ast_1.default)(ast, this.schema, {
+        const records = await runAST(ast, this.schema, {
             knex: this.knex,
             // GraphQL requires relational keys to be returned regardless
             stripNonRequested: opts?.stripNonRequested !== undefined ? opts.stripNonRequested : true,
         });
         if (records === null) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         const filteredRecords = opts?.emitEvents !== false
-            ? await emitter_1.default.emitFilter(this.eventScope === 'items' ? ['items.read', `${this.collection}.items.read`] : `${this.eventScope}.read`, records, {
+            ? await emitter.emitFilter(this.eventScope === 'items' ? ['items.read', `${this.collection}.items.read`] : `${this.eventScope}.read`, records, {
                 query: updatedQuery,
                 collection: this.collection,
             }, {
@@ -297,12 +292,12 @@ class ItemsService {
             })
             : records;
         if (opts?.emitEvents !== false) {
-            emitter_1.default.emitAction(this.eventScope === 'items' ? ['items.read', `${this.collection}.items.read`] : `${this.eventScope}.read`, {
+            emitter.emitAction(this.eventScope === 'items' ? ['items.read', `${this.collection}.items.read`] : `${this.eventScope}.read`, {
                 payload: filteredRecords,
                 query: updatedQuery,
                 collection: this.collection,
             }, {
-                database: this.knex || (0, database_1.default)(),
+                database: this.knex || getDatabase(),
                 schema: this.schema,
                 accountability: this.accountability,
             });
@@ -314,12 +309,12 @@ class ItemsService {
      */
     async readOne(key, query = {}, opts) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, key);
-        const filterWithKey = (0, lodash_1.assign)({}, query.filter, { [primaryKeyField]: { _eq: key } });
-        const queryWithKey = (0, lodash_1.assign)({}, query, { filter: filterWithKey });
+        validateKeys(this.schema, this.collection, primaryKeyField, key);
+        const filterWithKey = assign({}, query.filter, { [primaryKeyField]: { _eq: key } });
+        const queryWithKey = assign({}, query, { filter: filterWithKey });
         const results = await this.readByQuery(queryWithKey, opts);
         if (results.length === 0) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
         return results[0];
     }
@@ -328,9 +323,9 @@ class ItemsService {
      */
     async readMany(keys, query = {}, opts) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, keys);
+        validateKeys(this.schema, this.collection, primaryKeyField, keys);
         const filterWithKey = { _and: [{ [primaryKeyField]: { _in: keys } }, query.filter ?? {}] };
-        const queryWithKey = (0, lodash_1.assign)({}, query, { filter: filterWithKey });
+        const queryWithKey = assign({}, query, { filter: filterWithKey });
         // Set query limit as the number of keys
         if (Array.isArray(keys) && keys.length > 0 && !queryWithKey.limit) {
             queryWithKey.limit = keys.length;
@@ -344,7 +339,7 @@ class ItemsService {
     async updateByQuery(query, data, opts) {
         const keys = await this.getKeysByQuery(query);
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, keys);
+        validateKeys(this.schema, this.collection, primaryKeyField, keys);
         return keys.length ? await this.updateMany(keys, data, opts) : [];
     }
     /**
@@ -352,7 +347,7 @@ class ItemsService {
      */
     async updateOne(key, data, opts) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, key);
+        validateKeys(this.schema, this.collection, primaryKeyField, key);
         await this.updateMany([key], data, opts);
         return key;
     }
@@ -361,7 +356,7 @@ class ItemsService {
      */
     async updateBatch(data, opts) {
         if (!Array.isArray(data)) {
-            throw new exceptions_1.InvalidPayloadException('Input should be an array of items.');
+            throw new InvalidPayloadException('Input should be an array of items.');
         }
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const keys = [];
@@ -374,14 +369,14 @@ class ItemsService {
                 });
                 for (const item of data) {
                     if (!item[primaryKeyField])
-                        throw new exceptions_1.InvalidPayloadException(`Item in update misses primary key.`);
+                        throw new InvalidPayloadException(`Item in update misses primary key.`);
                     const combinedOpts = Object.assign({ autoPurgeCache: false }, opts);
-                    keys.push(await service.updateOne(item[primaryKeyField], (0, lodash_1.omit)(item, primaryKeyField), combinedOpts));
+                    keys.push(await service.updateOne(item[primaryKeyField], omit(item, primaryKeyField), combinedOpts));
                 }
             });
         }
         finally {
-            if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
         }
@@ -391,15 +386,17 @@ class ItemsService {
      * Update many items by primary key, setting all items to the same change
      */
     async updateMany(keys, data, opts) {
+        const { ActivityService } = await import('./activity.js');
+        const { RevisionsService } = await import('./revisions.js');
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, keys);
+        validateKeys(this.schema, this.collection, primaryKeyField, keys);
         const fields = Object.keys(this.schema.collections[this.collection].fields);
         const aliases = Object.values(this.schema.collections[this.collection].fields)
             .filter((field) => field.alias === true)
             .map((field) => field.field);
-        const payload = (0, lodash_1.cloneDeep)(data);
+        const payload = cloneDeep(data);
         const nestedActionEvents = [];
-        const authorizationService = new authorization_1.AuthorizationService({
+        const authorizationService = new AuthorizationService({
             accountability: this.accountability,
             knex: this.knex,
             schema: this.schema,
@@ -407,7 +404,7 @@ class ItemsService {
         // Run all hooks that are attached to this event so the end user has the chance to augment the
         // item that is about to be saved
         const payloadAfterHooks = opts?.emitEvents !== false
-            ? await emitter_1.default.emitFilter(this.eventScope === 'items'
+            ? await emitter.emitFilter(this.eventScope === 'items'
                 ? ['items.update', `${this.collection}.items.update`]
                 : `${this.eventScope}.update`, payload, {
                 keys,
@@ -424,27 +421,27 @@ class ItemsService {
             await authorizationService.checkAccess('update', this.collection, keys);
         }
         const payloadWithPresets = this.accountability
-            ? await authorizationService.validatePayload('update', this.collection, payloadAfterHooks)
+            ? authorizationService.validatePayload('update', this.collection, payloadAfterHooks)
             : payloadAfterHooks;
         if (opts?.preMutationException) {
             throw opts.preMutationException;
         }
         await this.knex.transaction(async (trx) => {
-            const payloadService = new payload_1.PayloadService(this.collection, {
+            const payloadService = new PayloadService(this.collection, {
                 accountability: this.accountability,
                 knex: trx,
                 schema: this.schema,
             });
             const { payload: payloadWithM2O, revisions: revisionsM2O, nestedActionEvents: nestedActionEventsM2O, } = await payloadService.processM2O(payloadWithPresets, opts);
             const { payload: payloadWithA2O, revisions: revisionsA2O, nestedActionEvents: nestedActionEventsA2O, } = await payloadService.processA2O(payloadWithM2O, opts);
-            const payloadWithoutAliasAndPK = (0, lodash_1.pick)(payloadWithA2O, (0, lodash_1.without)(fields, primaryKeyField, ...aliases));
+            const payloadWithoutAliasAndPK = pick(payloadWithA2O, without(fields, primaryKeyField, ...aliases));
             const payloadWithTypeCasting = await payloadService.processValues('update', payloadWithoutAliasAndPK);
             if (Object.keys(payloadWithTypeCasting).length > 0) {
                 try {
                     await trx(this.collection).update(payloadWithTypeCasting).whereIn(primaryKeyField, keys);
                 }
                 catch (err) {
-                    throw await (0, translate_1.translateDatabaseError)(err);
+                    throw await translateDatabaseError(err);
                 }
             }
             const childrenRevisions = [...revisionsM2O, ...revisionsA2O];
@@ -457,12 +454,12 @@ class ItemsService {
             }
             // If this is an authenticated action, and accountability tracking is enabled, save activity row
             if (this.accountability && this.schema.collections[this.collection].accountability !== null) {
-                const activityService = new index_1.ActivityService({
+                const activityService = new ActivityService({
                     knex: trx,
                     schema: this.schema,
                 });
                 const activity = await activityService.createMany(keys.map((key) => ({
-                    action: types_1.Action.UPDATE,
+                    action: Action.UPDATE,
                     user: this.accountability.user,
                     collection: this.collection,
                     ip: this.accountability.ip,
@@ -476,7 +473,7 @@ class ItemsService {
                         schema: this.schema,
                     });
                     const snapshots = await itemsService.readMany(keys);
-                    const revisionsService = new index_1.RevisionsService({
+                    const revisionsService = new RevisionsService({
                         knex: trx,
                         schema: this.schema,
                     });
@@ -506,7 +503,7 @@ class ItemsService {
                 }
             }
         });
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         if (opts?.emitEvents !== false) {
@@ -520,7 +517,7 @@ class ItemsService {
                     collection: this.collection,
                 },
                 context: {
-                    database: (0, database_1.default)(),
+                    database: getDatabase(),
                     schema: this.schema,
                     accountability: this.accountability,
                 },
@@ -529,14 +526,14 @@ class ItemsService {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
-                emitter_1.default.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
+                emitter.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
             for (const nestedActionEvent of nestedActionEvents) {
                 if (opts?.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
-                    emitter_1.default.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
+                    emitter.emitAction(nestedActionEvent.event, nestedActionEvent.meta, nestedActionEvent.context);
                 }
             }
         }
@@ -549,7 +546,7 @@ class ItemsService {
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const primaryKey = payload[primaryKeyField];
         if (primaryKey) {
-            (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, primaryKey);
+            validateKeys(this.schema, this.collection, primaryKeyField, primaryKey);
         }
         const exists = primaryKey &&
             !!(await this.knex
@@ -581,7 +578,7 @@ class ItemsService {
             }
             return primaryKeys;
         });
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKeys;
@@ -592,7 +589,7 @@ class ItemsService {
     async deleteByQuery(query, opts) {
         const keys = await this.getKeysByQuery(query);
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, keys);
+        validateKeys(this.schema, this.collection, primaryKeyField, keys);
         return keys.length ? await this.deleteMany(keys, opts) : [];
     }
     /**
@@ -600,7 +597,7 @@ class ItemsService {
      */
     async deleteOne(key, opts) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, key);
+        validateKeys(this.schema, this.collection, primaryKeyField, key);
         await this.deleteMany([key], opts);
         return key;
     }
@@ -608,10 +605,11 @@ class ItemsService {
      * Delete multiple items by primary key
      */
     async deleteMany(keys, opts) {
+        const { ActivityService } = await import('./activity.js');
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        (0, validate_keys_1.validateKeys)(this.schema, this.collection, primaryKeyField, keys);
+        validateKeys(this.schema, this.collection, primaryKeyField, keys);
         if (this.accountability && this.accountability.admin !== true) {
-            const authorizationService = new authorization_1.AuthorizationService({
+            const authorizationService = new AuthorizationService({
                 accountability: this.accountability,
                 schema: this.schema,
                 knex: this.knex,
@@ -622,7 +620,7 @@ class ItemsService {
             throw opts.preMutationException;
         }
         if (opts?.emitEvents !== false) {
-            await emitter_1.default.emitFilter(this.eventScope === 'items' ? ['items.delete', `${this.collection}.items.delete`] : `${this.eventScope}.delete`, keys, {
+            await emitter.emitFilter(this.eventScope === 'items' ? ['items.delete', `${this.collection}.items.delete`] : `${this.eventScope}.delete`, keys, {
                 collection: this.collection,
             }, {
                 database: this.knex,
@@ -633,12 +631,12 @@ class ItemsService {
         await this.knex.transaction(async (trx) => {
             await trx(this.collection).whereIn(primaryKeyField, keys).delete();
             if (this.accountability && this.schema.collections[this.collection].accountability !== null) {
-                const activityService = new index_1.ActivityService({
+                const activityService = new ActivityService({
                     knex: trx,
                     schema: this.schema,
                 });
                 await activityService.createMany(keys.map((key) => ({
-                    action: types_1.Action.DELETE,
+                    action: Action.DELETE,
                     user: this.accountability.user,
                     collection: this.collection,
                     ip: this.accountability.ip,
@@ -648,7 +646,7 @@ class ItemsService {
                 })));
             }
         });
-        if (this.cache && env_1.default['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         if (opts?.emitEvents !== false) {
@@ -662,7 +660,7 @@ class ItemsService {
                     collection: this.collection,
                 },
                 context: {
-                    database: (0, database_1.default)(),
+                    database: getDatabase(),
                     schema: this.schema,
                     accountability: this.accountability,
                 },
@@ -671,7 +669,7 @@ class ItemsService {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
-                emitter_1.default.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
+                emitter.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
         }
         return keys;
@@ -680,7 +678,7 @@ class ItemsService {
      * Read/treat collection as singleton
      */
     async readSingleton(query, opts) {
-        query = (0, lodash_1.clone)(query);
+        query = clone(query);
         query.limit = 1;
         const records = await this.readByQuery(query, opts);
         const record = records[0];
@@ -716,4 +714,3 @@ class ItemsService {
         return await this.createOne(data, opts);
     }
 }
-exports.ItemsService = ItemsService;

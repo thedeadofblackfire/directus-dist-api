@@ -1,9 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const sanitize_schema_1 = require("./sanitize-schema");
-(0, vitest_1.describe)('sanitizeCollection', () => {
-    vitest_1.test.each([
+import { expect, test, describe } from 'vitest';
+import { sanitizeCollection, sanitizeField, sanitizeRelation } from './sanitize-schema.js';
+describe('sanitizeCollection', () => {
+    test.each([
         // Not supported in SQLite + comment in MSSQL
         {
             collection: 'test',
@@ -85,8 +83,8 @@ const sanitize_schema_1 = require("./sanitize-schema");
             schema: { name: 'test', catalog: 'test-db' },
         },
     ])('should only contain name property in collection schema', (testCollection) => {
-        const result = (0, sanitize_schema_1.sanitizeCollection)(testCollection);
-        (0, vitest_1.expect)(result).toEqual({
+        const result = sanitizeCollection(testCollection);
+        expect(result).toEqual({
             collection: 'test',
             meta: {
                 accountability: 'all',
@@ -103,8 +101,8 @@ const sanitize_schema_1 = require("./sanitize-schema");
         });
     });
 });
-(0, vitest_1.describe)('sanitizeField', () => {
-    (0, vitest_1.test)('should only contain certain properties in field schema when sanitizeAllSchema is false', () => {
+describe('sanitizeField', () => {
+    test('should only contain certain properties in field schema when sanitizeAllSchema is false', () => {
         const testField = {
             collection: 'test',
             field: 'id',
@@ -152,8 +150,8 @@ const sanitize_schema_1 = require("./sanitize-schema");
             },
             type: 'integer',
         };
-        const result = (0, sanitize_schema_1.sanitizeField)(testField);
-        (0, vitest_1.expect)(result).toEqual({
+        const result = sanitizeField(testField);
+        expect(result).toEqual({
             collection: 'test',
             field: 'id',
             name: 'id',
@@ -198,7 +196,7 @@ const sanitize_schema_1 = require("./sanitize-schema");
             type: 'integer',
         });
     });
-    (0, vitest_1.test)('should not contain field schema when sanitizeAllSchema is true', () => {
+    test('should not contain field schema when sanitizeAllSchema is true', () => {
         const testField = {
             collection: 'test',
             field: 'id',
@@ -243,8 +241,8 @@ const sanitize_schema_1 = require("./sanitize-schema");
             },
             type: 'integer',
         };
-        const result = (0, sanitize_schema_1.sanitizeField)(testField, true);
-        (0, vitest_1.expect)(result).toEqual({
+        const result = sanitizeField(testField, true);
+        expect(result).toEqual({
             collection: 'test',
             field: 'id',
             name: 'id',
@@ -273,8 +271,8 @@ const sanitize_schema_1 = require("./sanitize-schema");
         });
     });
 });
-(0, vitest_1.describe)('sanitizeRelation', () => {
-    vitest_1.test.each([
+describe('sanitizeRelation', () => {
+    test.each([
         // Postgres + MSSSQL
         {
             collection: 'test_example',
@@ -304,8 +302,8 @@ const sanitize_schema_1 = require("./sanitize-schema");
             },
         },
     ])('should only contain certain properties in relation schema', (testRelation) => {
-        const result = (0, sanitize_schema_1.sanitizeRelation)(testRelation);
-        (0, vitest_1.expect)(result).toEqual({
+        const result = sanitizeRelation(testRelation);
+        expect(result).toEqual({
             collection: 'test_example',
             field: 'm2m',
             related_collection: 'test',

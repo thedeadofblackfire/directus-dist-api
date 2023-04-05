@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ValueTooLongException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class ValueTooLongException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class ValueTooLongException extends BaseException {
     constructor(field, extensions) {
         if (field) {
             super(`Value for field "${field}" is too long.`, 400, 'VALUE_TOO_LONG', extensions);
@@ -12,4 +9,3 @@ class ValueTooLongException extends exceptions_1.BaseException {
         }
     }
 }
-exports.ValueTooLongException = ValueTooLongException;

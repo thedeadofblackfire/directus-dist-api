@@ -1,58 +1,29 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AssetsService = void 0;
-const lodash_1 = require("lodash");
-const mime_types_1 = require("mime-types");
-const object_hash_1 = __importDefault(require("object-hash"));
-const path_1 = __importDefault(require("path"));
-const sharp_1 = __importDefault(require("sharp"));
-const uuid_validate_1 = __importDefault(require("uuid-validate"));
-const database_1 = __importDefault(require("../database"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const service_unavailable_1 = require("../exceptions/service-unavailable");
-const logger_1 = __importDefault(require("../logger"));
-const storage_1 = require("../storage");
-const get_milliseconds_1 = require("../utils/get-milliseconds");
-const TransformationUtils = __importStar(require("../utils/transformations"));
-const authorization_1 = require("./authorization");
-class AssetsService {
+import { clamp } from 'lodash-es';
+import { contentType } from 'mime-types';
+import hash from 'object-hash';
+import path from 'path';
+import sharp from 'sharp';
+import validateUUID from 'uuid-validate';
+import getDatabase from '../database/index.js';
+import env from '../env.js';
+import { ForbiddenException, IllegalAssetTransformation, RangeNotSatisfiableException } from '../exceptions/index.js';
+import { ServiceUnavailableException } from '../exceptions/service-unavailable.js';
+import logger from '../logger.js';
+import { getStorage } from '../storage/index.js';
+import { getMilliseconds } from '../utils/get-milliseconds.js';
+import * as TransformationUtils from '../utils/transformations.js';
+import { AuthorizationService } from './authorization.js';
+export class AssetsService {
     knex;
     accountability;
     authorizationService;
     constructor(options) {
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.accountability = options.accountability || null;
-        this.authorizationService = new authorization_1.AuthorizationService(options);
+        this.authorizationService = new AuthorizationService(options);
     }
     async getAsset(id, transformation, range) {
-        const storage = await (0, storage_1.getStorage)();
+        const storage = await getStorage();
         const publicSettings = await this.knex
             .select('project_logo', 'public_background', 'public_foreground')
             .from('directus_settings')
@@ -63,25 +34,25 @@ class AssetsService {
          * with a wrong type. In case of directus_files where id is a uuid, we'll have to verify the
          * validity of the uuid ahead of time.
          */
-        const isValidUUID = (0, uuid_validate_1.default)(id, 4);
+        const isValidUUID = validateUUID(id, 4);
         if (isValidUUID === false)
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         if (systemPublicKeys.includes(id) === false && this.accountability?.admin !== true) {
             await this.authorizationService.checkAccess('read', 'directus_files', id);
         }
         const file = (await this.knex.select('*').from('directus_files').where({ id }).first());
         if (!file)
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         const exists = await storage.location(file.storage).exists(file.filename_disk);
         if (!exists)
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         if (range) {
             const missingRangeLimits = range.start === undefined && range.end === undefined;
             const endBeforeStart = range.start !== undefined && range.end !== undefined && range.end <= range.start;
             const startOverflow = range.start !== undefined && range.start >= file.filesize;
             const endUnderflow = range.end !== undefined && range.end <= 0;
             if (missingRangeLimits || endBeforeStart || startOverflow || endUnderflow) {
-                throw new exceptions_1.RangeNotSatisfiableException(range);
+                throw new RangeNotSatisfiableException(range);
             }
             const lastByte = file.filesize - 1;
             if (range.end) {
@@ -111,12 +82,12 @@ class AssetsService {
         // We can only transform JPEG, PNG, and WebP
         if (type && transforms.length > 0 && ['image/jpeg', 'image/png', 'image/webp', 'image/tiff'].includes(type)) {
             const maybeNewFormat = TransformationUtils.maybeExtractFormat(transforms);
-            const assetFilename = path_1.default.basename(file.filename_disk, path_1.default.extname(file.filename_disk)) +
+            const assetFilename = path.basename(file.filename_disk, path.extname(file.filename_disk)) +
                 getAssetSuffix(transforms) +
-                (maybeNewFormat ? `.${maybeNewFormat}` : path_1.default.extname(file.filename_disk));
+                (maybeNewFormat ? `.${maybeNewFormat}` : path.extname(file.filename_disk));
             const exists = await storage.location(file.storage).exists(assetFilename);
             if (maybeNewFormat) {
-                file.type = (0, mime_types_1.contentType)(assetFilename) || null;
+                file.type = contentType(assetFilename) || null;
             }
             if (exists) {
                 return {
@@ -131,30 +102,30 @@ class AssetsService {
             const { width, height } = file;
             if (!width ||
                 !height ||
-                width > env_1.default['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION'] ||
-                height > env_1.default['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION']) {
-                throw new exceptions_1.IllegalAssetTransformation(`Image is too large to be transformed, or image size couldn't be determined.`);
+                width > env['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION'] ||
+                height > env['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION']) {
+                throw new IllegalAssetTransformation(`Image is too large to be transformed, or image size couldn't be determined.`);
             }
-            const { queue, process } = sharp_1.default.counters();
-            if (queue + process > env_1.default['ASSETS_TRANSFORM_MAX_CONCURRENT']) {
-                throw new service_unavailable_1.ServiceUnavailableException('Server too busy', {
+            const { queue, process } = sharp.counters();
+            if (queue + process > env['ASSETS_TRANSFORM_MAX_CONCURRENT']) {
+                throw new ServiceUnavailableException('Server too busy', {
                     service: 'files',
                 });
             }
             const readStream = await storage.location(file.storage).read(file.filename_disk, range);
-            const transformer = (0, sharp_1.default)({
-                limitInputPixels: Math.pow(env_1.default['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION'], 2),
+            const transformer = sharp({
+                limitInputPixels: Math.pow(env['ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION'], 2),
                 sequentialRead: true,
-                failOn: env_1.default['ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL'],
+                failOn: env['ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL'],
             });
             transformer.timeout({
-                seconds: (0, lodash_1.clamp)(Math.round((0, get_milliseconds_1.getMilliseconds)(env_1.default['ASSETS_TRANSFORM_TIMEOUT'], 0) / 1000), 1, 3600),
+                seconds: clamp(Math.round(getMilliseconds(env['ASSETS_TRANSFORM_TIMEOUT'], 0) / 1000), 1, 3600),
             });
             if (transforms.find((transform) => transform[0] === 'rotate') === undefined)
                 transformer.rotate();
             transforms.forEach(([method, ...args]) => transformer[method].apply(transformer, args));
             readStream.on('error', (e) => {
-                logger_1.default.error(e, `Couldn't transform file ${file.id}`);
+                logger.error(e, `Couldn't transform file ${file.id}`);
                 readStream.unpipe(transformer);
             });
             await storage.location(file.storage).write(assetFilename, readStream.pipe(transformer), type);
@@ -171,9 +142,8 @@ class AssetsService {
         }
     }
 }
-exports.AssetsService = AssetsService;
 const getAssetSuffix = (transforms) => {
     if (Object.keys(transforms).length === 0)
         return '';
-    return `__${(0, object_hash_1.default)(transforms)}`;
+    return `__${hash(transforms)}`;
 };

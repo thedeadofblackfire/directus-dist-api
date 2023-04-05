@@ -1,10 +1,10 @@
-import type { BaseException } from '@directus/shared/exceptions';
-import { Accountability, Filter, Query, SchemaOverview } from '@directus/shared/types';
+import type { BaseException } from '@directus/exceptions';
+import { Accountability, Filter, Query, SchemaOverview } from '@directus/types';
 import { ArgumentNode, FormattedExecutionResult, FragmentDefinitionNode, GraphQLError, GraphQLResolveInfo, GraphQLSchema, SelectionNode } from 'graphql';
 import { ObjectTypeComposer, SchemaComposer } from 'graphql-compose';
 import type { Knex } from 'knex';
-import type { AbstractServiceOptions, GraphQLParams, Item } from '../../types';
-import { ItemsService } from '../items';
+import type { AbstractServiceOptions, GraphQLParams, Item } from '../../types/index.js';
+import { ItemsService } from '../items.js';
 export declare class GraphQLService {
     accountability: Accountability | null;
     knex: Knex;

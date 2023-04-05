@@ -1,7 +1,7 @@
-import type { Field, RawField } from '@directus/shared/types';
+import type { Field, RawField } from '@directus/types';
 import type { Knex } from 'knex';
 import type { GeoJSONGeometry } from 'wellknown';
-import { GeometryHelper } from '../types';
+import { GeometryHelper } from '../types.js';
 export declare class GeometryHelperOracle extends GeometryHelper {
     isTrue(expression: Knex.Raw): Knex.Raw<any>;
     isFalse(expression: Knex.Raw): Knex.Raw<any>;

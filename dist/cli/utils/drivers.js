@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDriverForClient = exports.drivers = void 0;
-exports.drivers = {
+export const drivers = {
     pg: 'PostgreSQL / Redshift',
     cockroachdb: 'CockroachDB (Beta)',
     mysql: 'MySQL / MariaDB / Aurora',
@@ -9,11 +6,10 @@ exports.drivers = {
     mssql: 'Microsoft SQL Server',
     oracledb: 'Oracle Database',
 };
-function getDriverForClient(client) {
-    for (const [key, value] of Object.entries(exports.drivers)) {
+export function getDriverForClient(client) {
+    for (const [key, value] of Object.entries(drivers)) {
         if (value === client)
             return key;
     }
     return null;
 }
-exports.getDriverForClient = getDriverForClient;

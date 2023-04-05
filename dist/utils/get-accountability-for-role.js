@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAccountabilityForRole = void 0;
-const exceptions_1 = require("../exceptions");
-const get_permissions_1 = require("./get-permissions");
-async function getAccountabilityForRole(role, context) {
+import { InvalidConfigException } from '../exceptions/index.js';
+import { getPermissions } from './get-permissions.js';
+export async function getAccountabilityForRole(role, context) {
     let generatedAccountability = context.accountability;
     if (role === null) {
         generatedAccountability = {
@@ -12,7 +9,7 @@ async function getAccountabilityForRole(role, context) {
             admin: false,
             app: false,
         };
-        generatedAccountability.permissions = await (0, get_permissions_1.getPermissions)(generatedAccountability, context.schema);
+        generatedAccountability.permissions = await getPermissions(generatedAccountability, context.schema);
     }
     else if (role === 'system') {
         generatedAccountability = {
@@ -30,7 +27,7 @@ async function getAccountabilityForRole(role, context) {
             .where({ id: role })
             .first();
         if (!roleInfo) {
-            throw new exceptions_1.InvalidConfigException(`Configured role "${role}" isn't a valid role ID or doesn't exist.`);
+            throw new InvalidConfigException(`Configured role "${role}" isn't a valid role ID or doesn't exist.`);
         }
         generatedAccountability = {
             role,
@@ -38,8 +35,7 @@ async function getAccountabilityForRole(role, context) {
             admin: roleInfo.admin_access === 1 || roleInfo.admin_access === '1' || roleInfo.admin_access === true,
             app: roleInfo.app_access === 1 || roleInfo.app_access === '1' || roleInfo.app_access === true,
         };
-        generatedAccountability.permissions = await (0, get_permissions_1.getPermissions)(generatedAccountability, context.schema);
+        generatedAccountability.permissions = await getPermissions(generatedAccountability, context.schema);
     }
     return generatedAccountability;
 }
-exports.getAccountabilityForRole = getAccountabilityForRole;

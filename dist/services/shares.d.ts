@@ -1,6 +1,6 @@
-import type { AbstractServiceOptions, Item, LoginResult, MutationOptions, PrimaryKey } from '../types';
-import { AuthorizationService } from './authorization';
-import { ItemsService } from './items';
+import type { AbstractServiceOptions, Item, LoginResult, MutationOptions, PrimaryKey } from '../types/index.js';
+import { AuthorizationService } from './authorization.js';
+import { ItemsService } from './items.js';
 export declare class SharesService extends ItemsService {
     authorizationService: AuthorizationService;
     constructor(options: AbstractServiceOptions);

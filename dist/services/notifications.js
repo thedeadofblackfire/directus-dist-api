@@ -1,23 +1,17 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotificationsService = void 0;
-const env_1 = __importDefault(require("../env"));
-const logger_1 = __importDefault(require("../logger"));
-const md_1 = require("../utils/md");
-const url_1 = require("../utils/url");
-const items_1 = require("./items");
-const mail_1 = require("./mail");
-const users_1 = require("./users");
-class NotificationsService extends items_1.ItemsService {
+import env from '../env.js';
+import logger from '../logger.js';
+import { md } from '../utils/md.js';
+import { Url } from '../utils/url.js';
+import { ItemsService } from './items.js';
+import { MailService } from './mail/index.js';
+import { UsersService } from './users.js';
+export class NotificationsService extends ItemsService {
     usersService;
     mailService;
     constructor(options) {
         super('directus_notifications', options);
-        this.usersService = new users_1.UsersService({ schema: this.schema });
-        this.mailService = new mail_1.MailService({ schema: this.schema, accountability: this.accountability });
+        this.usersService = new UsersService({ schema: this.schema });
+        this.mailService = new MailService({ schema: this.schema, accountability: this.accountability });
     }
     async createOne(data, opts) {
         const response = await super.createOne(data, opts);
@@ -36,8 +30,8 @@ class NotificationsService extends items_1.ItemsService {
             const user = await this.usersService.readOne(data.recipient, {
                 fields: ['id', 'email', 'email_notifications', 'role.app_access'],
             });
-            const manageUserAccountUrl = new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'users', user['id']).toString();
-            const html = data.message ? (0, md_1.md)(data.message) : '';
+            const manageUserAccountUrl = new Url(env['PUBLIC_URL']).addPath('admin', 'users', user['id']).toString();
+            const html = data.message ? md(data.message) : '';
             if (user['email'] && user['email_notifications'] === true) {
                 try {
                     await this.mailService.send({
@@ -50,10 +44,9 @@ class NotificationsService extends items_1.ItemsService {
                     });
                 }
                 catch (error) {
-                    logger_1.default.error(error.message);
+                    logger.error(error.message);
                 }
             }
         }
     }
 }
-exports.NotificationsService = NotificationsService;

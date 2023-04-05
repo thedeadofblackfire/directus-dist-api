@@ -1,39 +1,33 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.snapshot = void 0;
-const database_1 = __importDefault(require("../../../database"));
-const logger_1 = __importDefault(require("../../../logger"));
-const get_snapshot_1 = require("../../../utils/get-snapshot");
-const fs_1 = require("fs");
-const path_1 = __importDefault(require("path"));
-const inquirer_1 = __importDefault(require("inquirer"));
-const js_yaml_1 = require("js-yaml");
-async function snapshot(snapshotPath, options) {
-    const database = (0, database_1.default)();
+import getDatabase from '../../../database/index.js';
+import logger from '../../../logger.js';
+import { getSnapshot } from '../../../utils/get-snapshot.js';
+import { constants as fsConstants, promises as fs } from 'fs';
+import path from 'path';
+import inquirer from 'inquirer';
+import { dump as toYaml } from 'js-yaml';
+export async function snapshot(snapshotPath, options) {
+    const database = getDatabase();
     try {
-        const snapshot = await (0, get_snapshot_1.getSnapshot)({ database });
+        const snapshot = await getSnapshot({ database });
         let snapshotString;
         if (options?.format === 'yaml') {
-            snapshotString = (0, js_yaml_1.dump)(snapshot);
+            snapshotString = toYaml(snapshot);
         }
         else {
             snapshotString = JSON.stringify(snapshot);
         }
         if (snapshotPath) {
-            const filename = path_1.default.resolve(process.cwd(), snapshotPath);
+            const filename = path.resolve(process.cwd(), snapshotPath);
             let snapshotExists;
             try {
-                await fs_1.promises.access(filename, fs_1.constants.F_OK);
+                await fs.access(filename, fsConstants.F_OK);
                 snapshotExists = true;
             }
             catch {
                 snapshotExists = false;
             }
             if (snapshotExists && options?.yes === false) {
-                const { overwrite } = await inquirer_1.default.prompt([
+                const { overwrite } = await inquirer.prompt([
                     {
                         type: 'confirm',
                         name: 'overwrite',
@@ -45,8 +39,8 @@ async function snapshot(snapshotPath, options) {
                     process.exit(0);
                 }
             }
-            await fs_1.promises.writeFile(filename, snapshotString);
-            logger_1.default.info(`Snapshot saved to ${filename}`);
+            await fs.writeFile(filename, snapshotString);
+            logger.info(`Snapshot saved to ${filename}`);
         }
         else {
             process.stdout.write(snapshotString);
@@ -55,9 +49,8 @@ async function snapshot(snapshotPath, options) {
         process.exit(0);
     }
     catch (err) {
-        logger_1.default.error(err);
+        logger.error(err);
         database.destroy();
         process.exit(1);
     }
 }
-exports.snapshot = snapshot;

@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GeometryHelperMSSQL = void 0;
-const types_1 = require("../types");
-class GeometryHelperMSSQL extends types_1.GeometryHelper {
+import { GeometryHelper } from '../types.js';
+export class GeometryHelperMSSQL extends GeometryHelper {
     isTrue(expression) {
         return expression.wrap(``, ` = 1`);
     }
@@ -33,4 +30,3 @@ class GeometryHelperMSSQL extends types_1.GeometryHelper {
         return this.knex.raw('geometry::CollectionAggregate(??.??).STAsText()', [table, column]);
     }
 }
-exports.GeometryHelperMSSQL = GeometryHelperMSSQL;

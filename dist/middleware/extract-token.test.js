@@ -1,61 +1,56 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const extract_token_1 = __importDefault(require("../../src/middleware/extract-token"));
-require("../../src/types/express.d.ts");
+import { beforeEach, expect, test, vi } from 'vitest';
+import extractToken from '../../src/middleware/extract-token.js';
+import '../../src/types/express.d.ts';
 let mockRequest;
 let mockResponse;
-const nextFunction = vitest_1.vi.fn();
-(0, vitest_1.beforeEach)(() => {
+const nextFunction = vi.fn();
+beforeEach(() => {
     mockRequest = {};
     mockResponse = {};
-    vitest_1.vi.clearAllMocks();
+    vi.clearAllMocks();
 });
-(0, vitest_1.test)('Token from query', () => {
+test('Token from query', () => {
     mockRequest = {
         query: {
             access_token: 'test',
         },
     };
-    (0, extract_token_1.default)(mockRequest, mockResponse, nextFunction);
-    (0, vitest_1.expect)(mockRequest.token).toBe('test');
-    (0, vitest_1.expect)(nextFunction).toBeCalledTimes(1);
+    extractToken(mockRequest, mockResponse, nextFunction);
+    expect(mockRequest.token).toBe('test');
+    expect(nextFunction).toBeCalledTimes(1);
 });
-(0, vitest_1.test)('Token from Authorization header (capitalized)', () => {
+test('Token from Authorization header (capitalized)', () => {
     mockRequest = {
         headers: {
             authorization: 'Bearer test',
         },
     };
-    (0, extract_token_1.default)(mockRequest, mockResponse, nextFunction);
-    (0, vitest_1.expect)(mockRequest.token).toBe('test');
-    (0, vitest_1.expect)(nextFunction).toBeCalledTimes(1);
+    extractToken(mockRequest, mockResponse, nextFunction);
+    expect(mockRequest.token).toBe('test');
+    expect(nextFunction).toBeCalledTimes(1);
 });
-(0, vitest_1.test)('Token from Authorization header (lowercase)', () => {
+test('Token from Authorization header (lowercase)', () => {
     mockRequest = {
         headers: {
             authorization: 'bearer test',
         },
     };
-    (0, extract_token_1.default)(mockRequest, mockResponse, nextFunction);
-    (0, vitest_1.expect)(mockRequest.token).toBe('test');
-    (0, vitest_1.expect)(nextFunction).toBeCalledTimes(1);
+    extractToken(mockRequest, mockResponse, nextFunction);
+    expect(mockRequest.token).toBe('test');
+    expect(nextFunction).toBeCalledTimes(1);
 });
-(0, vitest_1.test)('Ignore the token if authorization header is too many parts', () => {
+test('Ignore the token if authorization header is too many parts', () => {
     mockRequest = {
         headers: {
             authorization: 'bearer test what another one',
         },
     };
-    (0, extract_token_1.default)(mockRequest, mockResponse, nextFunction);
-    (0, vitest_1.expect)(mockRequest.token).toBeNull();
-    (0, vitest_1.expect)(nextFunction).toBeCalledTimes(1);
+    extractToken(mockRequest, mockResponse, nextFunction);
+    expect(mockRequest.token).toBeNull();
+    expect(nextFunction).toBeCalledTimes(1);
 });
-(0, vitest_1.test)('Null if no token passed', () => {
-    (0, extract_token_1.default)(mockRequest, mockResponse, nextFunction);
-    (0, vitest_1.expect)(mockRequest.token).toBeNull();
-    (0, vitest_1.expect)(nextFunction).toBeCalledTimes(1);
+test('Null if no token passed', () => {
+    extractToken(mockRequest, mockResponse, nextFunction);
+    expect(mockRequest.token).toBeNull();
+    expect(nextFunction).toBeCalledTimes(1);
 });

@@ -1,49 +1,46 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-// @ts-expect-error https://github.com/microsoft/TypeScript/issues/49721
-const storage_1 = require("@directus/storage");
-const vitest_1 = require("vitest");
-const validate_env_js_1 = require("../utils/validate-env.js");
-const index_js_1 = require("./index.js");
-const register_drivers_js_1 = require("./register-drivers.js");
-const register_locations_js_1 = require("./register-locations.js");
-vitest_1.vi.mock('@directus/storage');
-vitest_1.vi.mock('./register-drivers.js');
-vitest_1.vi.mock('./register-locations.js');
-vitest_1.vi.mock('../utils/validate-env.js');
+import { StorageManager } from '@directus/storage';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { validateEnv } from '../utils/validate-env.js';
+import { getStorage, _cache } from './index.js';
+import { registerDrivers } from './register-drivers.js';
+import { registerLocations } from './register-locations.js';
+vi.mock('@directus/storage');
+vi.mock('./register-drivers.js');
+vi.mock('./register-locations.js');
+vi.mock('../utils/validate-env.js');
 let mockStorage;
-(0, vitest_1.beforeEach)(() => {
+beforeEach(() => {
     mockStorage = {};
-    index_js_1._cache.storage = null;
-    vitest_1.vi.mocked(storage_1.StorageManager).mockReturnValue(mockStorage);
+    _cache.storage = null;
+    vi.mocked(StorageManager).mockReturnValue(mockStorage);
 });
-(0, vitest_1.afterEach)(() => {
-    vitest_1.vi.resetAllMocks();
+afterEach(() => {
+    vi.resetAllMocks();
 });
-(0, vitest_1.test)('Returns storage from cache immediately if cache has been filled', async () => {
-    index_js_1._cache.storage = mockStorage;
-    (0, vitest_1.expect)(await (0, index_js_1.getStorage)());
+test('Returns storage from cache immediately if cache has been filled', async () => {
+    _cache.storage = mockStorage;
+    expect(await getStorage());
 });
-(0, vitest_1.test)('Validates STORAGE_LOCATIONS to exist in env', async () => {
-    await (0, index_js_1.getStorage)();
-    (0, vitest_1.expect)(validate_env_js_1.validateEnv).toHaveBeenCalledWith(['STORAGE_LOCATIONS']);
+test('Validates STORAGE_LOCATIONS to exist in env', async () => {
+    await getStorage();
+    expect(validateEnv).toHaveBeenCalledWith(['STORAGE_LOCATIONS']);
 });
-(0, vitest_1.test)('Creates new StorageManager instance in cache', async () => {
-    await (0, index_js_1.getStorage)();
-    (0, vitest_1.expect)(storage_1.StorageManager).toHaveBeenCalledOnce();
-    (0, vitest_1.expect)(storage_1.StorageManager).toHaveBeenCalledWith();
-    (0, vitest_1.expect)(index_js_1._cache.storage).toBe(mockStorage);
+test('Creates new StorageManager instance in cache', async () => {
+    await getStorage();
+    expect(StorageManager).toHaveBeenCalledOnce();
+    expect(StorageManager).toHaveBeenCalledWith();
+    expect(_cache.storage).toBe(mockStorage);
 });
-(0, vitest_1.test)('Registers drivers against cached storage manager', async () => {
-    await (0, index_js_1.getStorage)();
-    (0, vitest_1.expect)(register_drivers_js_1.registerDrivers).toHaveBeenCalledWith(index_js_1._cache.storage);
+test('Registers drivers against cached storage manager', async () => {
+    await getStorage();
+    expect(registerDrivers).toHaveBeenCalledWith(_cache.storage);
 });
-(0, vitest_1.test)('Registers locations against cached storage manager', async () => {
-    await (0, index_js_1.getStorage)();
-    (0, vitest_1.expect)(register_locations_js_1.registerLocations).toHaveBeenCalledWith(index_js_1._cache.storage);
+test('Registers locations against cached storage manager', async () => {
+    await getStorage();
+    expect(registerLocations).toHaveBeenCalledWith(_cache.storage);
 });
-(0, vitest_1.test)('Returns cached storage manager', async () => {
-    const storage = await (0, index_js_1.getStorage)();
-    (0, vitest_1.expect)(storage).toBe(index_js_1._cache.storage);
-    (0, vitest_1.expect)(storage).toBe(mockStorage);
+test('Returns cached storage manager', async () => {
+    const storage = await getStorage();
+    expect(storage).toBe(_cache.storage);
+    expect(storage).toBe(mockStorage);
 });

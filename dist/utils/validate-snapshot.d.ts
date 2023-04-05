@@ -1,4 +1,4 @@
-import { Snapshot } from '../types';
+import { Snapshot } from '../types/index.js';
 /**
  * Validates the snapshot against the current instance.
  **/

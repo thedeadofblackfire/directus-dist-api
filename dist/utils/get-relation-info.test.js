@@ -1,14 +1,12 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const get_relation_info_1 = require("../../src/utils/get-relation-info");
-(0, vitest_1.describe)('getRelationInfo', () => {
-    (0, vitest_1.it)('Errors on suspiciously long implicit $FOLLOW', () => {
-        (0, vitest_1.expect)(() => (0, get_relation_info_1.getRelationInfo)([], 'related_test_collection', '$FOLLOW(test_collection, test_field, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)')).toThrowError(Error);
+import { describe, expect, it } from 'vitest';
+import { getRelationInfo } from '../../src/utils/get-relation-info.js';
+describe('getRelationInfo', () => {
+    it('Errors on suspiciously long implicit $FOLLOW', () => {
+        expect(() => getRelationInfo([], 'related_test_collection', '$FOLLOW(test_collection, test_field, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)')).toThrowError(Error);
     });
-    (0, vitest_1.it)('Generates a new relation object for an implicit o2m relation', () => {
-        const result = (0, get_relation_info_1.getRelationInfo)([], 'related_test_collection', '$FOLLOW(test_collection, test_field)');
-        (0, vitest_1.expect)(result).toEqual({
+    it('Generates a new relation object for an implicit o2m relation', () => {
+        const result = getRelationInfo([], 'related_test_collection', '$FOLLOW(test_collection, test_field)');
+        expect(result).toEqual({
             relation: {
                 collection: 'test_collection',
                 field: 'test_field',
@@ -19,9 +17,9 @@ const get_relation_info_1 = require("../../src/utils/get-relation-info");
             relationType: 'o2m',
         });
     });
-    (0, vitest_1.it)('Generates a new relation object for an implicit o2a relation', () => {
-        const result = (0, get_relation_info_1.getRelationInfo)([], 'related_test_collection', '$FOLLOW(test_collection, test_field, test_collection_field)');
-        (0, vitest_1.expect)(result).toEqual({
+    it('Generates a new relation object for an implicit o2a relation', () => {
+        const result = getRelationInfo([], 'related_test_collection', '$FOLLOW(test_collection, test_field, test_collection_field)');
+        expect(result).toEqual({
             relation: {
                 collection: 'test_collection',
                 field: 'test_field',
@@ -34,7 +32,7 @@ const get_relation_info_1 = require("../../src/utils/get-relation-info");
             relationType: 'o2a',
         });
     });
-    (0, vitest_1.it)('Returns the correct existing relation for the given collection/field', () => {
+    it('Returns the correct existing relation for the given collection/field', () => {
         const testRelations = [
             // o2m
             {
@@ -65,23 +63,23 @@ const get_relation_info_1 = require("../../src/utils/get-relation-info");
                 },
             },
         ];
-        const o2mResult = (0, get_relation_info_1.getRelationInfo)(testRelations, 'authors', 'articles');
-        (0, vitest_1.expect)(o2mResult).toEqual({
+        const o2mResult = getRelationInfo(testRelations, 'authors', 'articles');
+        expect(o2mResult).toEqual({
             relationType: 'o2m',
             relation: testRelations[0],
         });
-        const m2oResult = (0, get_relation_info_1.getRelationInfo)(testRelations, 'articles', 'category_id');
-        (0, vitest_1.expect)(m2oResult).toEqual({
+        const m2oResult = getRelationInfo(testRelations, 'articles', 'category_id');
+        expect(m2oResult).toEqual({
             relationType: 'm2o',
             relation: testRelations[1],
         });
-        const a2oResult = (0, get_relation_info_1.getRelationInfo)(testRelations, 'pages', 'item');
-        (0, vitest_1.expect)(a2oResult).toEqual({
+        const a2oResult = getRelationInfo(testRelations, 'pages', 'item');
+        expect(a2oResult).toEqual({
             relationType: 'a2o',
             relation: testRelations[2],
         });
-        const noResult = (0, get_relation_info_1.getRelationInfo)(testRelations, 'does not exist', 'wrong field');
-        (0, vitest_1.expect)(noResult).toEqual({
+        const noResult = getRelationInfo(testRelations, 'does not exist', 'wrong field');
+        expect(noResult).toEqual({
             relation: null,
             relationType: null,
         });

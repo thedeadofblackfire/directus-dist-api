@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
-import type { Accountability, SchemaOverview } from '@directus/shared/types';
-import type { AbstractServiceOptions } from '../types';
-import { SettingsService } from './settings';
+import type { Accountability, SchemaOverview } from '@directus/types';
+import type { AbstractServiceOptions } from '../types/index.js';
+import { SettingsService } from './settings.js';
 export declare class ServerService {
     knex: Knex;
     accountability: Accountability | null;

@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GeometryHelperPostgres = void 0;
-const types_1 = require("../types");
-class GeometryHelperPostgres extends types_1.GeometryHelper {
+import { GeometryHelper } from '../types.js';
+export class GeometryHelperPostgres extends GeometryHelper {
     async supported() {
         const res = await this.knex.select('oid').from('pg_proc').where({ proname: 'postgis_version' });
         return res.length > 0;
@@ -19,4 +16,3 @@ class GeometryHelperPostgres extends types_1.GeometryHelper {
         return this.knex.raw('st_asgeojson(??.??) as ??', [table, column, column]);
     }
 }
-exports.GeometryHelperPostgres = GeometryHelperPostgres;

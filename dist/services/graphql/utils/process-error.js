@@ -1,14 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const exceptions_1 = require("@directus/shared/exceptions");
-const logger_1 = __importDefault(require("../../../logger"));
+import { BaseException } from '@directus/exceptions';
+import logger from '../../../logger.js';
 const processError = (accountability, error) => {
-    logger_1.default.error(error);
+    logger.error(error);
     const { originalError } = error;
-    if (originalError instanceof exceptions_1.BaseException) {
+    if (originalError instanceof BaseException) {
         return {
             message: originalError.message,
             extensions: {
@@ -43,4 +38,4 @@ const processError = (accountability, error) => {
         }
     }
 };
-exports.default = processError;
+export default processError;

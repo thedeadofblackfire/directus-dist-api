@@ -1,22 +1,18 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const respond_1 = require("../middleware/respond");
-const use_collection_1 = __importDefault(require("../middleware/use-collection"));
-const validate_batch_1 = require("../middleware/validate-batch");
-const services_1 = require("../services");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const router = express_1.default.Router();
-router.use((0, use_collection_1.default)('directus_revisions'));
-const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.RevisionsService({
+import express from 'express';
+import { respond } from '../middleware/respond.js';
+import useCollection from '../middleware/use-collection.js';
+import { validateBatch } from '../middleware/validate-batch.js';
+import { MetaService } from '../services/meta.js';
+import { RevisionsService } from '../services/revisions.js';
+import asyncHandler from '../utils/async-handler.js';
+const router = express.Router();
+router.use(useCollection('directus_revisions'));
+const readHandler = asyncHandler(async (req, res, next) => {
+    const service = new RevisionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    const metaService = new services_1.MetaService({
+    const metaService = new MetaService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -25,15 +21,15 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     res.locals['payload'] = { data: records || null, meta };
     return next();
 });
-router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.search('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.RevisionsService({
+router.get('/', validateBatch('read'), readHandler, respond);
+router.search('/', validateBatch('read'), readHandler, respond);
+router.get('/:pk', asyncHandler(async (req, res, next) => {
+    const service = new RevisionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
     const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
     res.locals['payload'] = { data: record || null };
     return next();
-}), respond_1.respond);
-exports.default = router;
+}), respond);
+export default router;

@@ -1,37 +1,32 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const knex_1 = __importDefault(require("knex"));
-const knex_mock_client_1 = require("knex-mock-client");
-const vitest_1 = require("vitest");
-const _1 = require(".");
-const messenger_1 = require("../messenger");
-vitest_1.vi.mock('../../src/database/index', () => {
-    return { __esModule: true, default: vitest_1.vi.fn(), getDatabaseClient: vitest_1.vi.fn().mockReturnValue('postgres') };
+import knex from 'knex';
+import { createTracker, MockClient } from 'knex-mock-client';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { WebhooksService } from './index.js';
+import { getMessenger } from '../messenger.js';
+vi.mock('../../src/database/index', () => {
+    return { __esModule: true, default: vi.fn(), getDatabaseClient: vi.fn().mockReturnValue('postgres') };
 });
-vitest_1.vi.mock('../messenger', () => {
-    return { getMessenger: vitest_1.vi.fn().mockReturnValue({ publish: vitest_1.vi.fn(), subscribe: vitest_1.vi.fn() }) };
+vi.mock('../messenger', () => {
+    return { getMessenger: vi.fn().mockReturnValue({ publish: vi.fn(), subscribe: vi.fn() }) };
 });
-(0, vitest_1.describe)('Integration Tests', () => {
+describe('Integration Tests', () => {
     let db;
     let tracker;
-    (0, vitest_1.beforeAll)(async () => {
-        db = (0, knex_1.default)({ client: knex_mock_client_1.MockClient });
-        tracker = (0, knex_mock_client_1.createTracker)(db);
+    beforeAll(async () => {
+        db = knex.default({ client: MockClient });
+        tracker = createTracker(db);
     });
-    (0, vitest_1.beforeEach)(() => {
+    beforeEach(() => {
         tracker.on.any('directus_webhooks').response({});
     });
-    (0, vitest_1.afterEach)(() => {
+    afterEach(() => {
         tracker.reset();
     });
-    (0, vitest_1.describe)('Services / Webhooks', () => {
+    describe('Services / Webhooks', () => {
         let service;
         let messengerPublishSpy;
-        (0, vitest_1.beforeEach)(() => {
-            service = new _1.WebhooksService({
+        beforeEach(() => {
+            service = new WebhooksService({
                 knex: db,
                 schema: {
                     collections: {
@@ -63,45 +58,45 @@ vitest_1.vi.mock('../messenger', () => {
                     relations: [],
                 },
             });
-            messengerPublishSpy = vitest_1.vi.spyOn((0, messenger_1.getMessenger)(), 'publish');
+            messengerPublishSpy = vi.spyOn(getMessenger(), 'publish');
         });
-        (0, vitest_1.afterEach)(() => {
+        afterEach(() => {
             messengerPublishSpy.mockClear();
         });
-        (0, vitest_1.describe)('createOne', () => {
-            (0, vitest_1.it)('should publish webhooks reload message once', async () => {
+        describe('createOne', () => {
+            it('should publish webhooks reload message once', async () => {
                 await service.createOne({});
-                (0, vitest_1.expect)(messengerPublishSpy).toBeCalledTimes(1);
+                expect(messengerPublishSpy).toBeCalledTimes(1);
             });
         });
-        (0, vitest_1.describe)('createMany', () => {
-            (0, vitest_1.it)('should publish webhooks reload message once', async () => {
+        describe('createMany', () => {
+            it('should publish webhooks reload message once', async () => {
                 await service.createMany([{}]);
-                (0, vitest_1.expect)(messengerPublishSpy).toBeCalledTimes(1);
+                expect(messengerPublishSpy).toBeCalledTimes(1);
             });
         });
-        (0, vitest_1.describe)('updateOne', () => {
-            (0, vitest_1.it)('should publish webhooks reload message once', async () => {
+        describe('updateOne', () => {
+            it('should publish webhooks reload message once', async () => {
                 await service.updateOne(1, {});
-                (0, vitest_1.expect)(messengerPublishSpy).toBeCalledTimes(1);
+                expect(messengerPublishSpy).toBeCalledTimes(1);
             });
         });
-        (0, vitest_1.describe)('updateMany', () => {
-            (0, vitest_1.it)('should publish webhooks reload message once', async () => {
+        describe('updateMany', () => {
+            it('should publish webhooks reload message once', async () => {
                 await service.updateMany([1], {});
-                (0, vitest_1.expect)(messengerPublishSpy).toBeCalledTimes(1);
+                expect(messengerPublishSpy).toBeCalledTimes(1);
             });
         });
-        (0, vitest_1.describe)('deleteOne', () => {
-            (0, vitest_1.it)('should publish webhooks reload message once', async () => {
+        describe('deleteOne', () => {
+            it('should publish webhooks reload message once', async () => {
                 await service.deleteOne(1);
-                (0, vitest_1.expect)(messengerPublishSpy).toBeCalledTimes(1);
+                expect(messengerPublishSpy).toBeCalledTimes(1);
             });
         });
-        (0, vitest_1.describe)('deleteMany', () => {
-            (0, vitest_1.it)('should publish webhooks reload message once', async () => {
+        describe('deleteMany', () => {
+            it('should publish webhooks reload message once', async () => {
                 await service.deleteMany([1]);
-                (0, vitest_1.expect)(messengerPublishSpy).toBeCalledTimes(1);
+                expect(messengerPublishSpy).toBeCalledTimes(1);
             });
         });
     });

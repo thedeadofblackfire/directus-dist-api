@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateKeys = void 0;
-const uuid_validate_1 = __importDefault(require("uuid-validate"));
-const exceptions_1 = require("../exceptions");
+import validateUUID from 'uuid-validate';
+import { ForbiddenException } from '../exceptions/forbidden.js';
 /**
  * Validate keys based on its type
  */
-function validateKeys(schema, collection, keyField, keys) {
+export function validateKeys(schema, collection, keyField, keys) {
     if (Array.isArray(keys)) {
         for (const key of keys) {
             validateKeys(schema, collection, keyField, key);
@@ -17,12 +11,11 @@ function validateKeys(schema, collection, keyField, keys) {
     }
     else {
         const primaryKeyFieldType = schema.collections[collection]?.fields[keyField]?.type;
-        if (primaryKeyFieldType === 'uuid' && !(0, uuid_validate_1.default)(String(keys))) {
-            throw new exceptions_1.ForbiddenException();
+        if (primaryKeyFieldType === 'uuid' && !validateUUID(String(keys))) {
+            throw new ForbiddenException();
         }
         else if (primaryKeyFieldType === 'integer' && !Number.isInteger(Number(keys))) {
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         }
     }
 }
-exports.validateKeys = validateKeys;

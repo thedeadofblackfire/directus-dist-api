@@ -1,36 +1,33 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateDatabaseExtensions = exports.validateMigrations = exports.isInstalled = exports.getDatabaseClient = exports.validateDatabaseConnection = exports.hasDatabaseConnection = exports.getDatabaseVersion = exports.getSchemaInspector = void 0;
-const schema_1 = __importDefault(require("@directus/schema"));
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const knex_1 = require("knex");
-const lodash_1 = require("lodash");
-const path_1 = __importDefault(require("path"));
-const perf_hooks_1 = require("perf_hooks");
-const util_1 = require("util");
-const env_1 = __importDefault(require("../env"));
-const logger_1 = __importDefault(require("../logger"));
-const get_config_from_env_1 = require("../utils/get-config-from-env");
-const validate_env_1 = require("../utils/validate-env");
-const helpers_1 = require("./helpers");
+import { createInspector } from '@directus/schema';
+import fse from 'fs-extra';
+import knex from 'knex';
+import { merge } from 'lodash-es';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+import { performance } from 'perf_hooks';
+import { promisify } from 'util';
+import env from '../env.js';
+import logger from '../logger.js';
+import { getConfigFromEnv } from '../utils/get-config-from-env.js';
+import { validateEnv } from '../utils/validate-env.js';
+import { getHelpers } from './helpers/index.js';
 let database = null;
 let inspector = null;
 let databaseVersion = null;
-function getDatabase() {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export default function getDatabase() {
     if (database) {
         return database;
     }
-    const { client, version, searchPath, connectionString, pool: poolConfig = {}, ...connectionConfig } = (0, get_config_from_env_1.getConfigFromEnv)('DB_', ['DB_EXCLUDE_TABLES']);
+    const { client, version, searchPath, connectionString, pool: poolConfig = {}, ...connectionConfig } = getConfigFromEnv('DB_', ['DB_EXCLUDE_TABLES']);
     const requiredEnvVars = ['DB_CLIENT'];
     switch (client) {
         case 'sqlite3':
             requiredEnvVars.push('DB_FILENAME');
             break;
         case 'oracledb':
-            if (!env_1.default['DB_CONNECT_STRING']) {
+            if (!env['DB_CONNECT_STRING']) {
                 requiredEnvVars.push('DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USER', 'DB_PASSWORD');
             }
             else {
@@ -47,14 +44,14 @@ function getDatabase() {
             }
             break;
         case 'mssql':
-            if (!env_1.default['DB_TYPE'] || env_1.default['DB_TYPE'] === 'default') {
+            if (!env['DB_TYPE'] || env['DB_TYPE'] === 'default') {
                 requiredEnvVars.push('DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USER', 'DB_PASSWORD');
             }
             break;
         default:
             requiredEnvVars.push('DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USER', 'DB_PASSWORD');
     }
-    (0, validate_env_1.validateEnv)(requiredEnvVars);
+    validateEnv(requiredEnvVars);
     const knexConfig = {
         client,
         version,
@@ -70,27 +67,27 @@ function getDatabase() {
                 // Ignore warning about MySQL not supporting TRX for DDL
                 if (msg.startsWith('Transaction was implicitly committed, do not mix transactions and DDL with MySQL'))
                     return;
-                return logger_1.default.warn(msg);
+                return logger.warn(msg);
             },
-            error: (msg) => logger_1.default.error(msg),
-            deprecate: (msg) => logger_1.default.info(msg),
-            debug: (msg) => logger_1.default.debug(msg),
+            error: (msg) => logger.error(msg),
+            deprecate: (msg) => logger.info(msg),
+            debug: (msg) => logger.debug(msg),
         },
         pool: poolConfig,
     };
     if (client === 'sqlite3') {
         knexConfig.useNullAsDefault = true;
         poolConfig.afterCreate = async (conn, callback) => {
-            logger_1.default.trace('Enabling SQLite Foreign Keys support...');
-            const run = (0, util_1.promisify)(conn.run.bind(conn));
+            logger.trace('Enabling SQLite Foreign Keys support...');
+            const run = promisify(conn.run.bind(conn));
             await run('PRAGMA foreign_keys = ON');
             callback(null, conn);
         };
     }
     if (client === 'cockroachdb') {
         poolConfig.afterCreate = async (conn, callback) => {
-            logger_1.default.trace('Setting CRDB serial_normalization and default_int_size');
-            const run = (0, util_1.promisify)(conn.query.bind(conn));
+            logger.trace('Setting CRDB serial_normalization and default_int_size');
+            const run = promisify(conn.query.bind(conn));
             await run('SET serial_normalization = "sql_sequence"');
             await run('SET default_int_size = 4');
             callback(null, conn);
@@ -98,8 +95,8 @@ function getDatabase() {
     }
     if (client === 'mysql') {
         poolConfig.afterCreate = async (conn, callback) => {
-            logger_1.default.trace('Retrieving database version');
-            const run = (0, util_1.promisify)(conn.query.bind(conn));
+            logger.trace('Retrieving database version');
+            const run = promisify(conn.query.bind(conn));
             const version = await run('SELECT @@version;');
             databaseVersion = version[0]['@@version'];
             callback(null, conn);
@@ -109,44 +106,41 @@ function getDatabase() {
         // This brings MS SQL in line with the other DB vendors. We shouldn't do any automatic
         // timezone conversion on the database level, especially not when other database vendors don't
         // act the same
-        (0, lodash_1.merge)(knexConfig, { connection: { options: { useUTC: false } } });
+        merge(knexConfig, { connection: { options: { useUTC: false } } });
     }
-    database = (0, knex_1.knex)(knexConfig);
-    if (!env_1.default['SERVERLESS']) {
+    database = knex.default(knexConfig);
+    if (!env['SERVERLESS']) {
         validateDatabaseCharset(database);
     }
     const times = {};
     database
         .on('query', (queryInfo) => {
-        times[queryInfo.__knexUid] = perf_hooks_1.performance.now();
+        times[queryInfo.__knexUid] = performance.now();
     })
         .on('query-response', (_response, queryInfo) => {
-        const delta = perf_hooks_1.performance.now() - times[queryInfo.__knexUid];
-        logger_1.default.trace(`[${delta.toFixed(3)}ms] ${queryInfo.sql} [${queryInfo.bindings.join(', ')}]`);
+        const delta = performance.now() - times[queryInfo.__knexUid];
+        logger.trace(`[${delta.toFixed(3)}ms] ${queryInfo.sql} [${queryInfo.bindings.join(', ')}]`);
         delete times[queryInfo.__knexUid];
     });
     return database;
 }
-exports.default = getDatabase;
-function getSchemaInspector() {
+export function getSchemaInspector() {
     if (inspector) {
         return inspector;
     }
     const database = getDatabase();
-    inspector = (0, schema_1.default)(database);
+    inspector = createInspector(database);
     return inspector;
 }
-exports.getSchemaInspector = getSchemaInspector;
 /**
  * Get database version. Value currently exists for MySQL only.
  *
  * @returns Cached database version
  */
-function getDatabaseVersion() {
+export function getDatabaseVersion() {
     return databaseVersion;
 }
-exports.getDatabaseVersion = getDatabaseVersion;
-async function hasDatabaseConnection(database) {
+export async function hasDatabaseConnection(database) {
     database = database ?? getDatabase();
     try {
         if (getDatabaseClient(database) === 'oracle') {
@@ -161,8 +155,7 @@ async function hasDatabaseConnection(database) {
         return false;
     }
 }
-exports.hasDatabaseConnection = hasDatabaseConnection;
-async function validateDatabaseConnection(database) {
+export async function validateDatabaseConnection(database) {
     database = database ?? getDatabase();
     try {
         if (getDatabaseClient(database) === 'oracle') {
@@ -173,13 +166,12 @@ async function validateDatabaseConnection(database) {
         }
     }
     catch (error) {
-        logger_1.default.error(`Can't connect to the database.`);
-        logger_1.default.error(error);
+        logger.error(`Can't connect to the database.`);
+        logger.error(error);
         process.exit(1);
     }
 }
-exports.validateDatabaseConnection = validateDatabaseConnection;
-function getDatabaseClient(database) {
+export function getDatabaseClient(database) {
     database = database ?? getDatabase();
     switch (database.client.constructor.name) {
         case 'Client_MySQL':
@@ -200,21 +192,19 @@ function getDatabaseClient(database) {
     }
     throw new Error(`Couldn't extract database client`);
 }
-exports.getDatabaseClient = getDatabaseClient;
-async function isInstalled() {
+export async function isInstalled() {
     const inspector = getSchemaInspector();
     // The existence of a directus_collections table alone isn't a "proper" check to see if everything
     // is installed correctly of course, but it's safe enough to assume that this collection only
     // exists when Directus is properly installed.
     return await inspector.hasTable('directus_collections');
 }
-exports.isInstalled = isInstalled;
-async function validateMigrations() {
+export async function validateMigrations() {
     const database = getDatabase();
     try {
-        let migrationFiles = await fs_extra_1.default.readdir(path_1.default.join(__dirname, 'migrations'));
-        const customMigrationsPath = path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'migrations');
-        let customMigrationFiles = ((await fs_extra_1.default.pathExists(customMigrationsPath)) && (await fs_extra_1.default.readdir(customMigrationsPath))) || [];
+        let migrationFiles = await fse.readdir(path.join(__dirname, 'migrations'));
+        const customMigrationsPath = path.resolve(env['EXTENSIONS_PATH'], 'migrations');
+        let customMigrationFiles = ((await fse.pathExists(customMigrationsPath)) && (await fse.readdir(customMigrationsPath))) || [];
         migrationFiles = migrationFiles.filter((file) => file.startsWith('run') === false && file.endsWith('.d.ts') === false);
         customMigrationFiles = customMigrationFiles.filter((file) => file.endsWith('.js'));
         migrationFiles.push(...customMigrationFiles);
@@ -223,44 +213,42 @@ async function validateMigrations() {
         return requiredVersions.every((version) => completedVersions.includes(version));
     }
     catch (error) {
-        logger_1.default.error(`Database migrations cannot be found`);
-        logger_1.default.error(error);
+        logger.error(`Database migrations cannot be found`);
+        logger.error(error);
         throw process.exit(1);
     }
 }
-exports.validateMigrations = validateMigrations;
 /**
  * These database extensions should be optional, so we don't throw or return any problem states when they don't
  */
-async function validateDatabaseExtensions() {
+export async function validateDatabaseExtensions() {
     const database = getDatabase();
     const client = getDatabaseClient(database);
-    const helpers = (0, helpers_1.getHelpers)(database);
+    const helpers = getHelpers(database);
     const geometrySupport = await helpers.st.supported();
     if (!geometrySupport) {
         switch (client) {
             case 'postgres':
-                logger_1.default.warn(`PostGIS isn't installed. Geometry type support will be limited.`);
+                logger.warn(`PostGIS isn't installed. Geometry type support will be limited.`);
                 break;
             case 'sqlite':
-                logger_1.default.warn(`Spatialite isn't installed. Geometry type support will be limited.`);
+                logger.warn(`Spatialite isn't installed. Geometry type support will be limited.`);
                 break;
             default:
-                logger_1.default.warn(`Geometry type not supported on ${client}`);
+                logger.warn(`Geometry type not supported on ${client}`);
         }
     }
 }
-exports.validateDatabaseExtensions = validateDatabaseExtensions;
 async function validateDatabaseCharset(database) {
     database = database ?? getDatabase();
     if (getDatabaseClient(database) === 'mysql') {
         const { collation } = await database.select(database.raw(`@@collation_database as collation`)).first();
         const tables = await database('information_schema.tables')
             .select({ name: 'TABLE_NAME', collation: 'TABLE_COLLATION' })
-            .where({ TABLE_SCHEMA: env_1.default['DB_DATABASE'] });
+            .where({ TABLE_SCHEMA: env['DB_DATABASE'] });
         const columns = await database('information_schema.columns')
             .select({ table_name: 'TABLE_NAME', name: 'COLUMN_NAME', collation: 'COLLATION_NAME' })
-            .where({ TABLE_SCHEMA: env_1.default['DB_DATABASE'] })
+            .where({ TABLE_SCHEMA: env['DB_DATABASE'] })
             .whereNot({ COLLATION_NAME: collation });
         let inconsistencies = '';
         for (const table of tables) {
@@ -274,7 +262,7 @@ async function validateDatabaseCharset(database) {
             }
         }
         if (inconsistencies) {
-            logger_1.default.warn(`Some tables and columns do not match your database's default collation (${collation}):\n${inconsistencies}`);
+            logger.warn(`Some tables and columns do not match your database's default collation (${collation}):\n${inconsistencies}`);
         }
     }
     return;

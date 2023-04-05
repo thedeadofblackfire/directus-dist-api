@@ -1,9 +1,9 @@
-import type { SchemaOverview } from '@directus/shared/types';
+import type { SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
-import * as dateHelpers from './date';
-import * as fnHelpers from './fn';
-import * as geometryHelpers from './geometry';
-import * as schemaHelpers from './schema';
+import * as dateHelpers from './date/index.js';
+import * as fnHelpers from './fn/index.js';
+import * as geometryHelpers from './geometry/index.js';
+import * as schemaHelpers from './schema/index.js';
 export declare function getHelpers(database: Knex): {
     date: dateHelpers.postgres | dateHelpers.oracle | dateHelpers.mysql | dateHelpers.mssql | dateHelpers.sqlite;
     st: geometryHelpers.mysql | geometryHelpers.postgres | geometryHelpers.mssql | geometryHelpers.sqlite | geometryHelpers.oracle | geometryHelpers.redshift;

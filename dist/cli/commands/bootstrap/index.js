@@ -1,98 +1,71 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const database_1 = __importStar(require("../../../database"));
-const run_1 = __importDefault(require("../../../database/migrations/run"));
-const run_2 = __importDefault(require("../../../database/seeds/run"));
-const env_1 = __importDefault(require("../../../env"));
-const logger_1 = __importDefault(require("../../../logger"));
-const services_1 = require("../../../services");
-const get_schema_1 = require("../../../utils/get-schema");
-const defaults_1 = require("../../utils/defaults");
-async function bootstrap({ skipAdminInit }) {
-    logger_1.default.info('Initializing bootstrap...');
-    const database = (0, database_1.default)();
+import getDatabase, { hasDatabaseConnection, isInstalled, validateDatabaseConnection, } from '../../../database/index.js';
+import runMigrations from '../../../database/migrations/run.js';
+import installDatabase from '../../../database/seeds/run.js';
+import env from '../../../env.js';
+import logger from '../../../logger.js';
+import { RolesService } from '../../../services/roles.js';
+import { SettingsService } from '../../../services/settings.js';
+import { UsersService } from '../../../services/users.js';
+import { getSchema } from '../../../utils/get-schema.js';
+import { defaultAdminRole, defaultAdminUser } from '../../utils/defaults.js';
+export default async function bootstrap({ skipAdminInit }) {
+    logger.info('Initializing bootstrap...');
+    const database = getDatabase();
     await waitForDatabase(database);
-    if ((await (0, database_1.isInstalled)()) === false) {
-        logger_1.default.info('Installing Directus system tables...');
-        await (0, run_2.default)(database);
-        logger_1.default.info('Running migrations...');
-        await (0, run_1.default)(database, 'latest');
-        const schema = await (0, get_schema_1.getSchema)();
+    if ((await isInstalled()) === false) {
+        logger.info('Installing Directus system tables...');
+        await installDatabase(database);
+        logger.info('Running migrations...');
+        await runMigrations(database, 'latest');
+        const schema = await getSchema();
         if (skipAdminInit == null) {
             await createDefaultAdmin(schema);
         }
         else {
-            logger_1.default.info('Skipping creation of default Admin user and role...');
+            logger.info('Skipping creation of default Admin user and role...');
         }
-        if (env_1.default['PROJECT_NAME'] && typeof env_1.default['PROJECT_NAME'] === 'string' && env_1.default['PROJECT_NAME'].length > 0) {
-            const settingsService = new services_1.SettingsService({ schema });
-            await settingsService.upsertSingleton({ project_name: env_1.default['PROJECT_NAME'] });
+        if (env['PROJECT_NAME'] && typeof env['PROJECT_NAME'] === 'string' && env['PROJECT_NAME'].length > 0) {
+            const settingsService = new SettingsService({ schema });
+            await settingsService.upsertSingleton({ project_name: env['PROJECT_NAME'] });
         }
     }
     else {
-        logger_1.default.info('Database already initialized, skipping install');
-        logger_1.default.info('Running migrations...');
-        await (0, run_1.default)(database, 'latest');
+        logger.info('Database already initialized, skipping install');
+        logger.info('Running migrations...');
+        await runMigrations(database, 'latest');
     }
-    logger_1.default.info('Done');
+    logger.info('Done');
     process.exit(0);
 }
-exports.default = bootstrap;
 async function waitForDatabase(database) {
     const tries = 5;
     const secondsBetweenTries = 5;
     for (let i = 0; i < tries; i++) {
-        if (await (0, database_1.hasDatabaseConnection)(database)) {
+        if (await hasDatabaseConnection(database)) {
             return true;
         }
         await new Promise((resolve) => setTimeout(resolve, secondsBetweenTries * 1000));
     }
     // This will throw and exit the process if the database is not available
-    await (0, database_1.validateDatabaseConnection)(database);
+    await validateDatabaseConnection(database);
     return database;
 }
 async function createDefaultAdmin(schema) {
     const { nanoid } = await import('nanoid');
-    logger_1.default.info('Setting up first admin role...');
-    const rolesService = new services_1.RolesService({ schema });
-    const role = await rolesService.createOne(defaults_1.defaultAdminRole);
-    logger_1.default.info('Adding first admin user...');
-    const usersService = new services_1.UsersService({ schema });
-    let adminEmail = env_1.default['ADMIN_EMAIL'];
+    logger.info('Setting up first admin role...');
+    const rolesService = new RolesService({ schema });
+    const role = await rolesService.createOne(defaultAdminRole);
+    logger.info('Adding first admin user...');
+    const usersService = new UsersService({ schema });
+    let adminEmail = env['ADMIN_EMAIL'];
     if (!adminEmail) {
-        logger_1.default.info('No admin email provided. Defaulting to "admin@example.com"');
+        logger.info('No admin email provided. Defaulting to "admin@example.com"');
         adminEmail = 'admin@example.com';
     }
-    let adminPassword = env_1.default['ADMIN_PASSWORD'];
+    let adminPassword = env['ADMIN_PASSWORD'];
     if (!adminPassword) {
         adminPassword = nanoid(12);
-        logger_1.default.info(`No admin password provided. Defaulting to "${adminPassword}"`);
+        logger.info(`No admin password provided. Defaulting to "${adminPassword}"`);
     }
-    await usersService.createOne({ email: adminEmail, password: adminPassword, role, ...defaults_1.defaultAdminUser });
+    await usersService.createOne({ email: adminEmail, password: adminPassword, role, ...defaultAdminUser });
 }

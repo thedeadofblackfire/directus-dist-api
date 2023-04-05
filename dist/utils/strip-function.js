@@ -1,16 +1,12 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.stripFunction = void 0;
-const constants_1 = require("@directus/shared/constants");
+import { REGEX_BETWEEN_PARENS } from '@directus/constants';
 /**
  * Strip the function declarations from a list of fields
  */
-function stripFunction(field) {
+export function stripFunction(field) {
     if (field.includes('(') && field.includes(')')) {
-        return field.match(constants_1.REGEX_BETWEEN_PARENS)?.[1]?.trim() ?? field;
+        return field.match(REGEX_BETWEEN_PARENS)?.[1]?.trim() ?? field;
     }
     else {
         return field;
     }
 }
-exports.stripFunction = stripFunction;

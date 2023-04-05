@@ -1,11 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const useCollection = (collection) => (0, async_handler_1.default)(async (req, _res, next) => {
+import asyncHandler from '../utils/async-handler.js';
+const useCollection = (collection) => asyncHandler(async (req, _res, next) => {
     req.collection = collection;
     next();
 });
-exports.default = useCollection;
+export default useCollection;

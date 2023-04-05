@@ -1,5 +1,5 @@
 import type { CookieOptions } from 'express';
-import type { TransformationParams } from './types';
+import type { TransformationParams } from './types/index.js';
 export declare const SYSTEM_ASSET_ALLOW_LIST: TransformationParams[];
 export declare const ASSET_TRANSFORM_QUERY_KEYS: string[];
 export declare const FILTER_VARIABLES: string[];

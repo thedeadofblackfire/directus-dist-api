@@ -1,48 +1,43 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const chalk_1 = __importDefault(require("chalk"));
-const execa_1 = __importDefault(require("execa"));
-const inquirer_1 = __importDefault(require("inquirer"));
-const joi_1 = __importDefault(require("joi"));
-const ora_1 = __importDefault(require("ora"));
-const uuid_1 = require("uuid");
-const run_1 = __importDefault(require("../../../database/migrations/run"));
-const run_2 = __importDefault(require("../../../database/seeds/run"));
-const generate_hash_1 = require("../../../utils/generate-hash");
-const create_db_connection_1 = __importDefault(require("../../utils/create-db-connection"));
-const create_env_1 = __importDefault(require("../../utils/create-env"));
-const defaults_1 = require("../../utils/defaults");
-const drivers_1 = require("../../utils/drivers");
-const questions_1 = require("./questions");
-async function init() {
+import chalk from 'chalk';
+import execa from 'execa';
+import inquirer from 'inquirer';
+import Joi from 'joi';
+import ora from 'ora';
+import { v4 as uuid } from 'uuid';
+import runMigrations from '../../../database/migrations/run.js';
+import runSeed from '../../../database/seeds/run.js';
+import { generateHash } from '../../../utils/generate-hash.js';
+import createDBConnection from '../../utils/create-db-connection.js';
+import createEnv from '../../utils/create-env/index.js';
+import { defaultAdminRole, defaultAdminUser } from '../../utils/defaults.js';
+import { drivers, getDriverForClient } from '../../utils/drivers.js';
+import { databaseQuestions } from './questions.js';
+export default async function init() {
     const rootPath = process.cwd();
-    const { client } = await inquirer_1.default.prompt([
+    const { client } = await inquirer.prompt([
         {
             type: 'list',
             name: 'client',
             message: 'Choose your database client',
-            choices: Object.values(drivers_1.drivers),
+            choices: Object.values(drivers),
         },
     ]);
-    const dbClient = (0, drivers_1.getDriverForClient)(client);
-    const spinnerDriver = (0, ora_1.default)('Installing Database Driver...').start();
-    await (0, execa_1.default)('npm', ['install', dbClient, '--production']);
+    const dbClient = getDriverForClient(client);
+    const spinnerDriver = ora('Installing Database Driver...').start();
+    await execa('npm', ['install', dbClient, '--production']);
     spinnerDriver.stop();
     let attemptsRemaining = 5;
     const { credentials, db } = await trySeed();
     async function trySeed() {
-        const credentials = await inquirer_1.default.prompt(questions_1.databaseQuestions[dbClient].map((question) => question({ client: dbClient, filepath: rootPath })));
-        const db = (0, create_db_connection_1.default)(dbClient, credentials);
+        const credentials = await inquirer.prompt(databaseQuestions[dbClient].map((question) => question({ client: dbClient, filepath: rootPath })));
+        const db = createDBConnection(dbClient, credentials);
         try {
-            await (0, run_2.default)(db);
-            await (0, run_1.default)(db, 'latest', false);
+            await runSeed(db);
+            await runMigrations(db, 'latest', false);
         }
         catch (err) {
             process.stdout.write('\nSomething went wrong while seeding the database:\n');
-            process.stdout.write(`\n${chalk_1.default.red(`[${err.code || 'Error'}]`)} ${err.message}\n`);
+            process.stdout.write(`\n${chalk.red(`[${err.code || 'Error'}]`)} ${err.message}\n`);
             process.stdout.write('\nPlease try again\n\n');
             attemptsRemaining--;
             if (attemptsRemaining > 0) {
@@ -55,16 +50,16 @@ async function init() {
         }
         return { credentials, db };
     }
-    await (0, create_env_1.default)(dbClient, credentials, rootPath);
+    await createEnv(dbClient, credentials, rootPath);
     process.stdout.write('\nCreate your first admin user:\n\n');
-    const firstUser = await inquirer_1.default.prompt([
+    const firstUser = await inquirer.prompt([
         {
             type: 'input',
             name: 'email',
             message: 'Email',
             default: 'admin@example.com',
             validate: (input) => {
-                const emailSchema = joi_1.default.string().email().required();
+                const emailSchema = Joi.string().email().required();
                 const { error } = emailSchema.validate(input);
                 if (error)
                     throw new Error('The email entered is not a valid email address!');
@@ -83,26 +78,25 @@ async function init() {
             },
         },
     ]);
-    firstUser.password = await (0, generate_hash_1.generateHash)(firstUser.password);
-    const userID = (0, uuid_1.v4)();
-    const roleID = (0, uuid_1.v4)();
+    firstUser.password = await generateHash(firstUser.password);
+    const userID = uuid();
+    const roleID = uuid();
     await db('directus_roles').insert({
         id: roleID,
-        ...defaults_1.defaultAdminRole,
+        ...defaultAdminRole,
     });
     await db('directus_users').insert({
         id: userID,
         email: firstUser.email,
         password: firstUser.password,
         role: roleID,
-        ...defaults_1.defaultAdminUser,
+        ...defaultAdminUser,
     });
     await db.destroy();
-    process.stdout.write(`\nYour project has been created at ${chalk_1.default.green(rootPath)}.\n`);
-    process.stdout.write(`\nThe configuration can be found in ${chalk_1.default.green(rootPath + '/.env')}\n`);
+    process.stdout.write(`\nYour project has been created at ${chalk.green(rootPath)}.\n`);
+    process.stdout.write(`\nThe configuration can be found in ${chalk.green(rootPath + '/.env')}\n`);
     process.stdout.write(`\nStart Directus by running:\n`);
-    process.stdout.write(`  ${chalk_1.default.blue('cd')} ${rootPath}\n`);
-    process.stdout.write(`  ${chalk_1.default.blue('npx directus')} start\n`);
+    process.stdout.write(`  ${chalk.blue('cd')} ${rootPath}\n`);
+    process.stdout.write(`  ${chalk.blue('npx directus')} start\n`);
     process.exit(0);
 }
-exports.default = init;

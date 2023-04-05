@@ -1,125 +1,99 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const cookie_parser_1 = __importDefault(require("cookie-parser"));
-const express_1 = __importDefault(require("express"));
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const path_1 = __importDefault(require("path"));
-const qs_1 = __importDefault(require("qs"));
-const activity_1 = __importDefault(require("./controllers/activity"));
-const assets_1 = __importDefault(require("./controllers/assets"));
-const auth_1 = __importDefault(require("./controllers/auth"));
-const collections_1 = __importDefault(require("./controllers/collections"));
-const dashboards_1 = __importDefault(require("./controllers/dashboards"));
-const extensions_1 = __importDefault(require("./controllers/extensions"));
-const fields_1 = __importDefault(require("./controllers/fields"));
-const files_1 = __importDefault(require("./controllers/files"));
-const flows_1 = __importDefault(require("./controllers/flows"));
-const folders_1 = __importDefault(require("./controllers/folders"));
-const graphql_1 = __importDefault(require("./controllers/graphql"));
-const items_1 = __importDefault(require("./controllers/items"));
-const not_found_1 = __importDefault(require("./controllers/not-found"));
-const notifications_1 = __importDefault(require("./controllers/notifications"));
-const operations_1 = __importDefault(require("./controllers/operations"));
-const panels_1 = __importDefault(require("./controllers/panels"));
-const permissions_1 = __importDefault(require("./controllers/permissions"));
-const presets_1 = __importDefault(require("./controllers/presets"));
-const relations_1 = __importDefault(require("./controllers/relations"));
-const revisions_1 = __importDefault(require("./controllers/revisions"));
-const roles_1 = __importDefault(require("./controllers/roles"));
-const schema_1 = __importDefault(require("./controllers/schema"));
-const server_1 = __importDefault(require("./controllers/server"));
-const settings_1 = __importDefault(require("./controllers/settings"));
-const shares_1 = __importDefault(require("./controllers/shares"));
-const users_1 = __importDefault(require("./controllers/users"));
-const utils_1 = __importDefault(require("./controllers/utils"));
-const webhooks_1 = __importDefault(require("./controllers/webhooks"));
-const database_1 = require("./database");
-const emitter_1 = __importDefault(require("./emitter"));
-const env_1 = __importDefault(require("./env"));
-const exceptions_1 = require("./exceptions");
-const extensions_2 = require("./extensions");
-const flows_2 = require("./flows");
-const logger_1 = __importStar(require("./logger"));
-const authenticate_1 = __importDefault(require("./middleware/authenticate"));
-const cache_1 = __importDefault(require("./middleware/cache"));
-const check_ip_1 = require("./middleware/check-ip");
-const cors_1 = __importDefault(require("./middleware/cors"));
-const error_handler_1 = __importDefault(require("./middleware/error-handler"));
-const extract_token_1 = __importDefault(require("./middleware/extract-token"));
-const get_permissions_1 = __importDefault(require("./middleware/get-permissions"));
-const rate_limiter_global_1 = __importDefault(require("./middleware/rate-limiter-global"));
-const rate_limiter_ip_1 = __importDefault(require("./middleware/rate-limiter-ip"));
-const sanitize_query_1 = __importDefault(require("./middleware/sanitize-query"));
-const schema_2 = __importDefault(require("./middleware/schema"));
-const lodash_1 = require("lodash");
-const auth_2 = require("./auth");
-const cache_2 = require("./cache");
-const get_config_from_env_1 = require("./utils/get-config-from-env");
-const track_1 = require("./utils/track");
-const url_1 = require("./utils/url");
-const validate_env_1 = require("./utils/validate-env");
-const validate_storage_1 = require("./utils/validate-storage");
-const webhooks_2 = require("./webhooks");
-async function createApp() {
+import cookieParser from 'cookie-parser';
+import express from 'express';
+import { merge } from 'lodash-es';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import path from 'path';
+import qs from 'qs';
+import { registerAuthProviders } from './auth.js';
+import { flushCaches } from './cache.js';
+import activityRouter from './controllers/activity.js';
+import assetsRouter from './controllers/assets.js';
+import authRouter from './controllers/auth.js';
+import collectionsRouter from './controllers/collections.js';
+import dashboardsRouter from './controllers/dashboards.js';
+import extensionsRouter from './controllers/extensions.js';
+import fieldsRouter from './controllers/fields.js';
+import filesRouter from './controllers/files.js';
+import flowsRouter from './controllers/flows.js';
+import foldersRouter from './controllers/folders.js';
+import graphqlRouter from './controllers/graphql.js';
+import itemsRouter from './controllers/items.js';
+import notFoundHandler from './controllers/not-found.js';
+import notificationsRouter from './controllers/notifications.js';
+import operationsRouter from './controllers/operations.js';
+import panelsRouter from './controllers/panels.js';
+import permissionsRouter from './controllers/permissions.js';
+import presetsRouter from './controllers/presets.js';
+import relationsRouter from './controllers/relations.js';
+import revisionsRouter from './controllers/revisions.js';
+import rolesRouter from './controllers/roles.js';
+import schemaRouter from './controllers/schema.js';
+import serverRouter from './controllers/server.js';
+import settingsRouter from './controllers/settings.js';
+import sharesRouter from './controllers/shares.js';
+import usersRouter from './controllers/users.js';
+import utilsRouter from './controllers/utils.js';
+import webhooksRouter from './controllers/webhooks.js';
+import { isInstalled, validateDatabaseConnection, validateDatabaseExtensions, validateMigrations, } from './database/index.js';
+import emitter from './emitter.js';
+import env from './env.js';
+import { InvalidPayloadException } from './exceptions/invalid-payload.js';
+import { getExtensionManager } from './extensions.js';
+import { getFlowManager } from './flows.js';
+import logger, { expressLogger } from './logger.js';
+import authenticate from './middleware/authenticate.js';
+import cache from './middleware/cache.js';
+import { checkIP } from './middleware/check-ip.js';
+import cors from './middleware/cors.js';
+import errorHandler from './middleware/error-handler.js';
+import extractToken from './middleware/extract-token.js';
+import getPermissions from './middleware/get-permissions.js';
+import rateLimiterGlobal from './middleware/rate-limiter-global.js';
+import rateLimiter from './middleware/rate-limiter-ip.js';
+import sanitizeQuery from './middleware/sanitize-query.js';
+import schema from './middleware/schema.js';
+import { getConfigFromEnv } from './utils/get-config-from-env.js';
+import { collectTelemetry } from './utils/telemetry.js';
+import { Url } from './utils/url.js';
+import { validateEnv } from './utils/validate-env.js';
+import { validateStorage } from './utils/validate-storage.js';
+import { init as initWebhooks } from './webhooks.js';
+const require = createRequire(import.meta.url);
+export default async function createApp() {
     const helmet = await import('helmet');
-    (0, validate_env_1.validateEnv)(['KEY', 'SECRET']);
+    validateEnv(['KEY', 'SECRET']);
     //var url = require('url');
     //logger.warn('document.location '+JSON.stringify(document.location));
-    if (!new url_1.Url(env_1.default['PUBLIC_URL']).isAbsolute()) {
-        logger_1.default.warn('PUBLIC_URL should be a full URL');
+    if (!new Url(env['PUBLIC_URL']).isAbsolute()) {
+        logger.warn('PUBLIC_URL should be a full URL');
     }
-    if (!env_1.default['SERVERLESS']) {
-        await (0, validate_storage_1.validateStorage)();
-        await (0, database_1.validateDatabaseConnection)();
-        await (0, database_1.validateDatabaseExtensions)();
-        if ((await (0, database_1.isInstalled)()) === false) {
-            logger_1.default.error(`Database doesn't have Directus tables installed.`);
+    if (!env['SERVERLESS']) {
+        await validateStorage();
+        await validateDatabaseConnection();
+        await validateDatabaseExtensions();
+        if ((await isInstalled()) === false) {
+            logger.error(`Database doesn't have Directus tables installed.`);
             process.exit(1);
         }
     }
     else {
-        logger_1.default.warn('SERVERLESS ON');
+        logger.warn('SERVERLESS ON');
     }
-    if ((await (0, database_1.validateMigrations)()) === false) {
-        logger_1.default.warn(`Database migrations have not all been run`);
+    if ((await validateMigrations()) === false) {
+        logger.warn(`Database migrations have not all been run`);
     }
-    await (0, cache_2.flushCaches)();
-    await (0, auth_2.registerAuthProviders)();
-    const extensionManager = (0, extensions_2.getExtensionManager)();
-    const flowManager = (0, flows_2.getFlowManager)();
+    await flushCaches();
+    await registerAuthProviders();
+    const extensionManager = getExtensionManager();
+    const flowManager = getFlowManager();
     await extensionManager.initialize();
     await flowManager.initialize();
-    const app = (0, express_1.default)();
+    const app = express();
     app.disable('x-powered-by');
-    app.set('trust proxy', env_1.default['IP_TRUST_PROXY']);
-    app.set('query parser', (str) => qs_1.default.parse(str, { depth: 10 }));
-    app.use(helmet.contentSecurityPolicy((0, lodash_1.merge)({
+    app.set('trust proxy', env['IP_TRUST_PROXY']);
+    app.set('query parser', (str) => qs.parse(str, { depth: 10 }));
+    app.use(helmet.contentSecurityPolicy(merge({
         useDefaults: true,
         directives: {
             // Unsafe-eval is required for vue3 / vue-i18n / app extensions
@@ -136,36 +110,36 @@ async function createApp() {
             mediaSrc: ["'self'", 'https://cdn.directus.io'],
             connectSrc: ["'self'", 'https://*'],
         },
-    }, (0, get_config_from_env_1.getConfigFromEnv)('CONTENT_SECURITY_POLICY_'))));
-    if (env_1.default['HSTS_ENABLED']) {
-        app.use(helmet.hsts((0, get_config_from_env_1.getConfigFromEnv)('HSTS_', ['HSTS_ENABLED'])));
+    }, getConfigFromEnv('CONTENT_SECURITY_POLICY_'))));
+    if (env['HSTS_ENABLED']) {
+        app.use(helmet.hsts(getConfigFromEnv('HSTS_', ['HSTS_ENABLED'])));
     }
-    await emitter_1.default.emitInit('app.before', { app });
-    await emitter_1.default.emitInit('middlewares.before', { app });
-    app.use(logger_1.expressLogger);
+    await emitter.emitInit('app.before', { app });
+    await emitter.emitInit('middlewares.before', { app });
+    app.use(expressLogger);
     app.use((_req, res, next) => {
         //res.setHeader('X-Powered-By', 'Directus');
-        res.setHeader('X-Powered-By', (env_1.default['PUBLIC_POWERBY']) ? env_1.default['PUBLIC_POWERBY'] : 'Directus');
+        res.setHeader('X-Powered-By', (env['PUBLIC_POWERBY']) ? env['PUBLIC_POWERBY'] : 'Directus');
         next();
     });
-    if (env_1.default['CORS_ENABLED'] === true) {
-        app.use(cors_1.default);
+    if (env['CORS_ENABLED'] === true) {
+        app.use(cors);
     }
     app.use((req, res, next) => {
-        express_1.default.json({
-            limit: env_1.default['MAX_PAYLOAD_SIZE'],
+        express.json({
+            limit: env['MAX_PAYLOAD_SIZE'],
         })(req, res, (err) => {
             if (err) {
-                return next(new exceptions_1.InvalidPayloadException(err.message));
+                return next(new InvalidPayloadException(err.message));
             }
             return next();
         });
     });
-    app.use((0, cookie_parser_1.default)());
-    app.use(extract_token_1.default);
+    app.use(cookieParser());
+    app.use(extractToken);
     app.get('/', (_req, res, next) => {
-        if (env_1.default['ROOT_REDIRECT']) {
-            res.redirect(env_1.default['ROOT_REDIRECT']);
+        if (env['ROOT_REDIRECT']) {
+            res.redirect(env['ROOT_REDIRECT']);
         }
         else {
             next();
@@ -174,14 +148,14 @@ async function createApp() {
     app.get('/robots.txt', (_, res) => {
         res.set('Content-Type', 'text/plain');
         res.status(200);
-        res.send(env_1.default['ROBOTS_TXT']);
+        res.send(env['ROBOTS_TXT']);
     });
-    if (env_1.default['SERVE_APP']) {
+    if (env['SERVE_APP']) {
         const adminPath = require.resolve('@directus/app');
-        const adminUrl = new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin');
+        const adminUrl = new Url(env['PUBLIC_URL']).addPath('admin');
         const embeds = extensionManager.getEmbeds();
         // Set the App's base path according to the APIs public URL
-        const html = await fs_extra_1.default.readFile(adminPath, 'utf8');
+        const html = await readFile(adminPath, 'utf8');
         const htmlWithVars = html
             .replace(/<base \/>/, `<base href="${adminUrl.toString({ rootRelative: true })}/" />`)
             .replace(/<embed-head \/>/, embeds.head)
@@ -196,65 +170,64 @@ async function createApp() {
             res.setHeader('Vary', 'Origin, Cache-Control');
         };
         app.get('/admin', sendHtml);
-        app.use('/admin', express_1.default.static(path_1.default.join(adminPath, '..'), { setHeaders: setStaticHeaders }));
+        app.use('/admin', express.static(path.join(adminPath, '..'), { setHeaders: setStaticHeaders }));
         app.use('/admin/*', sendHtml);
     }
     // use the rate limiter - all routes for now
-    if (env_1.default['RATE_LIMITER_GLOBAL_ENABLED'] === true) {
-        app.use(rate_limiter_global_1.default);
+    if (env['RATE_LIMITER_GLOBAL_ENABLED'] === true) {
+        app.use(rateLimiterGlobal);
     }
-    if (env_1.default['RATE_LIMITER_ENABLED'] === true) {
-        app.use(rate_limiter_ip_1.default);
+    if (env['RATE_LIMITER_ENABLED'] === true) {
+        app.use(rateLimiter);
     }
     app.get('/server/ping', (_req, res) => res.send('pong'));
-    app.use(authenticate_1.default);
-    if (!env_1.default['SERVERLESS']) {
-        app.use(check_ip_1.checkIP);
+    app.use(authenticate);
+    if (!env['SERVERLESS']) {
+        app.use(checkIP);
     }
-    app.use(sanitize_query_1.default);
-    app.use(cache_1.default);
-    app.use(schema_2.default);
-    app.use(get_permissions_1.default);
-    await emitter_1.default.emitInit('middlewares.after', { app });
-    await emitter_1.default.emitInit('routes.before', { app });
-    app.use('/auth', auth_1.default);
-    app.use('/graphql', graphql_1.default);
-    app.use('/activity', activity_1.default);
-    app.use('/assets', assets_1.default);
-    app.use('/collections', collections_1.default);
-    app.use('/dashboards', dashboards_1.default);
-    app.use('/extensions', extensions_1.default);
-    app.use('/fields', fields_1.default);
-    app.use('/files', files_1.default);
-    app.use('/flows', flows_1.default);
-    app.use('/folders', folders_1.default);
-    app.use('/items', items_1.default);
-    app.use('/notifications', notifications_1.default);
-    app.use('/operations', operations_1.default);
-    app.use('/panels', panels_1.default);
-    app.use('/permissions', permissions_1.default);
-    app.use('/presets', presets_1.default);
-    app.use('/relations', relations_1.default);
-    app.use('/revisions', revisions_1.default);
-    app.use('/roles', roles_1.default);
-    app.use('/schema', schema_1.default);
-    app.use('/server', server_1.default);
-    app.use('/settings', settings_1.default);
-    app.use('/shares', shares_1.default);
-    app.use('/users', users_1.default);
-    app.use('/utils', utils_1.default);
-    app.use('/webhooks', webhooks_1.default);
+    app.use(sanitizeQuery);
+    app.use(cache);
+    app.use(schema);
+    app.use(getPermissions);
+    await emitter.emitInit('middlewares.after', { app });
+    await emitter.emitInit('routes.before', { app });
+    app.use('/auth', authRouter);
+    app.use('/graphql', graphqlRouter);
+    app.use('/activity', activityRouter);
+    app.use('/assets', assetsRouter);
+    app.use('/collections', collectionsRouter);
+    app.use('/dashboards', dashboardsRouter);
+    app.use('/extensions', extensionsRouter);
+    app.use('/fields', fieldsRouter);
+    app.use('/files', filesRouter);
+    app.use('/flows', flowsRouter);
+    app.use('/folders', foldersRouter);
+    app.use('/items', itemsRouter);
+    app.use('/notifications', notificationsRouter);
+    app.use('/operations', operationsRouter);
+    app.use('/panels', panelsRouter);
+    app.use('/permissions', permissionsRouter);
+    app.use('/presets', presetsRouter);
+    app.use('/relations', relationsRouter);
+    app.use('/revisions', revisionsRouter);
+    app.use('/roles', rolesRouter);
+    app.use('/schema', schemaRouter);
+    app.use('/server', serverRouter);
+    app.use('/settings', settingsRouter);
+    app.use('/shares', sharesRouter);
+    app.use('/users', usersRouter);
+    app.use('/utils', utilsRouter);
+    app.use('/webhooks', webhooksRouter);
     // Register custom endpoints
-    await emitter_1.default.emitInit('routes.custom.before', { app });
+    await emitter.emitInit('routes.custom.before', { app });
     app.use(extensionManager.getEndpointRouter());
-    await emitter_1.default.emitInit('routes.custom.after', { app });
-    app.use(not_found_1.default);
-    app.use(error_handler_1.default);
-    await emitter_1.default.emitInit('routes.after', { app });
+    await emitter.emitInit('routes.custom.after', { app });
+    app.use(notFoundHandler);
+    app.use(errorHandler);
+    await emitter.emitInit('routes.after', { app });
     // Register all webhooks
-    await (0, webhooks_2.init)();
-    (0, track_1.track)('serverStarted');
-    await emitter_1.default.emitInit('app.after', { app });
+    await initWebhooks();
+    collectTelemetry();
+    await emitter.emitInit('app.after', { app });
     return app;
 }
-exports.default = createApp;

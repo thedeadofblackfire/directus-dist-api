@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.reduceSchema = void 0;
-const lodash_1 = require("lodash");
+import { uniq } from 'lodash-es';
 /**
  * Reduces the schema based on the included permissions. The resulting object is the schema structure, but with only
  * the allowed collections/fields/relations included based on the permissions.
@@ -9,7 +6,7 @@ const lodash_1 = require("lodash");
  * @param actions Array of permissions actions (crud)
  * @returns Reduced schema
  */
-function reduceSchema(schema, permissions, actions = ['create', 'read', 'update', 'delete']) {
+export function reduceSchema(schema, permissions, actions = ['create', 'read', 'update', 'delete']) {
     const reduced = {
         collections: {},
         relations: [],
@@ -21,7 +18,7 @@ function reduceSchema(schema, permissions, actions = ['create', 'read', 'update'
             acc[permission.collection] = [];
         }
         if (permission.fields) {
-            acc[permission.collection] = (0, lodash_1.uniq)([...acc[permission.collection], ...permission.fields]);
+            acc[permission.collection] = uniq([...acc[permission.collection], ...permission.fields]);
         }
         return acc;
     }, {}) ?? {};
@@ -79,4 +76,3 @@ function reduceSchema(schema, permissions, actions = ['create', 'read', 'update'
     });
     return reduced;
 }
-exports.reduceSchema = reduceSchema;

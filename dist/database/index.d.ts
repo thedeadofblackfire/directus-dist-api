@@ -1,8 +1,8 @@
-import SchemaInspector from '@directus/schema';
-import { Knex } from 'knex';
-import type { DatabaseClient } from '../types';
+import type { SchemaInspector } from '@directus/schema';
+import type { Knex } from 'knex';
+import type { DatabaseClient } from '../types/index.js';
 export default function getDatabase(): Knex;
-export declare function getSchemaInspector(): ReturnType<typeof SchemaInspector>;
+export declare function getSchemaInspector(): SchemaInspector;
 /**
  * Get database version. Value currently exists for MySQL only.
  *

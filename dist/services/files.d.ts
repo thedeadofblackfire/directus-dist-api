@@ -1,7 +1,7 @@
-/// <reference types="node" />
+/// <reference types="node" resolution-mode="require"/>
 import type { Readable } from 'node:stream';
-import type { AbstractServiceOptions, File, Metadata, MutationOptions, PrimaryKey } from '../types';
-import { ItemsService } from './items';
+import type { AbstractServiceOptions, File, Metadata, MutationOptions, PrimaryKey } from '../types/index.js';
+import { ItemsService } from './items.js';
 export declare class FilesService extends ItemsService {
     constructor(options: AbstractServiceOptions);
     /**

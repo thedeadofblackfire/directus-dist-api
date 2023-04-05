@@ -1,15 +1,12 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.PermissionsService = void 0;
-const cache_1 = require("../cache");
-const app_access_permissions_1 = require("../database/system-data/app-access-permissions");
-const items_1 = require("../services/items");
-const filter_items_1 = require("../utils/filter-items");
-class PermissionsService extends items_1.ItemsService {
+import { clearSystemCache, getCache } from '../cache.js';
+import { appAccessMinimalPermissions } from '../database/system-data/app-access-permissions/index.js';
+import { ItemsService } from '../services/items.js';
+import { filterItems } from '../utils/filter-items.js';
+export class PermissionsService extends ItemsService {
     systemCache;
     constructor(options) {
         super('directus_permissions', options);
-        const { systemCache } = (0, cache_1.getCache)();
+        const { systemCache } = getCache();
         this.systemCache = systemCache;
     }
     getAllowedFields(action, collection) {
@@ -33,7 +30,7 @@ class PermissionsService extends items_1.ItemsService {
     async readByQuery(query, opts) {
         const result = await super.readByQuery(query, opts);
         if (Array.isArray(result) && this.accountability && this.accountability.app === true) {
-            result.push(...(0, filter_items_1.filterItems)(app_access_permissions_1.appAccessMinimalPermissions.map((permission) => ({
+            result.push(...filterItems(appAccessMinimalPermissions.map((permission) => ({
                 ...permission,
                 role: this.accountability.role,
             })), query.filter));
@@ -43,7 +40,7 @@ class PermissionsService extends items_1.ItemsService {
     async readMany(keys, query = {}, opts) {
         const result = await super.readMany(keys, query, opts);
         if (this.accountability && this.accountability.app === true) {
-            result.push(...(0, filter_items_1.filterItems)(app_access_permissions_1.appAccessMinimalPermissions.map((permission) => ({
+            result.push(...filterItems(appAccessMinimalPermissions.map((permission) => ({
                 ...permission,
                 role: this.accountability.role,
             })), query.filter));
@@ -52,33 +49,32 @@ class PermissionsService extends items_1.ItemsService {
     }
     async createOne(data, opts) {
         const res = await super.createOne(data, opts);
-        await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+        await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
         return res;
     }
     async createMany(data, opts) {
         const res = await super.createMany(data, opts);
-        await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+        await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
         return res;
     }
     async updateBatch(data, opts) {
         const res = await super.updateBatch(data, opts);
-        await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+        await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
         return res;
     }
     async updateMany(keys, data, opts) {
         const res = await super.updateMany(keys, data, opts);
-        await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+        await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
         return res;
     }
     async upsertMany(payloads, opts) {
         const res = await super.upsertMany(payloads, opts);
-        await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+        await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
         return res;
     }
     async deleteMany(keys, opts) {
         const res = await super.deleteMany(keys, opts);
-        await (0, cache_1.clearSystemCache)({ autoPurgeCache: opts?.autoPurgeCache });
+        await clearSystemCache({ autoPurgeCache: opts?.autoPurgeCache });
         return res;
     }
 }
-exports.PermissionsService = PermissionsService;

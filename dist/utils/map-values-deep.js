@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.mapValuesDeep = void 0;
-function mapValuesDeep(obj, fn) {
+export function mapValuesDeep(obj, fn) {
     return recurse(obj);
     function recurse(obj, prefix = '') {
         if (Array.isArray(obj)) {
@@ -26,4 +23,3 @@ function mapValuesDeep(obj, fn) {
         }
     }
 }
-exports.mapValuesDeep = mapValuesDeep;

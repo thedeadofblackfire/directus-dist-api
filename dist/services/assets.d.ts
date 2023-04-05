@@ -1,10 +1,10 @@
-/// <reference types="node" />
+/// <reference types="node" resolution-mode="require"/>
 import type { Range, Stat } from '@directus/storage';
-import type { Accountability } from '@directus/shared/types';
+import type { Accountability } from '@directus/types';
 import type { Knex } from 'knex';
 import type { Readable } from 'node:stream';
-import type { AbstractServiceOptions, TransformationParams, TransformationPreset } from '../types';
-import { AuthorizationService } from './authorization';
+import type { AbstractServiceOptions, TransformationParams, TransformationPreset } from '../types/index.js';
+import { AuthorizationService } from './authorization.js';
 export declare class AssetsService {
     knex: Knex;
     accountability: Accountability | null;

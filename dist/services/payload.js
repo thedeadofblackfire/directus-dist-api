@@ -1,26 +1,20 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.PayloadService = void 0;
-const date_fns_1 = require("date-fns");
-const utils_1 = require("@directus/shared/utils");
-const flat_1 = require("flat");
-const joi_1 = __importDefault(require("joi"));
-const lodash_1 = require("lodash");
-const uuid_1 = require("uuid");
-const wellknown_1 = require("wellknown");
-const database_1 = __importDefault(require("../database"));
-const helpers_1 = require("../database/helpers");
-const exceptions_1 = require("../exceptions");
-const generate_hash_1 = require("../utils/generate-hash");
-const items_1 = require("./items");
+import { format, parseISO, isValid } from 'date-fns';
+import { parseJSON, toArray } from '@directus/utils';
+import flat from 'flat';
+import Joi from 'joi';
+import { clone, cloneDeep, isNil, isObject, isPlainObject, omit, pick } from 'lodash-es';
+import { v4 as uuid } from 'uuid';
+import { parse as wktToGeoJSON } from 'wellknown';
+import getDatabase from '../database/index.js';
+import { getHelpers } from '../database/helpers/index.js';
+import { ForbiddenException, InvalidPayloadException } from '../exceptions/index.js';
+import { generateHash } from '../utils/generate-hash.js';
+import { ItemsService } from './items.js';
 /**
  * Process a given payload for a collection to ensure the special fields (hash, uuid, date etc) are
  * handled correctly.
  */
-class PayloadService {
+export class PayloadService {
     accountability;
     knex;
     helpers;
@@ -28,8 +22,8 @@ class PayloadService {
     schema;
     constructor(collection, options) {
         this.accountability = options.accountability || null;
-        this.knex = options.knex || (0, database_1.default)();
-        this.helpers = (0, helpers_1.getHelpers)(this.knex);
+        this.knex = options.knex || getDatabase();
+        this.helpers = getHelpers(this.knex);
         this.collection = collection;
         this.schema = options.schema;
         return this;
@@ -39,13 +33,13 @@ class PayloadService {
             if (!value)
                 return;
             if (action === 'create' || action === 'update') {
-                return await (0, generate_hash_1.generateHash)(String(value));
+                return await generateHash(String(value));
             }
             return value;
         },
         async uuid({ action, value }) {
             if (action === 'create' && !value) {
-                return (0, uuid_1.v4)();
+                return uuid();
             }
             return value;
         },
@@ -67,7 +61,7 @@ class PayloadService {
             if (action === 'read') {
                 if (typeof value === 'string') {
                     try {
-                        return (0, utils_1.parseJSON)(value);
+                        return parseJSON(value);
                     }
                     catch {
                         return value;
@@ -128,7 +122,7 @@ class PayloadService {
         },
     };
     async processValues(action, payload) {
-        const processedPayload = (0, utils_1.toArray)(payload);
+        const processedPayload = toArray(payload);
         if (processedPayload.length === 0)
             return [];
         const fieldsInPayload = Object.keys(processedPayload[0]);
@@ -170,7 +164,7 @@ class PayloadService {
         const aggregateKeys = Object.keys(payload[0]).filter((key) => key.includes('->'));
         if (aggregateKeys.length) {
             for (const item of payload) {
-                Object.assign(item, (0, flat_1.unflatten)((0, lodash_1.pick)(item, aggregateKeys), { delimiter: '->' }));
+                Object.assign(item, flat.unflatten(pick(item, aggregateKeys), { delimiter: '->' }));
                 aggregateKeys.forEach((key) => delete item[key]);
             }
         }
@@ -178,8 +172,8 @@ class PayloadService {
     async processField(field, payload, action, accountability) {
         if (!field.special)
             return payload[field.field];
-        const fieldSpecials = field.special ? (0, utils_1.toArray)(field.special) : [];
-        let value = (0, lodash_1.clone)(payload[field.field]);
+        const fieldSpecials = field.special ? toArray(field.special) : [];
+        let value = clone(payload[field.field]);
         for (const special of fieldSpecials) {
             if (special in this.transformers) {
                 value = await this.transformers[special]({
@@ -202,8 +196,8 @@ class PayloadService {
      */
     processGeometries(payloads, action) {
         const process = action == 'read'
-            ? (value) => (typeof value === 'string' ? (0, wellknown_1.parse)(value) : value)
-            : (value) => this.helpers.st.fromGeoJSON(typeof value == 'string' ? (0, utils_1.parseJSON)(value) : value);
+            ? (value) => (typeof value === 'string' ? wktToGeoJSON(value) : value)
+            : (value) => this.helpers.st.fromGeoJSON(typeof value == 'string' ? parseJSON(value) : value);
         const fieldsInCollection = Object.entries(this.schema.collections[this.collection].fields);
         const geometryColumns = fieldsInCollection.filter(([_, field]) => field.type.startsWith('geometry'));
         for (const [name] of geometryColumns) {
@@ -266,16 +260,16 @@ class PayloadService {
                 else {
                     if (value instanceof Date === false && typeof value === 'string') {
                         if (dateColumn.type === 'date') {
-                            const parsedDate = (0, date_fns_1.parseISO)(value);
-                            if (!(0, date_fns_1.isValid)(parsedDate)) {
-                                throw new exceptions_1.InvalidPayloadException(`Invalid Date format in field "${dateColumn.field}"`);
+                            const parsedDate = parseISO(value);
+                            if (!isValid(parsedDate)) {
+                                throw new InvalidPayloadException(`Invalid Date format in field "${dateColumn.field}"`);
                             }
                             payload[name] = parsedDate;
                         }
                         if (dateColumn.type === 'dateTime') {
-                            const parsedDate = (0, date_fns_1.parseISO)(value);
-                            if (!(0, date_fns_1.isValid)(parsedDate)) {
-                                throw new exceptions_1.InvalidPayloadException(`Invalid DateTime format in field "${dateColumn.field}"`);
+                            const parsedDate = parseISO(value);
+                            if (!isValid(parsedDate)) {
+                                throw new InvalidPayloadException(`Invalid DateTime format in field "${dateColumn.field}"`);
                             }
                             payload[name] = parsedDate;
                         }
@@ -298,7 +292,7 @@ class PayloadService {
                     continue;
                 if (action === 'read') {
                     if (value instanceof Date)
-                        payload[name] = (0, date_fns_1.format)(value, 'HH:mm:ss');
+                        payload[name] = format(value, 'HH:mm:ss');
                 }
             }
         }
@@ -313,10 +307,10 @@ class PayloadService {
         });
         const revisions = [];
         const nestedActionEvents = [];
-        const payload = (0, lodash_1.cloneDeep)(data);
+        const payload = cloneDeep(data);
         // Only process related records that are actually in the payload
         const relationsToProcess = relations.filter((relation) => {
-            return relation.field in payload && (0, lodash_1.isPlainObject)(payload[relation.field]);
+            return relation.field in payload && isPlainObject(payload[relation.field]);
         });
         for (const relation of relationsToProcess) {
             // If the required a2o configuration fields are missing, this is a m2o instead of an a2o
@@ -324,13 +318,13 @@ class PayloadService {
                 continue;
             const relatedCollection = payload[relation.meta.one_collection_field];
             if (!relatedCollection) {
-                throw new exceptions_1.InvalidPayloadException(`Can't update nested record "${relation.collection}.${relation.field}" without field "${relation.collection}.${relation.meta.one_collection_field}" being set`);
+                throw new InvalidPayloadException(`Can't update nested record "${relation.collection}.${relation.field}" without field "${relation.collection}.${relation.meta.one_collection_field}" being set`);
             }
             const allowedCollections = relation.meta.one_allowed_collections;
             if (allowedCollections.includes(relatedCollection) === false) {
-                throw new exceptions_1.InvalidPayloadException(`"${relation.collection}.${relation.field}" can't be linked to collection "${relatedCollection}"`);
+                throw new InvalidPayloadException(`"${relation.collection}.${relation.field}" can't be linked to collection "${relatedCollection}"`);
             }
-            const itemsService = new items_1.ItemsService(relatedCollection, {
+            const itemsService = new ItemsService(relatedCollection, {
                 accountability: this.accountability,
                 knex: this.knex,
                 schema: this.schema,
@@ -348,7 +342,7 @@ class PayloadService {
                     .where({ [relatedPrimary]: relatedPrimaryKey })
                     .first());
             if (exists) {
-                const fieldsToUpdate = (0, lodash_1.omit)(relatedRecord, relatedPrimary);
+                const fieldsToUpdate = omit(relatedRecord, relatedPrimary);
                 if (Object.keys(fieldsToUpdate).length > 0) {
                     await itemsService.updateOne(relatedPrimaryKey, relatedRecord, {
                         onRevisionCreate: (pk) => revisions.push(pk),
@@ -373,7 +367,7 @@ class PayloadService {
      * Save/update all nested related m2o items inside the payload
      */
     async processM2O(data, opts) {
-        const payload = (0, lodash_1.cloneDeep)(data);
+        const payload = cloneDeep(data);
         // All the revisions saved on this level
         const revisions = [];
         const nestedActionEvents = [];
@@ -383,7 +377,7 @@ class PayloadService {
         });
         // Only process related records that are actually in the payload
         const relationsToProcess = relations.filter((relation) => {
-            return relation.field in payload && (0, lodash_1.isObject)(payload[relation.field]);
+            return relation.field in payload && isObject(payload[relation.field]);
         });
         for (const relation of relationsToProcess) {
             // If no "one collection" exists, this is a A2O, not a M2O
@@ -391,7 +385,7 @@ class PayloadService {
                 continue;
             const relatedPrimaryKeyField = this.schema.collections[relation.related_collection].primary;
             // Items service to the related collection
-            const itemsService = new items_1.ItemsService(relation.related_collection, {
+            const itemsService = new ItemsService(relation.related_collection, {
                 accountability: this.accountability,
                 knex: this.knex,
                 schema: this.schema,
@@ -408,7 +402,7 @@ class PayloadService {
                     .where({ [relatedPrimaryKeyField]: relatedPrimaryKey })
                     .first());
             if (exists) {
-                const fieldsToUpdate = (0, lodash_1.omit)(relatedRecord, relatedPrimaryKeyField);
+                const fieldsToUpdate = omit(relatedRecord, relatedPrimaryKeyField);
                 if (Object.keys(fieldsToUpdate).length > 0) {
                     await itemsService.updateOne(relatedPrimaryKey, relatedRecord, {
                         onRevisionCreate: (pk) => revisions.push(pk),
@@ -438,24 +432,24 @@ class PayloadService {
         const relations = this.schema.relations.filter((relation) => {
             return relation.related_collection === this.collection;
         });
-        const payload = (0, lodash_1.cloneDeep)(data);
+        const payload = cloneDeep(data);
         // Only process related records that are actually in the payload
         const relationsToProcess = relations.filter((relation) => {
             if (!relation.meta?.one_field)
                 return false;
             return relation.meta.one_field in payload;
         });
-        const nestedUpdateSchema = joi_1.default.object({
-            create: joi_1.default.array().items(joi_1.default.object().unknown()),
-            update: joi_1.default.array().items(joi_1.default.object().unknown()),
-            delete: joi_1.default.array().items(joi_1.default.string(), joi_1.default.number()),
+        const nestedUpdateSchema = Joi.object({
+            create: Joi.array().items(Joi.object().unknown()),
+            update: Joi.array().items(Joi.object().unknown()),
+            delete: Joi.array().items(Joi.string(), Joi.number()),
         });
         for (const relation of relationsToProcess) {
             if (!relation.meta)
                 continue;
             const currentPrimaryKeyField = this.schema.collections[relation.related_collection].primary;
             const relatedPrimaryKeyField = this.schema.collections[relation.collection].primary;
-            const itemsService = new items_1.ItemsService(relation.collection, {
+            const itemsService = new ItemsService(relation.collection, {
                 accountability: this.accountability,
                 knex: this.knex,
                 schema: this.schema,
@@ -468,7 +462,7 @@ class PayloadService {
                 const updates = field || []; // treat falsey values as removing all children
                 for (let i = 0; i < updates.length; i++) {
                     const relatedRecord = updates[i];
-                    let record = (0, lodash_1.cloneDeep)(relatedRecord);
+                    let record = cloneDeep(relatedRecord);
                     if (typeof relatedRecord === 'string' || typeof relatedRecord === 'number') {
                         const existingRecord = await this.knex
                             .select(relatedPrimaryKeyField, relation.field)
@@ -476,7 +470,7 @@ class PayloadService {
                             .where({ [relatedPrimaryKeyField]: record })
                             .first();
                         if (!!existingRecord === false) {
-                            throw new exceptions_1.ForbiddenException();
+                            throw new ForbiddenException();
                         }
                         // If the related item is already associated to the current item, and there's no
                         // other updates (which is indicated by the fact that this is just the PK, we can
@@ -484,7 +478,7 @@ class PayloadService {
                         // for items that aren't actually being updated. NOTE: We use == here, as the
                         // primary key might be reported as a string instead of number, coming from the
                         // http route, and or a bigInteger in the DB
-                        if ((0, lodash_1.isNil)(existingRecord[relation.field]) === false &&
+                        if (isNil(existingRecord[relation.field]) === false &&
                             (existingRecord[relation.field] == parent ||
                                 existingRecord[relation.field] == payload[currentPrimaryKeyField])) {
                             savedPrimaryKeys.push(existingRecord[relatedPrimaryKeyField]);
@@ -541,7 +535,7 @@ class PayloadService {
                 const alterations = field;
                 const { error } = nestedUpdateSchema.validate(alterations);
                 if (error)
-                    throw new exceptions_1.InvalidPayloadException(`Invalid one-to-many update structure: ${error.message}`);
+                    throw new InvalidPayloadException(`Invalid one-to-many update structure: ${error.message}`);
                 if (alterations.create) {
                     const sortField = relation.meta.sort_field;
                     let createPayload;
@@ -553,7 +547,7 @@ class PayloadService {
                             .max(sortField, { as: 'max' })
                             .first();
                         createPayload = alterations.create.map((item, index) => {
-                            const record = (0, lodash_1.cloneDeep)(item);
+                            const record = cloneDeep(item);
                             // add sort field value if it is not supplied in the item
                             if (parent !== null && record[sortField] === undefined) {
                                 record[sortField] = highestOrderNumber?.max ? highestOrderNumber.max + index + 1 : index + 1;
@@ -629,7 +623,7 @@ class PayloadService {
      * between delta and data
      */
     async prepareDelta(data) {
-        let payload = (0, lodash_1.cloneDeep)(data);
+        let payload = cloneDeep(data);
         for (const key in payload) {
             if (payload[key]?.isRawInstance) {
                 payload[key] = payload[key].bindings[0];
@@ -641,4 +635,3 @@ class PayloadService {
         return JSON.stringify(payload);
     }
 }
-exports.PayloadService = PayloadService;

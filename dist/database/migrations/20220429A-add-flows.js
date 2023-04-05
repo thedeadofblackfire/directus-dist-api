@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
-const uuid_1 = require("uuid");
-async function up(knex) {
+import { parseJSON, toArray } from '@directus/utils';
+import { v4 as uuid } from 'uuid';
+export async function up(knex) {
     await knex.schema.createTable('directus_flows', (table) => {
         table.uuid('id').primary().notNullable();
         table.string('name').notNullable();
@@ -36,7 +33,7 @@ async function up(knex) {
     const flows = [];
     const operations = [];
     for (const webhook of webhooks) {
-        const flowID = (0, uuid_1.v4)();
+        const flowID = uuid();
         flows.push({
             id: flowID,
             name: webhook.name,
@@ -45,12 +42,12 @@ async function up(knex) {
             options: JSON.stringify({
                 name: webhook.name,
                 type: 'action',
-                scope: (0, utils_1.toArray)(webhook.actions).map((scope) => `items.${scope}`),
-                collections: (0, utils_1.toArray)(webhook.collections),
+                scope: toArray(webhook.actions).map((scope) => `items.${scope}`),
+                collections: toArray(webhook.collections),
             }),
         });
         operations.push({
-            id: (0, uuid_1.v4)(),
+            id: uuid(),
             name: 'Request',
             key: 'request',
             type: 'request',
@@ -58,7 +55,7 @@ async function up(knex) {
             position_y: 1,
             options: JSON.stringify({
                 url: webhook.url,
-                headers: typeof webhook.headers === 'string' ? (0, utils_1.parseJSON)(webhook.headers) : webhook.headers,
+                headers: typeof webhook.headers === 'string' ? parseJSON(webhook.headers) : webhook.headers,
                 data: webhook.data ? '{{$trigger}}' : null,
                 method: webhook.method,
             }),
@@ -74,9 +71,7 @@ async function up(knex) {
         }
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex.schema.dropTable('directus_operations');
     await knex.schema.dropTable('directus_flows');
 }
-exports.down = down;

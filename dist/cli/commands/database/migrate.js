@@ -1,29 +1,23 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const run_1 = __importDefault(require("../../../database/migrations/run"));
-const database_1 = __importDefault(require("../../../database"));
-const logger_1 = __importDefault(require("../../../logger"));
-async function migrate(direction) {
-    const database = (0, database_1.default)();
+import run from '../../../database/migrations/run.js';
+import getDatabase from '../../../database/index.js';
+import logger from '../../../logger.js';
+export default async function migrate(direction) {
+    const database = getDatabase();
     try {
-        logger_1.default.info('Running migrations...');
-        await (0, run_1.default)(database, direction);
+        logger.info('Running migrations...');
+        await run(database, direction);
         if (direction === 'down') {
-            logger_1.default.info('Downgrade successful');
+            logger.info('Downgrade successful');
         }
         else {
-            logger_1.default.info('Database up to date');
+            logger.info('Database up to date');
         }
         database.destroy();
         process.exit();
     }
     catch (err) {
-        logger_1.default.error(err);
+        logger.error(err);
         database.destroy();
         process.exit(1);
     }
 }
-exports.default = migrate;

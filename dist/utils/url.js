@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Url = void 0;
-const url_1 = require("url");
-class Url {
+import { URL } from 'url';
+export class Url {
     protocol;
     host;
     port;
@@ -10,7 +7,7 @@ class Url {
     query;
     hash;
     constructor(url) {
-        const parsedUrl = new url_1.URL(url, 'http://localhost');
+        const parsedUrl = new URL(url, 'http://localhost');
         const isProtocolRelative = /^\/\//.test(url);
         const isRootRelative = /^\/$|^\/[^/]/.test(url);
         const isPathRelative = /^\./.test(url);
@@ -60,4 +57,3 @@ class Url {
         return `${!rootRelative ? origin : ''}${path}${query}${hash}`;
     }
 }
-exports.Url = Url;

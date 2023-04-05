@@ -1,8 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.appAccessMinimalPermissions = exports.schemaPermissions = void 0;
-const lodash_1 = require("lodash");
-const require_yaml_1 = require("../../../utils/require-yaml");
+import { merge } from 'lodash-es';
+import path, { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { requireYAML } from '../../../utils/require-yaml.js';
 const defaults = {
     role: null,
     permissions: {},
@@ -11,7 +10,8 @@ const defaults = {
     fields: ['*'],
     system: true,
 };
-const schemaPermissionsRaw = (0, require_yaml_1.requireYAML)(require.resolve('./schema-access-permissions.yaml'));
-const permissions = (0, require_yaml_1.requireYAML)(require.resolve('./app-access-permissions.yaml'));
-exports.schemaPermissions = schemaPermissionsRaw.map((row) => (0, lodash_1.merge)({}, defaults, row));
-exports.appAccessMinimalPermissions = [...exports.schemaPermissions, ...permissions].map((row) => (0, lodash_1.merge)({}, defaults, row));
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const schemaPermissionsRaw = requireYAML(path.resolve(__dirname, './schema-access-permissions.yaml'));
+const permissions = requireYAML(path.resolve(__dirname, './app-access-permissions.yaml'));
+export const schemaPermissions = schemaPermissionsRaw.map((row) => merge({}, defaults, row));
+export const appAccessMinimalPermissions = [...schemaPermissions, ...permissions].map((row) => merge({}, defaults, row));

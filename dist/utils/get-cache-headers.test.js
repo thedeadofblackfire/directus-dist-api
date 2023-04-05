@@ -1,15 +1,13 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const get_cache_headers_1 = require("./get-cache-headers");
+import { describe, expect, vi, test } from 'vitest';
+import { getCacheControlHeader } from './get-cache-headers.js';
 let factoryEnv = {};
-vitest_1.vi.mock('../../src/env', () => ({
+vi.mock('../../src/env', () => ({
     default: new Proxy({}, {
         get(_target, prop) {
             return factoryEnv[prop];
         },
     }),
-    getEnv: vitest_1.vi.fn().mockImplementation(() => factoryEnv),
+    getEnv: vi.fn().mockImplementation(() => factoryEnv),
 }));
 const scenarios = [
     // Test the cache-control header
@@ -183,20 +181,20 @@ const scenarios = [
         output: 'max-age=5679',
     },
 ];
-(0, vitest_1.describe)('get cache headers', () => {
+describe('get cache headers', () => {
     for (const scenario of scenarios) {
-        (0, vitest_1.test)(scenario.name, () => {
+        test(scenario.name, () => {
             const mockRequest = {
                 headers: scenario.input.headers,
                 accountability: scenario.input.accountability,
-                get: vitest_1.vi.fn().mockImplementation((header) => {
+                get: vi.fn().mockImplementation((header) => {
                     const matchingKey = Object.keys(scenario.input.headers).find((key) => key.toLowerCase() === header);
                     return matchingKey ? scenario.input.headers?.[matchingKey] : undefined;
                 }),
             };
             factoryEnv = scenario.input.env;
             const { ttl, globalCacheSettings, personalized } = scenario.input;
-            (0, vitest_1.expect)((0, get_cache_headers_1.getCacheControlHeader)(mockRequest, ttl, globalCacheSettings, personalized)).toEqual(scenario.output);
+            expect(getCacheControlHeader(mockRequest, ttl, globalCacheSettings, personalized)).toEqual(scenario.output);
         });
     }
 });

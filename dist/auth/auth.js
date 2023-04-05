@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthDriver = void 0;
-class AuthDriver {
+export class AuthDriver {
     knex;
     schema;
     constructor(options, _config) {
@@ -37,4 +34,3 @@ class AuthDriver {
         return;
     }
 }
-exports.AuthDriver = AuthDriver;

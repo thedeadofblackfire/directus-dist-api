@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ValueOutOfRangeException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class ValueOutOfRangeException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class ValueOutOfRangeException extends BaseException {
     constructor(field, exceptions) {
         if (field) {
             super(`Numeric value in field "${field ?? ''}" is out of range.`, 400, 'VALUE_OUT_OF_RANGE', exceptions);
@@ -12,4 +9,3 @@ class ValueOutOfRangeException extends exceptions_1.BaseException {
         }
     }
 }
-exports.ValueOutOfRangeException = ValueOutOfRangeException;

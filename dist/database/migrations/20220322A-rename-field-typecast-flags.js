@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
-const lodash_1 = require("lodash");
-async function up(knex) {
+import { toArray } from '@directus/utils';
+import { isArray } from 'lodash-es';
+export async function up(knex) {
     const fields = await knex
         .select('id', 'special')
         .from('directus_fields')
@@ -12,12 +9,12 @@ async function up(knex) {
     for (const { id, special } of fields) {
         let parsedSpecial;
         try {
-            parsedSpecial = (0, utils_1.toArray)(special);
+            parsedSpecial = toArray(special);
         }
         catch {
             continue;
         }
-        if (parsedSpecial && (0, lodash_1.isArray)(parsedSpecial)) {
+        if (parsedSpecial && isArray(parsedSpecial)) {
             let updateRequired = false;
             parsedSpecial = parsedSpecial.map((special) => {
                 switch (special) {
@@ -38,8 +35,7 @@ async function up(knex) {
         }
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     const fields = await knex
         .select('id', 'special')
         .from('directus_fields')
@@ -48,12 +44,12 @@ async function down(knex) {
     for (const { id, special } of fields) {
         let parsedSpecial;
         try {
-            parsedSpecial = (0, utils_1.toArray)(special);
+            parsedSpecial = toArray(special);
         }
         catch {
             continue;
         }
-        if (parsedSpecial && (0, lodash_1.isArray)(parsedSpecial)) {
+        if (parsedSpecial && isArray(parsedSpecial)) {
             let updateRequired = false;
             parsedSpecial = parsedSpecial.map((special) => {
                 switch (special) {
@@ -74,4 +70,3 @@ async function down(knex) {
         }
     }
 }
-exports.down = down;

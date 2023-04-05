@@ -1,31 +1,23 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.sanitizeRelation = exports.sanitizeField = exports.sanitizeCollection = void 0;
-const lodash_1 = require("lodash");
+import { pick } from 'lodash-es';
 /**
  * Pick certain database vendor specific collection properties that should be compared when performing diff
  *
  * @param collection collection to sanitize
  * @returns sanitized collection
- *
- * @see {@link https://github.com/knex/knex-schema-inspector/blob/master/lib/types/table.ts}
  */
-function sanitizeCollection(collection) {
+export function sanitizeCollection(collection) {
     if (!collection)
         return collection;
-    return (0, lodash_1.pick)(collection, ['collection', 'fields', 'meta', 'schema.name']);
+    return pick(collection, ['collection', 'fields', 'meta', 'schema.name']);
 }
-exports.sanitizeCollection = sanitizeCollection;
 /**
  * Pick certain database vendor specific field properties that should be compared when performing diff
  *
  * @param field field to sanitize
  * @param sanitizeAllSchema Whether or not the whole field schema should be sanitized. Mainly used to prevent modifying autoincrement fields
  * @returns sanitized field
- *
- * @see {@link https://github.com/knex/knex-schema-inspector/blob/master/lib/types/column.ts}
  */
-function sanitizeField(field, sanitizeAllSchema = false) {
+export function sanitizeField(field, sanitizeAllSchema = false) {
     if (!field)
         return field;
     const defaultPaths = ['collection', 'field', 'type', 'meta', 'name', 'children'];
@@ -49,21 +41,18 @@ function sanitizeField(field, sanitizeAllSchema = false) {
             'schema.foreign_key_table',
             'schema.foreign_key_column',
         ];
-    return (0, lodash_1.pick)(field, pickedPaths);
+    return pick(field, pickedPaths);
 }
-exports.sanitizeField = sanitizeField;
 /**
  * Pick certain database vendor specific relation properties that should be compared when performing diff
  *
  * @param relation relation to sanitize
  * @returns sanitized relation
- *
- * @see {@link https://github.com/knex/knex-schema-inspector/blob/master/lib/types/foreign-key.ts}
  */
-function sanitizeRelation(relation) {
+export function sanitizeRelation(relation) {
     if (!relation)
         return relation;
-    return (0, lodash_1.pick)(relation, [
+    return pick(relation, [
         'collection',
         'field',
         'related_collection',
@@ -77,4 +66,3 @@ function sanitizeRelation(relation) {
         'schema.on_delete',
     ]);
 }
-exports.sanitizeRelation = sanitizeRelation;

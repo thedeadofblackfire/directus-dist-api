@@ -1,4 +1,4 @@
-import type { Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 export type MessengerSubscriptionCallback = (payload: Record<string, any>) => void;
 export interface Messenger {
     publish: (channel: string, payload: Record<string, any>) => void;

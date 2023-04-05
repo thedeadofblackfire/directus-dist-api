@@ -1,20 +1,16 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const lodash_1 = require("lodash");
-const path_1 = __importDefault(require("path"));
-const env_1 = __importDefault(require("../../env"));
-const logger_1 = __importDefault(require("../../logger"));
-const dynamic_import_1 = require("../../utils/dynamic-import");
-// @ts-ignore
-const format_title_1 = __importDefault(require("@directus/format-title"));
-async function run(database, direction, log = true) {
-    let migrationFiles = await fs_extra_1.default.readdir(__dirname);
-    const customMigrationsPath = path_1.default.resolve(env_1.default['EXTENSIONS_PATH'], 'migrations');
-    let customMigrationFiles = ((await fs_extra_1.default.pathExists(customMigrationsPath)) && (await fs_extra_1.default.readdir(customMigrationsPath))) || [];
+import formatTitle from '@directus/format-title';
+import fse from 'fs-extra';
+import { orderBy } from 'lodash-es';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+import env from '../../env.js';
+import logger from '../../logger.js';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export default async function run(database, direction, log = true) {
+    let migrationFiles = await fse.readdir(__dirname);
+    const customMigrationsPath = path.resolve(env['EXTENSIONS_PATH'], 'migrations');
+    let customMigrationFiles = ((await fse.pathExists(customMigrationsPath)) && (await fse.readdir(customMigrationsPath))) || [];
     migrationFiles = migrationFiles.filter((file) => /^[0-9]+[A-Z]-[^.]+\.(?:js|ts)$/.test(file));
     customMigrationFiles = customMigrationFiles.filter((file) => file.endsWith('.js'));
     const completedMigrations = await database.select('*').from('directus_migrations').orderBy('version');
@@ -28,10 +24,10 @@ async function run(database, direction, log = true) {
     }
     function parseFilePath(filePath, custom = false) {
         const version = filePath.split('-')[0];
-        const name = (0, format_title_1.default)(filePath.split('-').slice(1).join('_').split('.')[0]);
+        const name = formatTitle(filePath.split('-').slice(1).join('_').split('.')[0]);
         const completed = !!completedMigrations.find((migration) => migration.version === version);
         return {
-            file: custom ? path_1.default.join(customMigrationsPath, filePath) : path_1.default.join(__dirname, filePath),
+            file: custom ? path.join(customMigrationsPath, filePath) : path.join(__dirname, filePath),
             version,
             name,
             completed,
@@ -57,15 +53,15 @@ async function run(database, direction, log = true) {
         if (!nextVersion) {
             throw Error('Nothing to upgrade');
         }
-        const { up } = await (0, dynamic_import_1.dynamicImport)(nextVersion.file);
+        const { up } = await import(nextVersion.file);
         if (log) {
-            logger_1.default.info(`Applying ${nextVersion.name}...`);
+            logger.info(`Applying ${nextVersion.name}...`);
         }
         await up(database);
         await database.insert({ version: nextVersion.version, name: nextVersion.name }).into('directus_migrations');
     }
     async function down() {
-        const lastAppliedMigration = (0, lodash_1.orderBy)(completedMigrations, ['timestamp', 'version'], ['desc', 'desc'])[0];
+        const lastAppliedMigration = orderBy(completedMigrations, ['timestamp', 'version'], ['desc', 'desc'])[0];
         if (!lastAppliedMigration) {
             throw Error('Nothing to downgrade');
         }
@@ -73,9 +69,9 @@ async function run(database, direction, log = true) {
         if (!migration) {
             throw new Error("Couldn't find migration");
         }
-        const { down } = await (0, dynamic_import_1.dynamicImport)(migration.file);
+        const { down } = await import(migration.file);
         if (log) {
-            logger_1.default.info(`Undoing ${migration.name}...`);
+            logger.info(`Undoing ${migration.name}...`);
         }
         await down(database);
         await database('directus_migrations').delete().where({ version: migration.version });
@@ -83,9 +79,9 @@ async function run(database, direction, log = true) {
     async function latest() {
         for (const migration of migrations) {
             if (migration.completed === false) {
-                const { up } = await (0, dynamic_import_1.dynamicImport)(migration.file);
+                const { up } = await import(migration.file);
                 if (log) {
-                    logger_1.default.info(`Applying ${migration.name}...`);
+                    logger.info(`Applying ${migration.name}...`);
                 }
                 await up(database);
                 await database.insert({ version: migration.version, name: migration.name }).into('directus_migrations');
@@ -93,4 +89,3 @@ async function run(database, direction, log = true) {
         }
     }
 }
-exports.default = run;

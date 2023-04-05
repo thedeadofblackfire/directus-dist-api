@@ -1,26 +1,21 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const knex_1 = __importDefault(require("knex"));
-const knex_mock_client_1 = require("knex-mock-client");
-const vitest_1 = require("vitest");
-const _1 = require(".");
-const __1 = require("..");
-const apply_diff_1 = require("../utils/apply-diff");
-const get_snapshot_1 = require("../utils/get-snapshot");
-vitest_1.vi.mock('../../package.json', () => ({ version: '0.0.0' }));
-vitest_1.vi.mock('../../src/database/index', () => {
-    return { __esModule: true, default: vitest_1.vi.fn(), getDatabaseClient: vitest_1.vi.fn().mockReturnValue('postgres') };
+import knex from 'knex';
+import { createTracker, MockClient } from 'knex-mock-client';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { SchemaService } from './schema.js';
+import { ForbiddenException } from '../exceptions/forbidden.js';
+import { applyDiff } from '../utils/apply-diff.js';
+import { getSnapshot } from '../utils/get-snapshot.js';
+vi.mock('../utils/package.js', () => ({ version: '0.0.0' }));
+vi.mock('../../src/database/index.js', () => {
+    return { __esModule: true, default: vi.fn(), getDatabaseClient: vi.fn().mockReturnValue('postgres') };
 });
-vitest_1.vi.mock('../utils/get-snapshot', () => ({
-    getSnapshot: vitest_1.vi.fn(),
+vi.mock('../utils/get-snapshot.js', () => ({
+    getSnapshot: vi.fn(),
 }));
-vitest_1.vi.mock('../utils/apply-diff', () => ({
-    applyDiff: vitest_1.vi.fn(),
+vi.mock('../utils/apply-diff.js', () => ({
+    applyDiff: vi.fn(),
 }));
-class Client_PG extends knex_mock_client_1.MockClient {
+class Client_PG extends MockClient {
 }
 let db;
 let tracker;
@@ -55,28 +50,28 @@ const testCollectionDiff = {
         },
     ],
 };
-(0, vitest_1.beforeAll)(() => {
-    db = (0, knex_1.default)({ client: Client_PG });
-    tracker = (0, knex_mock_client_1.createTracker)(db);
+beforeAll(() => {
+    db = knex.default({ client: Client_PG });
+    tracker = createTracker(db);
 });
-(0, vitest_1.afterEach)(() => {
+afterEach(() => {
     tracker.reset();
-    vitest_1.vi.clearAllMocks();
+    vi.clearAllMocks();
 });
-(0, vitest_1.describe)('Services / Schema', () => {
-    (0, vitest_1.describe)('snapshot', () => {
-        (0, vitest_1.it)('should throw ForbiddenException for non-admin user', async () => {
-            vitest_1.vi.mocked(get_snapshot_1.getSnapshot).mockResolvedValueOnce(testSnapshot);
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'test', admin: false } });
-            (0, vitest_1.expect)(service.snapshot()).rejects.toThrowError(__1.ForbiddenException);
+describe('Services / Schema', () => {
+    describe('snapshot', () => {
+        it('should throw ForbiddenException for non-admin user', async () => {
+            vi.mocked(getSnapshot).mockResolvedValueOnce(testSnapshot);
+            const service = new SchemaService({ knex: db, accountability: { role: 'test', admin: false } });
+            expect(service.snapshot()).rejects.toThrowError(ForbiddenException);
         });
-        (0, vitest_1.it)('should return snapshot for admin user', async () => {
-            vitest_1.vi.mocked(get_snapshot_1.getSnapshot).mockResolvedValueOnce(testSnapshot);
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
-            (0, vitest_1.expect)(service.snapshot()).resolves.toEqual(testSnapshot);
+        it('should return snapshot for admin user', async () => {
+            vi.mocked(getSnapshot).mockResolvedValueOnce(testSnapshot);
+            const service = new SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
+            expect(service.snapshot()).resolves.toEqual(testSnapshot);
         });
     });
-    (0, vitest_1.describe)('apply', () => {
+    describe('apply', () => {
         const snapshotDiffWithHash = {
             hash: '813b3cdf7013310fafde7813b7d5e6bd4eb1e73f',
             diff: {
@@ -85,20 +80,20 @@ const testCollectionDiff = {
                 relations: [],
             },
         };
-        (0, vitest_1.it)('should throw ForbiddenException for non-admin user', async () => {
-            vitest_1.vi.mocked(get_snapshot_1.getSnapshot).mockResolvedValueOnce(testSnapshot);
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'test', admin: false } });
-            (0, vitest_1.expect)(service.apply(snapshotDiffWithHash)).rejects.toThrowError(__1.ForbiddenException);
-            (0, vitest_1.expect)(vitest_1.vi.mocked(apply_diff_1.applyDiff)).not.toHaveBeenCalledOnce();
+        it('should throw ForbiddenException for non-admin user', async () => {
+            vi.mocked(getSnapshot).mockResolvedValueOnce(testSnapshot);
+            const service = new SchemaService({ knex: db, accountability: { role: 'test', admin: false } });
+            expect(service.apply(snapshotDiffWithHash)).rejects.toThrowError(ForbiddenException);
+            expect(vi.mocked(applyDiff)).not.toHaveBeenCalledOnce();
         });
-        (0, vitest_1.it)('should apply for admin user', async () => {
-            vitest_1.vi.mocked(get_snapshot_1.getSnapshot).mockResolvedValueOnce(testSnapshot);
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
+        it('should apply for admin user', async () => {
+            vi.mocked(getSnapshot).mockResolvedValueOnce(testSnapshot);
+            const service = new SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
             await service.apply(snapshotDiffWithHash);
-            (0, vitest_1.expect)(vitest_1.vi.mocked(apply_diff_1.applyDiff)).toHaveBeenCalledOnce();
+            expect(vi.mocked(applyDiff)).toHaveBeenCalledOnce();
         });
     });
-    (0, vitest_1.describe)('diff', () => {
+    describe('diff', () => {
         const snapshotToApply = {
             directus: '0.0.0',
             version: 1,
@@ -125,29 +120,29 @@ const testCollectionDiff = {
             fields: [],
             relations: [],
         };
-        (0, vitest_1.it)('should throw ForbiddenException for non-admin user', async () => {
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'test', admin: false } });
-            (0, vitest_1.expect)(service.diff(snapshotToApply, { currentSnapshot: testSnapshot, force: true })).rejects.toThrowError(__1.ForbiddenException);
+        it('should throw ForbiddenException for non-admin user', async () => {
+            const service = new SchemaService({ knex: db, accountability: { role: 'test', admin: false } });
+            expect(service.diff(snapshotToApply, { currentSnapshot: testSnapshot, force: true })).rejects.toThrowError(ForbiddenException);
         });
-        (0, vitest_1.it)('should return diff for admin user', async () => {
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
-            (0, vitest_1.expect)(service.diff(snapshotToApply, { currentSnapshot: testSnapshot, force: true })).resolves.toEqual({
+        it('should return diff for admin user', async () => {
+            const service = new SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
+            expect(service.diff(snapshotToApply, { currentSnapshot: testSnapshot, force: true })).resolves.toEqual({
                 collections: [testCollectionDiff],
                 fields: [],
                 relations: [],
             });
         });
-        (0, vitest_1.it)('should return null for empty diff', async () => {
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
-            (0, vitest_1.expect)(service.diff(testSnapshot, { currentSnapshot: testSnapshot, force: true })).resolves.toBeNull();
+        it('should return null for empty diff', async () => {
+            const service = new SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
+            expect(service.diff(testSnapshot, { currentSnapshot: testSnapshot, force: true })).resolves.toBeNull();
         });
     });
-    (0, vitest_1.describe)('getHashedSnapshot', () => {
-        (0, vitest_1.it)('should return snapshot for admin user', async () => {
-            const service = new _1.SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
-            (0, vitest_1.expect)(service.getHashedSnapshot(testSnapshot)).toEqual(vitest_1.expect.objectContaining({
+    describe('getHashedSnapshot', () => {
+        it('should return snapshot for admin user', async () => {
+            const service = new SchemaService({ knex: db, accountability: { role: 'admin', admin: true } });
+            expect(service.getHashedSnapshot(testSnapshot)).toEqual(expect.objectContaining({
                 ...testSnapshot,
-                hash: vitest_1.expect.any(String),
+                hash: expect.any(String),
             }));
         });
     });

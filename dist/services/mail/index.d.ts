@@ -1,7 +1,7 @@
-import type { Accountability, SchemaOverview } from '@directus/shared/types';
+import type { Accountability, SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
 import type { SendMailOptions, Transporter } from 'nodemailer';
-import type { AbstractServiceOptions } from '../../types';
+import type { AbstractServiceOptions } from '../../types/index.js';
 export type EmailOptions = SendMailOptions & {
     template?: {
         name: string;

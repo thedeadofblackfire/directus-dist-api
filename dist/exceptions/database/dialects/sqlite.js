@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractError = void 0;
-const contains_null_values_1 = require("../contains-null-values");
-const invalid_foreign_key_1 = require("../invalid-foreign-key");
-const not_null_violation_1 = require("../not-null-violation");
-const record_not_unique_1 = require("../record-not-unique");
+import { ContainsNullValuesException } from '../contains-null-values.js';
+import { InvalidForeignKeyException } from '../invalid-foreign-key.js';
+import { NotNullViolationException } from '../not-null-violation.js';
+import { RecordNotUniqueException } from '../record-not-unique.js';
 // NOTE:
 // - Sqlite doesn't have varchar with length support, so no ValueTooLongException
 // - Sqlite doesn't have a max range for numbers, so no ValueOutOfRangeException
-function extractError(error) {
+export function extractError(error) {
     if (error.message.includes('SQLITE_CONSTRAINT: NOT NULL')) {
         return notNullConstraint(error);
     }
@@ -17,7 +14,7 @@ function extractError(error) {
         const [table, column] = errorParts[errorParts.length - 1].split('.');
         if (!table || !column)
             return error;
-        return new record_not_unique_1.RecordNotUniqueException(column, {
+        return new RecordNotUniqueException(column, {
             collection: table,
             field: column,
         });
@@ -28,11 +25,10 @@ function extractError(error) {
          * SQLite doesn't return any useful information in it's foreign key constraint failed error, so
          * we can't extract the table/column/value accurately
          */
-        return new invalid_foreign_key_1.InvalidForeignKeyException(null);
+        return new InvalidForeignKeyException(null);
     }
     return error;
 }
-exports.extractError = extractError;
 function notNullConstraint(error) {
     const errorParts = error.message.split(' ');
     const [table, column] = errorParts[errorParts.length - 1].split('.');
@@ -44,9 +40,9 @@ function notNullConstraint(error) {
         // start with _knex_temp. The best we can do in this case is check for that, and use it to
         // decide between NotNullViolation and ContainsNullValues
         if (table.startsWith('_knex_temp_alter')) {
-            return new contains_null_values_1.ContainsNullValuesException(column);
+            return new ContainsNullValuesException(column);
         }
-        return new not_null_violation_1.NotNullViolationException(column, {
+        return new NotNullViolationException(column, {
             collection: table,
             field: column,
         });

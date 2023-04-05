@@ -1,7 +1,7 @@
-import type { Field, RawField } from '@directus/shared/types';
+import type { Field, RawField } from '@directus/types';
 import type { Knex } from 'knex';
 import { GeoJSONGeometry } from 'wellknown';
-import { DatabaseHelper } from '../types';
+import { DatabaseHelper } from '../types.js';
 export declare abstract class GeometryHelper extends DatabaseHelper {
     supported(): boolean | Promise<boolean>;
     isTrue(expression: Knex.Raw): Knex.Raw<any>;

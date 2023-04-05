@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.stall = void 0;
-const perf_hooks_1 = require("perf_hooks");
+import { performance } from 'perf_hooks';
 /**
  * Wait a specific time to meet the stall ms. Useful in cases where you need to make sure that every
  * path in a function takes at least X ms (for example authenticate).
@@ -27,12 +24,11 @@ const perf_hooks_1 = require("perf_hooks");
  * }
  * ```
  */
-async function stall(ms, start) {
-    const now = perf_hooks_1.performance.now();
+export async function stall(ms, start) {
+    const now = performance.now();
     const timeElapsed = now - start;
     const timeRemaining = ms - timeElapsed;
     if (timeRemaining <= 0)
         return;
     return new Promise((resolve) => setTimeout(resolve, timeRemaining));
 }
-exports.stall = stall;

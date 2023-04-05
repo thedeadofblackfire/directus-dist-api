@@ -1,7 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const filter_items_1 = require("../../src/utils/filter-items");
-const vitest_1 = require("vitest");
+import { filterItems } from '../../src/utils/filter-items.js';
+import { describe, test, expect } from 'vitest';
 const items = [
     {
         role: '9bc9fea0-f761-4107-bfb7-b3d06c125e98',
@@ -28,17 +26,17 @@ const items = [
         action: 'delete',
     },
 ];
-(0, vitest_1.describe)('filter items', () => {
-    (0, vitest_1.test)('return items when no filter', () => {
-        const result = (0, filter_items_1.filterItems)(items, undefined);
-        (0, vitest_1.expect)(result).toStrictEqual(items);
+describe('filter items', () => {
+    test('return items when no filter', () => {
+        const result = filterItems(items, undefined);
+        expect(result).toStrictEqual(items);
     });
-    (0, vitest_1.test)('return items when empty filter used', () => {
-        const result = (0, filter_items_1.filterItems)(items, {});
-        (0, vitest_1.expect)(result).toStrictEqual(items);
+    test('return items when empty filter used', () => {
+        const result = filterItems(items, {});
+        expect(result).toStrictEqual(items);
     });
-    (0, vitest_1.test)('return filtered items when nested empty filter used', () => {
-        const result = (0, filter_items_1.filterItems)(items, {
+    test('return filtered items when nested empty filter used', () => {
+        const result = filterItems(items, {
             _and: [
                 {
                     action: {
@@ -48,14 +46,14 @@ const items = [
                 {},
             ],
         });
-        (0, vitest_1.expect)(result).toStrictEqual(items.filter((item) => item.action === 'read'));
+        expect(result).toStrictEqual(items.filter((item) => item.action === 'read'));
     });
-    (0, vitest_1.test)('return filtered items', () => {
-        const result = (0, filter_items_1.filterItems)(items, {
+    test('return filtered items', () => {
+        const result = filterItems(items, {
             action: {
                 _eq: 'read',
             },
         });
-        (0, vitest_1.expect)(result).toStrictEqual(items.filter((item) => item.action === 'read'));
+        expect(result).toStrictEqual(items.filter((item) => item.action === 'read'));
     });
 });

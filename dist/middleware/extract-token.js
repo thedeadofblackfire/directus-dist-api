@@ -1,4 +1,3 @@
-"use strict";
 /**
  * Extract access token from:
  *
@@ -7,7 +6,6 @@
  *
  * and store in req.token
  */
-Object.defineProperty(exports, "__esModule", { value: true });
 const extractToken = (req, _res, next) => {
     let token = null;
     if (req.query && req.query['access_token']) {
@@ -29,4 +27,4 @@ const extractToken = (req, _res, next) => {
     req.token = token;
     next();
 };
-exports.default = extractToken;
+export default extractToken;

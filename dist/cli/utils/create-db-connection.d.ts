@@ -1,5 +1,5 @@
-import { Knex } from 'knex';
-import type { Driver } from '../../types';
+import type { Knex } from 'knex';
+import type { Driver } from '../../types/index.js';
 export type Credentials = {
     filename?: string;
     host?: string;

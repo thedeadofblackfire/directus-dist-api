@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.userName = void 0;
-function userName(user) {
+export function userName(user) {
     if (!user) {
         return 'Unknown User';
     }
@@ -16,4 +13,3 @@ function userName(user) {
     }
     return 'Unknown User';
 }
-exports.userName = userName;

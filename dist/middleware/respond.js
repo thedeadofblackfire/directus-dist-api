@@ -1,43 +1,37 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.respond = void 0;
-const bytes_1 = require("bytes");
-const cache_1 = require("../cache");
-const env_1 = __importDefault(require("../env"));
-const logger_1 = __importDefault(require("../logger"));
-const services_1 = require("../services");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const get_cache_headers_1 = require("../utils/get-cache-headers");
-const get_cache_key_1 = require("../utils/get-cache-key");
-const get_date_formatted_1 = require("../utils/get-date-formatted");
-const get_milliseconds_1 = require("../utils/get-milliseconds");
-const get_string_byte_size_1 = require("../utils/get-string-byte-size");
-exports.respond = (0, async_handler_1.default)(async (req, res) => {
-    const { cache } = (0, cache_1.getCache)();
+import { parse as parseBytesConfiguration } from 'bytes';
+import { getCache, setCacheValue } from '../cache.js';
+import env from '../env.js';
+import logger from '../logger.js';
+import { ExportService } from '../services/import-export.js';
+import asyncHandler from '../utils/async-handler.js';
+import { getCacheControlHeader } from '../utils/get-cache-headers.js';
+import { getCacheKey } from '../utils/get-cache-key.js';
+import { getDateFormatted } from '../utils/get-date-formatted.js';
+import { getMilliseconds } from '../utils/get-milliseconds.js';
+import { stringByteSize } from '../utils/get-string-byte-size.js';
+export const respond = asyncHandler(async (req, res) => {
+    const { cache } = getCache();
     let exceedsMaxSize = false;
-    if (env_1.default['CACHE_VALUE_MAX_SIZE'] !== false) {
-        const valueSize = res.locals['payload'] ? (0, get_string_byte_size_1.stringByteSize)(JSON.stringify(res.locals['payload'])) : 0;
-        const maxSize = (0, bytes_1.parse)(env_1.default['CACHE_VALUE_MAX_SIZE']);
+    if (env['CACHE_VALUE_MAX_SIZE'] !== false) {
+        const valueSize = res.locals['payload'] ? stringByteSize(JSON.stringify(res.locals['payload'])) : 0;
+        const maxSize = parseBytesConfiguration(env['CACHE_VALUE_MAX_SIZE']);
         exceedsMaxSize = valueSize > maxSize;
     }
     if ((req.method.toLowerCase() === 'get' || req.originalUrl?.startsWith('/graphql')) &&
-        env_1.default['CACHE_ENABLED'] === true &&
+        env['CACHE_ENABLED'] === true &&
         cache &&
         !req.sanitizedQuery.export &&
         res.locals['cache'] !== false &&
         exceedsMaxSize === false) {
-        const key = (0, get_cache_key_1.getCacheKey)(req);
+        const key = getCacheKey(req);
         try {
-            await (0, cache_1.setCacheValue)(cache, key, res.locals['payload'], (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL']));
-            await (0, cache_1.setCacheValue)(cache, `${key}__expires_at`, { exp: Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL'], 0) });
+            await setCacheValue(cache, key, res.locals['payload'], getMilliseconds(env['CACHE_TTL']));
+            await setCacheValue(cache, `${key}__expires_at`, { exp: Date.now() + getMilliseconds(env['CACHE_TTL'], 0) });
         }
         catch (err) {
-            logger_1.default.warn(err, `[cache] Couldn't set key ${key}. ${err}`);
+            logger.warn(err, `[cache] Couldn't set key ${key}. ${err}`);
         }
-        res.setHeader('Cache-Control', (0, get_cache_headers_1.getCacheControlHeader)(req, (0, get_milliseconds_1.getMilliseconds)(env_1.default['CACHE_TTL']), true, true));
+        res.setHeader('Cache-Control', getCacheControlHeader(req, getMilliseconds(env['CACHE_TTL']), true, true));
         res.setHeader('Vary', 'Origin, Cache-Control');
     }
     else {
@@ -46,7 +40,7 @@ exports.respond = (0, async_handler_1.default)(async (req, res) => {
         res.setHeader('Vary', 'Origin, Cache-Control');
     }
     if (req.sanitizedQuery.export) {
-        const exportService = new services_1.ExportService({ accountability: req.accountability ?? null, schema: req.schema });
+        const exportService = new ExportService({ accountability: req.accountability ?? null, schema: req.schema });
         let filename = '';
         if (req.collection) {
             filename += req.collection;
@@ -54,7 +48,7 @@ exports.respond = (0, async_handler_1.default)(async (req, res) => {
         else {
             filename += 'Export';
         }
-        filename += ' ' + (0, get_date_formatted_1.getDateFormatted)();
+        filename += ' ' + getDateFormatted();
         if (req.sanitizedQuery.export === 'json') {
             res.attachment(`${filename}.json`);
             res.set('Content-Type', 'application/json');

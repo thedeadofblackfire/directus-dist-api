@@ -1,9 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const utils_1 = require("@directus/shared/utils");
-const services_1 = require("../../services");
-const get_accountability_for_role_1 = require("../../utils/get-accountability-for-role");
-exports.default = (0, utils_1.defineOperationApi)({
+import { defineOperationApi, optionToString, toArray } from '@directus/utils';
+import { NotificationsService } from '../../services/notifications.js';
+import { getAccountabilityForRole } from '../../utils/get-accountability-for-role.js';
+export default defineOperationApi({
     id: 'notification',
     handler: async ({ recipient, subject, message, permissions }, { accountability, database, getSchema }) => {
         const schema = await getSchema({ database });
@@ -15,18 +13,18 @@ exports.default = (0, utils_1.defineOperationApi)({
             customAccountability = null;
         }
         else if (permissions === '$public') {
-            customAccountability = await (0, get_accountability_for_role_1.getAccountabilityForRole)(null, { database, schema, accountability });
+            customAccountability = await getAccountabilityForRole(null, { database, schema, accountability });
         }
         else {
-            customAccountability = await (0, get_accountability_for_role_1.getAccountabilityForRole)(permissions, { database, schema, accountability });
+            customAccountability = await getAccountabilityForRole(permissions, { database, schema, accountability });
         }
-        const notificationsService = new services_1.NotificationsService({
+        const notificationsService = new NotificationsService({
             schema: await getSchema({ database }),
             accountability: customAccountability,
             knex: database,
         });
-        const messageString = message ? (0, utils_1.optionToString)(message) : null;
-        const payload = (0, utils_1.toArray)(recipient).map((userId) => {
+        const messageString = message ? optionToString(message) : null;
+        const payload = toArray(recipient).map((userId) => {
             return {
                 recipient: userId,
                 sender: customAccountability?.user ?? null,

@@ -1,23 +1,16 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SpecificationService = void 0;
-const specs_1 = __importDefault(require("@directus/specs"));
-const lodash_1 = require("lodash");
-const package_json_1 = require("../../package.json");
-const constants_1 = require("../constants");
-const database_1 = __importDefault(require("../database"));
-const env_1 = __importDefault(require("../env"));
-const get_relation_type_1 = require("../utils/get-relation-type");
-const collections_1 = require("./collections");
-const fields_1 = require("./fields");
-const graphql_1 = require("./graphql");
-const relations_1 = require("./relations");
-// @ts-ignore
-const format_title_1 = __importDefault(require("@directus/format-title"));
-class SpecificationService {
+import { spec } from '@directus/specs';
+import { cloneDeep, mergeWith } from 'lodash-es';
+import { version } from '../utils/package.js';
+import { OAS_REQUIRED_SCHEMAS } from '../constants.js';
+import getDatabase from '../database/index.js';
+import env from '../env.js';
+import { getRelationType } from '../utils/get-relation-type.js';
+import { CollectionsService } from './collections.js';
+import { FieldsService } from './fields.js';
+import { GraphQLService } from './graphql/index.js';
+import { RelationsService } from './relations.js';
+import formatTitle from '@directus/format-title';
+export class SpecificationService {
     accountability;
     knex;
     schema;
@@ -28,11 +21,11 @@ class SpecificationService {
     graphql;
     constructor(options) {
         this.accountability = options.accountability || null;
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.schema = options.schema;
-        this.fieldsService = new fields_1.FieldsService(options);
-        this.collectionsService = new collections_1.CollectionsService(options);
-        this.relationsService = new relations_1.RelationsService(options);
+        this.fieldsService = new FieldsService(options);
+        this.collectionsService = new CollectionsService(options);
+        this.relationsService = new RelationsService(options);
         this.oas = new OASSpecsService(options, {
             fieldsService: this.fieldsService,
             collectionsService: this.collectionsService,
@@ -41,7 +34,6 @@ class SpecificationService {
         this.graphql = new GraphQLSpecsService(options);
     }
 }
-exports.SpecificationService = SpecificationService;
 class OASSpecsService {
     accountability;
     knex;
@@ -51,7 +43,7 @@ class OASSpecsService {
     relationsService;
     constructor(options, { fieldsService, collectionsService, relationsService, }) {
         this.accountability = options.accountability || null;
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.schema = options.schema;
         this.fieldsService = fieldsService;
         this.collectionsService = collectionsService;
@@ -70,11 +62,11 @@ class OASSpecsService {
             info: {
                 title: 'Dynamic API Specification',
                 description: 'This is a dynamically generated API specification for all endpoints existing on the current project.',
-                version: package_json_1.version,
+                version: version,
             },
             servers: [
                 {
-                    url: env_1.default['PUBLIC_URL'],
+                    url: env['PUBLIC_URL'],
                     description: 'Your current Directus instance.',
                 },
             ],
@@ -87,7 +79,7 @@ class OASSpecsService {
         return spec;
     }
     async generateTags(collections) {
-        const systemTags = (0, lodash_1.cloneDeep)(specs_1.default.tags);
+        const systemTags = cloneDeep(spec.tags);
         const tags = [];
         // System tags that don't have an associated collection are always readable to the user
         for (const systemTag of systemTags) {
@@ -99,7 +91,7 @@ class OASSpecsService {
             const isSystem = collection.collection.startsWith('directus_');
             // If the collection is one of the system collections, pull the tag from the static spec
             if (isSystem) {
-                for (const tag of specs_1.default.tags) {
+                for (const tag of spec.tags) {
                     if (tag['x-collection'] === collection.collection) {
                         tags.push(tag);
                         break;
@@ -108,7 +100,7 @@ class OASSpecsService {
             }
             else {
                 const tag = {
-                    name: 'Items' + (0, format_title_1.default)(collection.collection).replace(/ /g, ''),
+                    name: 'Items' + formatTitle(collection.collection).replace(/ /g, ''),
                     'x-collection': collection.collection,
                 };
                 if (collection.meta?.note) {
@@ -127,7 +119,7 @@ class OASSpecsService {
         for (const tag of tags) {
             const isSystem = 'x-collection' in tag === false || tag['x-collection'].startsWith('directus_');
             if (isSystem) {
-                for (const [path, pathItem] of Object.entries(specs_1.default.paths)) {
+                for (const [path, pathItem] of Object.entries(spec.paths)) {
                     for (const [method, operation] of Object.entries(pathItem)) {
                         if (operation.tags?.includes(tag.name)) {
                             if (!paths[path]) {
@@ -153,8 +145,8 @@ class OASSpecsService {
                 }
             }
             else {
-                const listBase = (0, lodash_1.cloneDeep)(specs_1.default.paths['/items/{collection}']);
-                const detailBase = (0, lodash_1.cloneDeep)(specs_1.default.paths['/items/{collection}/{id}']);
+                const listBase = cloneDeep(spec.paths['/items/{collection}']);
+                const detailBase = cloneDeep(spec.paths['/items/{collection}/{id}']);
                 const collection = tag['x-collection'];
                 for (const method of ['post', 'get', 'patch', 'delete']) {
                     const hasPermission = this.accountability?.admin === true ||
@@ -165,7 +157,7 @@ class OASSpecsService {
                         if (!paths[`/items/${collection}/{id}`])
                             paths[`/items/${collection}/{id}`] = {};
                         if (listBase[method]) {
-                            paths[`/items/${collection}`][method] = (0, lodash_1.mergeWith)((0, lodash_1.cloneDeep)(listBase[method]), {
+                            paths[`/items/${collection}`][method] = mergeWith(cloneDeep(listBase[method]), {
                                 description: listBase[method].description.replace('item', collection + ' item'),
                                 tags: [tag.name],
                                 parameters: 'parameters' in listBase ? this.filterCollectionFromParams(listBase.parameters) : [],
@@ -217,7 +209,7 @@ class OASSpecsService {
                             });
                         }
                         if (detailBase[method]) {
-                            paths[`/items/${collection}/{id}`][method] = (0, lodash_1.mergeWith)((0, lodash_1.cloneDeep)(detailBase[method]), {
+                            paths[`/items/${collection}/{id}`][method] = mergeWith(cloneDeep(detailBase[method]), {
                                 description: detailBase[method].description.replace('item', collection + ' item'),
                                 tags: [tag.name],
                                 operationId: `${this.getActionForMethod(method)}Single${tag.name}`,
@@ -263,15 +255,15 @@ class OASSpecsService {
         return paths;
     }
     async generateComponents(collections, fields, relations, tags) {
-        let components = (0, lodash_1.cloneDeep)(specs_1.default.components);
+        let components = cloneDeep(spec.components);
         if (!components)
             components = {};
         components.schemas = {};
         // Always includes the schemas with these names
-        if (specs_1.default.components?.schemas !== null) {
-            for (const schemaName of constants_1.OAS_REQUIRED_SCHEMAS) {
-                if (specs_1.default.components.schemas[schemaName] !== null) {
-                    components.schemas[schemaName] = (0, lodash_1.cloneDeep)(specs_1.default.components.schemas[schemaName]);
+        if (spec.components?.schemas !== null) {
+            for (const schemaName of OAS_REQUIRED_SCHEMAS) {
+                if (spec.components.schemas[schemaName] !== null) {
+                    components.schemas[schemaName] = cloneDeep(spec.components.schemas[schemaName]);
                 }
             }
         }
@@ -284,11 +276,11 @@ class OASSpecsService {
             const isSystem = collection.collection.startsWith('directus_');
             const fieldsInCollection = fields.filter((field) => field.collection === collection.collection);
             if (isSystem) {
-                const schemaComponent = (0, lodash_1.cloneDeep)(specs_1.default.components.schemas[tag.name]);
+                const schemaComponent = cloneDeep(spec.components.schemas[tag.name]);
                 schemaComponent.properties = {};
                 for (const field of fieldsInCollection) {
                     schemaComponent.properties[field.field] =
-                        (0, lodash_1.cloneDeep)(specs_1.default.components.schemas[tag.name].properties[field.field]) || this.generateField(field, relations, tags, fields);
+                        cloneDeep(spec.components.schemas[tag.name].properties[field.field]) || this.generateField(field, relations, tags, fields);
                 }
                 components.schemas[tag.name] = schemaComponent;
             }
@@ -339,7 +331,7 @@ class OASSpecsService {
             };
         }
         else {
-            const relationType = (0, get_relation_type_1.getRelationType)({
+            const relationType = getRelationType({
                 relation,
                 field: field.field,
                 collection: field.collection,
@@ -485,10 +477,10 @@ class GraphQLSpecsService {
     system;
     constructor(options) {
         this.accountability = options.accountability || null;
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.schema = options.schema;
-        this.items = new graphql_1.GraphQLService({ ...options, scope: 'items' });
-        this.system = new graphql_1.GraphQLService({ ...options, scope: 'system' });
+        this.items = new GraphQLService({ ...options, scope: 'items' });
+        this.system = new GraphQLService({ ...options, scope: 'system' });
     }
     async generate(scope) {
         if (scope === 'items')

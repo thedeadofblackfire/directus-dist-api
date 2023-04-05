@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
+import { parseJSON } from '@directus/utils';
 // Change image metadata structure to match the output from 'exifr'
-async function up(knex) {
+export async function up(knex) {
     const files = await knex
         .select('id', 'metadata')
         .from('directus_files')
@@ -11,7 +8,7 @@ async function up(knex) {
     for (const { id, metadata } of files) {
         let prevMetadata;
         try {
-            prevMetadata = (0, utils_1.parseJSON)(metadata);
+            prevMetadata = parseJSON(metadata);
         }
         catch {
             continue;
@@ -47,15 +44,14 @@ async function up(knex) {
         }
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     const files = await knex
         .select('id', 'metadata')
         .from('directus_files')
         .whereNotNull('metadata')
         .whereNot('metadata', '{}');
     for (const { id, metadata } of files) {
-        const prevMetadata = (0, utils_1.parseJSON)(metadata);
+        const prevMetadata = parseJSON(metadata);
         // Update only required if metadata has keys other than 'icc' and 'iptc'
         if (Object.keys(prevMetadata).filter((key) => key !== 'icc' && key !== 'iptc').length > 0) {
             // Put all data under 'exif' and rename/move keys afterwards
@@ -86,4 +82,3 @@ async function down(knex) {
         }
     }
 }
-exports.down = down;

@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { FnHelper, FnHelperOptions } from '../types';
+import { FnHelper, FnHelperOptions } from '../types.js';
 export declare class FnHelperOracle extends FnHelper {
     year(table: string, column: string, options: FnHelperOptions): Knex.Raw;
     month(table: string, column: string, options: FnHelperOptions): Knex.Raw;

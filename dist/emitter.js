@@ -1,12 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Emitter = void 0;
-const eventemitter2_1 = require("eventemitter2");
-const logger_1 = __importDefault(require("./logger"));
-class Emitter {
+import ee2 from 'eventemitter2';
+import logger from './logger.js';
+export class Emitter {
     filterEmitter;
     actionEmitter;
     initEmitter;
@@ -18,9 +12,9 @@ class Emitter {
             // This will ignore the "unspecified event" error
             ignoreErrors: true,
         };
-        this.filterEmitter = new eventemitter2_1.EventEmitter2(emitterOptions);
-        this.actionEmitter = new eventemitter2_1.EventEmitter2(emitterOptions);
-        this.initEmitter = new eventemitter2_1.EventEmitter2(emitterOptions);
+        this.filterEmitter = new ee2.EventEmitter2(emitterOptions);
+        this.actionEmitter = new ee2.EventEmitter2(emitterOptions);
+        this.initEmitter = new ee2.EventEmitter2(emitterOptions);
     }
     async emitFilter(event, payload, meta, context) {
         const events = Array.isArray(event) ? event : [event];
@@ -43,8 +37,8 @@ class Emitter {
         const events = Array.isArray(event) ? event : [event];
         for (const event of events) {
             this.actionEmitter.emitAsync(event, { event, ...meta }, context).catch((err) => {
-                logger_1.default.warn(`An error was thrown while executing action "${event}"`);
-                logger_1.default.warn(err);
+                logger.warn(`An error was thrown while executing action "${event}"`);
+                logger.warn(err);
             });
         }
     }
@@ -53,8 +47,8 @@ class Emitter {
             await this.initEmitter.emitAsync(event, { event, ...meta });
         }
         catch (err) {
-            logger_1.default.warn(`An error was thrown while executing init "${event}"`);
-            logger_1.default.warn(err);
+            logger.warn(`An error was thrown while executing init "${event}"`);
+            logger.warn(err);
         }
     }
     onFilter(event, handler) {
@@ -81,6 +75,5 @@ class Emitter {
         this.initEmitter.removeAllListeners();
     }
 }
-exports.Emitter = Emitter;
 const emitter = new Emitter();
-exports.default = emitter;
+export default emitter;

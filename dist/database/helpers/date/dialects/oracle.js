@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DateHelperOracle = void 0;
-const types_1 = require("../types");
-class DateHelperOracle extends types_1.DateHelper {
+import { DateHelper } from '../types.js';
+export class DateHelperOracle extends DateHelper {
     fieldFlagForField(fieldType) {
         switch (fieldType) {
             case 'dateTime':
@@ -12,4 +9,3 @@ class DateHelperOracle extends types_1.DateHelper {
         }
     }
 }
-exports.DateHelperOracle = DateHelperOracle;

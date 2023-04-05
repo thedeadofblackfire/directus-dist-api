@@ -1,4 +1,4 @@
-import type { SQLError } from './dialects/types';
+import type { SQLError } from './dialects/types.js';
 /**
  * Translates an error thrown by any of the databases into a pre-defined Exception. Currently
  * supports:

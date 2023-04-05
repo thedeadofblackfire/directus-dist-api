@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SchemaHelperSQLite = void 0;
-const types_1 = require("../types");
-class SchemaHelperSQLite extends types_1.SchemaHelper {
+import { SchemaHelper } from '../types.js';
+export class SchemaHelperSQLite extends SchemaHelper {
     async preColumnChange() {
         const foreignCheckStatus = (await this.knex.raw('PRAGMA foreign_keys'))[0].foreign_keys === 1;
         if (foreignCheckStatus) {
@@ -14,4 +11,3 @@ class SchemaHelperSQLite extends types_1.SchemaHelper {
         await this.knex.raw('PRAGMA foreign_keys = ON');
     }
 }
-exports.SchemaHelperSQLite = SchemaHelperSQLite;

@@ -1,26 +1,20 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createLocalAuthRouter = exports.LocalAuthDriver = void 0;
-const argon2_1 = __importDefault(require("argon2"));
-const express_1 = require("express");
-const joi_1 = __importDefault(require("joi"));
-const perf_hooks_1 = require("perf_hooks");
-const constants_1 = require("../../constants");
-const env_1 = __importDefault(require("../../env"));
-const exceptions_1 = require("../../exceptions");
-const respond_1 = require("../../middleware/respond");
-const services_1 = require("../../services");
-const async_handler_1 = __importDefault(require("../../utils/async-handler"));
-const get_ip_from_req_1 = require("../../utils/get-ip-from-req");
-const stall_1 = require("../../utils/stall");
-const auth_1 = require("../auth");
-class LocalAuthDriver extends auth_1.AuthDriver {
+import argon2 from 'argon2';
+import { Router } from 'express';
+import Joi from 'joi';
+import { performance } from 'perf_hooks';
+import { COOKIE_OPTIONS } from '../../constants.js';
+import env from '../../env.js';
+import { InvalidCredentialsException, InvalidPayloadException } from '../../exceptions/index.js';
+import { respond } from '../../middleware/respond.js';
+import { AuthenticationService } from '../../services/authentication.js';
+import asyncHandler from '../../utils/async-handler.js';
+import { getIPFromReq } from '../../utils/get-ip-from-req.js';
+import { stall } from '../../utils/stall.js';
+import { AuthDriver } from '../auth.js';
+export class LocalAuthDriver extends AuthDriver {
     async getUserID(payload) {
         if (!payload['email']) {
-            throw new exceptions_1.InvalidCredentialsException();
+            throw new InvalidCredentialsException();
         }
         const user = await this.knex
             .select('id')
@@ -28,33 +22,32 @@ class LocalAuthDriver extends auth_1.AuthDriver {
             .whereRaw('LOWER(??) = ?', ['email', payload['email'].toLowerCase()])
             .first();
         if (!user) {
-            throw new exceptions_1.InvalidCredentialsException();
+            throw new InvalidCredentialsException();
         }
         return user.id;
     }
     async verify(user, password) {
-        if (!user.password || !(await argon2_1.default.verify(user.password, password))) {
-            throw new exceptions_1.InvalidCredentialsException();
+        if (!user.password || !(await argon2.verify(user.password, password))) {
+            throw new InvalidCredentialsException();
         }
     }
     async login(user, payload) {
         await this.verify(user, payload['password']);
     }
 }
-exports.LocalAuthDriver = LocalAuthDriver;
-function createLocalAuthRouter(provider) {
-    const router = (0, express_1.Router)();
-    const userLoginSchema = joi_1.default.object({
-        email: joi_1.default.string().email().required(),
-        password: joi_1.default.string().required(),
-        mode: joi_1.default.string().valid('cookie', 'json'),
-        otp: joi_1.default.string(),
+export function createLocalAuthRouter(provider) {
+    const router = Router();
+    const userLoginSchema = Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().required(),
+        mode: Joi.string().valid('cookie', 'json'),
+        otp: Joi.string(),
     }).unknown();
-    router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
-        const STALL_TIME = env_1.default['LOGIN_STALL_TIME'];
-        const timeStart = perf_hooks_1.performance.now();
+    router.post('/', asyncHandler(async (req, res, next) => {
+        const STALL_TIME = env['LOGIN_STALL_TIME'];
+        const timeStart = performance.now();
         const accountability = {
-            ip: (0, get_ip_from_req_1.getIPFromReq)(req),
+            ip: getIPFromReq(req),
             role: null,
         };
         const userAgent = req.get('user-agent');
@@ -63,14 +56,14 @@ function createLocalAuthRouter(provider) {
         const origin = req.get('origin');
         if (origin)
             accountability.origin = origin;
-        const authenticationService = new services_1.AuthenticationService({
+        const authenticationService = new AuthenticationService({
             accountability: accountability,
             schema: req.schema,
         });
         const { error } = userLoginSchema.validate(req.body);
         if (error) {
-            await (0, stall_1.stall)(STALL_TIME, timeStart);
-            throw new exceptions_1.InvalidPayloadException(error.message);
+            await stall(STALL_TIME, timeStart);
+            throw new InvalidPayloadException(error.message);
         }
         const mode = req.body.mode || 'json';
         const { accessToken, refreshToken, expires } = await authenticationService.login(provider, req.body, req.body?.otp);
@@ -81,11 +74,10 @@ function createLocalAuthRouter(provider) {
             payload['data']['refresh_token'] = refreshToken;
         }
         if (mode === 'cookie') {
-            res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, constants_1.COOKIE_OPTIONS);
+            res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, COOKIE_OPTIONS);
         }
         res.locals['payload'] = payload;
         return next();
-    }), respond_1.respond);
+    }), respond);
     return router;
 }
-exports.createLocalAuthRouter = createLocalAuthRouter;

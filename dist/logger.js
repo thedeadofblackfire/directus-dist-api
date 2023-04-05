@@ -1,55 +1,26 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.expressLogger = exports.httpLoggerOptions = void 0;
-const utils_1 = require("@directus/shared/utils");
-const lodash_1 = require("lodash");
-const pino_1 = __importDefault(require("pino"));
-const pino_http_1 = __importStar(require("pino-http"));
-const url_1 = require("url");
-const env_1 = __importDefault(require("./env"));
-const constants_1 = require("./constants");
-const get_config_from_env_1 = require("./utils/get-config-from-env");
+import { toArray } from '@directus/utils';
+import { merge } from 'lodash-es';
+import { pino } from 'pino';
+import { pinoHttp, stdSerializers } from 'pino-http';
+import { URL } from 'url';
+import env from './env.js';
+import { REDACT_TEXT } from './constants.js';
+import { getConfigFromEnv } from './utils/get-config-from-env.js';
 const pinoOptions = {
-    level: env_1.default['LOG_LEVEL'] || 'info',
+    level: env['LOG_LEVEL'] || 'info',
     redact: {
         paths: ['req.headers.authorization', 'req.headers.cookie'],
-        censor: constants_1.REDACT_TEXT,
+        censor: REDACT_TEXT,
     },
 };
-exports.httpLoggerOptions = {
-    level: env_1.default['LOG_LEVEL'] || 'info',
+export const httpLoggerOptions = {
+    level: env['LOG_LEVEL'] || 'info',
     redact: {
         paths: ['req.headers.authorization', 'req.headers.cookie'],
-        censor: constants_1.REDACT_TEXT,
+        censor: REDACT_TEXT,
     },
 };
-if (env_1.default['LOG_STYLE'] !== 'raw') {
+if (env['LOG_STYLE'] !== 'raw') {
     pinoOptions.transport = {
         target: 'pino-pretty',
         options: {
@@ -57,7 +28,7 @@ if (env_1.default['LOG_STYLE'] !== 'raw') {
             sync: true,
         },
     };
-    exports.httpLoggerOptions.transport = {
+    httpLoggerOptions.transport = {
         target: 'pino-http-print',
         options: {
             all: true,
@@ -70,26 +41,26 @@ if (env_1.default['LOG_STYLE'] !== 'raw') {
         },
     };
 }
-if (env_1.default['LOG_STYLE'] === 'raw') {
-    exports.httpLoggerOptions.redact = {
+if (env['LOG_STYLE'] === 'raw') {
+    httpLoggerOptions.redact = {
         paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers'],
         censor: (value, pathParts) => {
             const path = pathParts.join('.');
             if (path === 'res.headers') {
                 if ('set-cookie' in value) {
-                    value['set-cookie'] = constants_1.REDACT_TEXT;
+                    value['set-cookie'] = REDACT_TEXT;
                 }
                 return value;
             }
-            return constants_1.REDACT_TEXT;
+            return REDACT_TEXT;
         },
     };
 }
-const loggerEnvConfig = (0, get_config_from_env_1.getConfigFromEnv)('LOGGER_', 'LOGGER_HTTP');
+const loggerEnvConfig = getConfigFromEnv('LOGGER_', 'LOGGER_HTTP');
 // Expose custom log levels into formatter function
 if (loggerEnvConfig['levels']) {
     const customLogLevels = {};
-    for (const el of (0, utils_1.toArray)(loggerEnvConfig['levels'])) {
+    for (const el of toArray(loggerEnvConfig['levels'])) {
         const key_val = el.split(':');
         customLogLevels[key_val[0].trim()] = key_val[1].trim();
     }
@@ -101,7 +72,7 @@ if (loggerEnvConfig['levels']) {
             };
         },
     };
-    exports.httpLoggerOptions.formatters = {
+    httpLoggerOptions.formatters = {
         level(label, number) {
             return {
                 severity: customLogLevels[label] || 'info',
@@ -111,24 +82,24 @@ if (loggerEnvConfig['levels']) {
     };
     delete loggerEnvConfig['levels'];
 }
-const logger = (0, pino_1.default)((0, lodash_1.merge)(pinoOptions, loggerEnvConfig));
-const httpLoggerEnvConfig = (0, get_config_from_env_1.getConfigFromEnv)('LOGGER_HTTP', ['LOGGER_HTTP_LOGGER']);
-exports.expressLogger = (0, pino_http_1.default)({
-    logger: (0, pino_1.default)((0, lodash_1.merge)(exports.httpLoggerOptions, loggerEnvConfig)),
+const logger = pino(merge(pinoOptions, loggerEnvConfig));
+const httpLoggerEnvConfig = getConfigFromEnv('LOGGER_HTTP', ['LOGGER_HTTP_LOGGER']);
+export const expressLogger = pinoHttp({
+    logger: pino(merge(httpLoggerOptions, loggerEnvConfig)),
     ...httpLoggerEnvConfig,
     serializers: {
         req(request) {
-            const output = pino_http_1.stdSerializers.req(request);
+            const output = stdSerializers.req(request);
             output.url = redactQuery(output.url);
             return output;
         },
     },
 });
-exports.default = logger;
+export default logger;
 function redactQuery(originalPath) {
-    const url = new url_1.URL(originalPath, 'http://example.com/');
+    const url = new URL(originalPath, 'http://example.com/');
     if (url.searchParams.has('access_token')) {
-        url.searchParams.set('access_token', constants_1.REDACT_TEXT);
+        url.searchParams.set('access_token', REDACT_TEXT);
     }
     return url.pathname + url.search;
 }

@@ -1,8 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const exceptions_1 = require("../../src/exceptions");
-const get_column_path_1 = require("../../src/utils/get-column-path");
+import { expect, test } from 'vitest';
+import { InvalidQueryException } from '../../src/exceptions/index.js';
+import { getColumnPath } from '../../src/utils/get-column-path.js';
 /*
 {
   path: [ 'author', 'role', 'name' ],
@@ -31,16 +29,16 @@ rnmxt.first_name
 
 yllus.text
 */
-(0, vitest_1.test)('Throws an error when the field path is not known in relations', () => {
+test('Throws an error when the field path is not known in relations', () => {
     const input = {
         path: ['author', 'first_name'],
         collection: 'articles',
         aliasMap: {},
         relations: [],
     };
-    (0, vitest_1.expect)(() => (0, get_column_path_1.getColumnPath)(input)).toThrowError(exceptions_1.InvalidQueryException);
+    expect(() => getColumnPath(input)).toThrowError(InvalidQueryException);
 });
-(0, vitest_1.test)('Throws an error when an a2o is used without a collection scope', () => {
+test('Throws an error when an a2o is used without a collection scope', () => {
     const input = {
         path: ['item', 'type'],
         collection: 'pages',
@@ -57,9 +55,9 @@ yllus.text
             },
         ],
     };
-    (0, vitest_1.expect)(() => (0, get_column_path_1.getColumnPath)(input)).toThrowError(exceptions_1.InvalidQueryException);
+    expect(() => getColumnPath(input)).toThrowError(InvalidQueryException);
 });
-(0, vitest_1.test)('Extracts path scope and returns correct alias for a2o', () => {
+test('Extracts path scope and returns correct alias for a2o', () => {
     const input = {
         path: ['item:headings', 'text'],
         collection: 'pages',
@@ -76,11 +74,11 @@ yllus.text
             },
         ],
     };
-    const result = (0, get_column_path_1.getColumnPath)(input);
-    (0, vitest_1.expect)(result.columnPath).toBe('abcdef.text');
-    (0, vitest_1.expect)(result.targetCollection).toBe('headings');
+    const result = getColumnPath(input);
+    expect(result.columnPath).toBe('abcdef.text');
+    expect(result.targetCollection).toBe('headings');
 });
-(0, vitest_1.test)('Returns correct alias for m2o', () => {
+test('Returns correct alias for m2o', () => {
     const input = {
         path: ['author', 'role', 'name'],
         collection: 'articles',
@@ -105,11 +103,11 @@ yllus.text
             },
         ],
     };
-    const result = (0, get_column_path_1.getColumnPath)(input);
-    (0, vitest_1.expect)(result.columnPath).toBe('grenv.name');
-    (0, vitest_1.expect)(result.targetCollection).toBe('directus_roles');
+    const result = getColumnPath(input);
+    expect(result.columnPath).toBe('grenv.name');
+    expect(result.targetCollection).toBe('directus_roles');
 });
-(0, vitest_1.test)('Returns correct alias for o2m', () => {
+test('Returns correct alias for o2m', () => {
     const input = {
         path: ['categories', 'category_id', 'name'],
         collection: 'articles',
@@ -136,11 +134,11 @@ yllus.text
             },
         ],
     };
-    const result = (0, get_column_path_1.getColumnPath)(input);
-    (0, vitest_1.expect)(result.columnPath).toBe('bbbb.name');
-    (0, vitest_1.expect)(result.targetCollection).toBe('categories');
+    const result = getColumnPath(input);
+    expect(result.columnPath).toBe('bbbb.name');
+    expect(result.targetCollection).toBe('categories');
 });
-(0, vitest_1.test)('Returns correct alias for nested o2m', () => {
+test('Returns correct alias for nested o2m', () => {
     const input = {
         path: ['articles', 'article_id', 'articles', 'article_id', 'name'],
         collection: 'article',
@@ -165,11 +163,11 @@ yllus.text
             },
         ],
     };
-    const result = (0, get_column_path_1.getColumnPath)(input);
-    (0, vitest_1.expect)(result.columnPath).toBe('dddd.name');
-    (0, vitest_1.expect)(result.targetCollection).toBe('article');
+    const result = getColumnPath(input);
+    expect(result.columnPath).toBe('dddd.name');
+    expect(result.targetCollection).toBe('article');
 });
-(0, vitest_1.test)('Returns correct alias for o2m (& uses the table name if no alias exists)', () => {
+test('Returns correct alias for o2m (& uses the table name if no alias exists)', () => {
     const input = {
         path: ['categories', 'category_id', 'name'],
         collection: 'articles',
@@ -193,11 +191,11 @@ yllus.text
             },
         ],
     };
-    const result = (0, get_column_path_1.getColumnPath)(input);
-    (0, vitest_1.expect)(result.columnPath).toBe('categories.name');
-    (0, vitest_1.expect)(result.targetCollection).toBe('categories');
+    const result = getColumnPath(input);
+    expect(result.columnPath).toBe('categories.name');
+    expect(result.targetCollection).toBe('categories');
 });
-(0, vitest_1.test)('Returns correct alias when there are multiple joins to the same table', () => {
+test('Returns correct alias when there are multiple joins to the same table', () => {
     const input = {
         path: ['author', 'secondary_role', 'name'],
         collection: 'articles',
@@ -230,7 +228,7 @@ yllus.text
             },
         ],
     };
-    const result = (0, get_column_path_1.getColumnPath)(input);
-    (0, vitest_1.expect)(result.columnPath).toBe('psgwn.name');
-    (0, vitest_1.expect)(result.targetCollection).toBe('directus_roles');
+    const result = getColumnPath(input);
+    expect(result.columnPath).toBe('psgwn.name');
+    expect(result.targetCollection).toBe('directus_roles');
 });

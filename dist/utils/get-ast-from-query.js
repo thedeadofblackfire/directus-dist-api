@@ -1,13 +1,11 @@
-"use strict";
 /**
  * Generate an AST based on a given collection and query
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-const constants_1 = require("@directus/shared/constants");
-const lodash_1 = require("lodash");
-const get_relation_type_1 = require("../utils/get-relation-type");
-async function getASTFromQuery(collection, query, schema, options) {
-    query = (0, lodash_1.cloneDeep)(query);
+import { REGEX_BETWEEN_PARENS } from '@directus/constants';
+import { cloneDeep, isEmpty, mapKeys, omitBy, uniq } from 'lodash-es';
+import { getRelationType } from '../utils/get-relation-type.js';
+export default async function getASTFromQuery(collection, query, schema, options) {
+    query = cloneDeep(query);
     const accountability = options?.accountability;
     const action = options?.action || 'read';
     const permissions = accountability && accountability.admin !== true
@@ -39,7 +37,7 @@ async function getASTFromQuery(collection, query, schema, options) {
     if (query.group) {
         fields = query.group;
     }
-    fields = (0, lodash_1.uniq)(fields);
+    fields = uniq(fields);
     const deep = query.deep || {};
     // Prevent fields/deep from showing up in the query object in further use
     delete query.fields;
@@ -118,7 +116,7 @@ async function getASTFromQuery(collection, query, schema, options) {
             }
             else {
                 if (fieldKey.includes('(') && fieldKey.includes(')')) {
-                    const columnName = fieldKey.match(constants_1.REGEX_BETWEEN_PARENS)[1];
+                    const columnName = fieldKey.match(REGEX_BETWEEN_PARENS)[1];
                     const foundField = schema.collections[parentCollection].fields[columnName];
                     if (foundField && foundField.type === 'alias') {
                         const foundRelation = schema.relations.find((relation) => relation.related_collection === parentCollection && relation.meta?.one_field === columnName);
@@ -146,7 +144,7 @@ async function getASTFromQuery(collection, query, schema, options) {
             const relation = getRelation(parentCollection, fieldName);
             if (!relation)
                 continue;
-            const relationType = (0, get_relation_type_1.getRelationType)({
+            const relationType = getRelationType({
                 relation,
                 collection: parentCollection,
                 field: fieldName,
@@ -182,7 +180,7 @@ async function getASTFromQuery(collection, query, schema, options) {
                 }
                 // update query alias for children parseFields
                 const deepAlias = getDeepQuery(deep?.[fieldKey] || {})?.['alias'];
-                if (!(0, lodash_1.isEmpty)(deepAlias))
+                if (!isEmpty(deepAlias))
                     query.alias = deepAlias;
                 child = {
                     type: relationType,
@@ -212,7 +210,7 @@ async function getASTFromQuery(collection, query, schema, options) {
         });
     }
     async function convertWildcards(parentCollection, fields) {
-        fields = (0, lodash_1.cloneDeep)(fields);
+        fields = cloneDeep(fields);
         const fieldsInCollection = Object.entries(schema.collections[parentCollection].fields).map(([name]) => name);
         let allowedFields = fieldsInCollection;
         if (permissions) {
@@ -294,7 +292,6 @@ async function getASTFromQuery(collection, query, schema, options) {
         return null;
     }
 }
-exports.default = getASTFromQuery;
 function getDeepQuery(query) {
-    return (0, lodash_1.mapKeys)((0, lodash_1.omitBy)(query, (_value, key) => key.startsWith('_') === false), (_value, key) => key.substring(1));
+    return mapKeys(omitBy(query, (_value, key) => key.startsWith('_') === false), (_value, key) => key.substring(1));
 }

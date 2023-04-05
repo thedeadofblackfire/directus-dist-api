@@ -1,27 +1,20 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOSInfo = void 0;
-const os_1 = __importDefault(require("os"));
+import os from 'os';
 /**
  * Get current host OS information
  *
  * @returns Object of OS type and version
  */
-function getOSInfo() {
-    const osType = os_1.default.type() === 'Darwin' ? 'macOS' : os_1.default.type();
-    const osVersion = osType === 'macOS' ? macosRelease() : os_1.default.release();
+export function getOSInfo() {
+    const osType = os.type() === 'Darwin' ? 'macOS' : os.type();
+    const osVersion = osType === 'macOS' ? macosRelease() : os.release();
     return { osType, osVersion };
 }
-exports.getOSInfo = getOSInfo;
 /**
  * Get the name and version of a macOS release from the Darwin version.
  * Lifted from `macos-release`.
  */
 function macosRelease() {
-    const release = Number(os_1.default.release().split('.')[0]);
+    const release = Number(os.release().split('.')[0]);
     const nameMap = new Map([
         [22, ['Ventura', '13']],
         [21, ['Monterey', '12']],

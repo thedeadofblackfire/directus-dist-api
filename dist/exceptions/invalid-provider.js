@@ -1,10 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.InvalidProviderException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class InvalidProviderException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class InvalidProviderException extends BaseException {
     constructor(message = 'Invalid provider.') {
         super(message, 403, 'INVALID_PROVIDER');
     }
 }
-exports.InvalidProviderException = InvalidProviderException;

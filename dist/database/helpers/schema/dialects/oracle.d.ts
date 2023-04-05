@@ -1,6 +1,6 @@
-import type { KNEX_TYPES } from '@directus/shared/constants';
-import type { Field, Relation, Type } from '@directus/shared/types';
-import { Options, SchemaHelper } from '../types';
+import type { KNEX_TYPES } from '@directus/constants';
+import type { Field, Relation, Type } from '@directus/types';
+import { Options, SchemaHelper } from '../types.js';
 export declare class SchemaHelperOracle extends SchemaHelper {
     changeToType(table: string, column: string, type: (typeof KNEX_TYPES)[number], options?: Options): Promise<void>;
     castA2oPrimaryKey(): string;

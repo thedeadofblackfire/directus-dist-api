@@ -1,4 +1,4 @@
-import { SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot';
+import { SnapshotDiffWithHash, SnapshotWithHash } from '../types/snapshot.js';
 /**
  * Validates the diff against the current schema snapshot.
  *

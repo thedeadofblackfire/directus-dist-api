@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDefaultIndexName = void 0;
-const utils_1 = require("@directus/shared/utils");
+import { getSimpleHash } from '@directus/utils';
 /**
  * Generate an index name for a given collection + fields combination.
  *
@@ -11,15 +8,14 @@ const utils_1 = require("@directus/shared/utils");
  * @see
  * https://github.com/knex/knex/blob/fff6eb15d7088d4198650a2c6e673dedaf3b8f36/lib/schema/tablecompiler.js#L282-L297
  */
-function getDefaultIndexName(type, collection, fields) {
+export function getDefaultIndexName(type, collection, fields) {
     if (!Array.isArray(fields))
         fields = fields ? [fields] : [];
     const table = collection.replace(/\.|-/g, '_');
     const indexName = (table + '_' + fields.join('_') + '_' + type).toLowerCase();
     if (indexName.length <= 60)
         return indexName;
-    const suffix = `__${(0, utils_1.getSimpleHash)(indexName)}_${type}`;
+    const suffix = `__${getSimpleHash(indexName)}_${type}`;
     const prefix = indexName.substring(0, 60 - suffix.length);
     return `${prefix}${suffix}`;
 }
-exports.getDefaultIndexName = getDefaultIndexName;

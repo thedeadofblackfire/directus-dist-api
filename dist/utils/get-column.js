@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getColumn = void 0;
-const constants_1 = require("@directus/shared/constants");
-const utils_1 = require("@directus/shared/utils");
-const helpers_1 = require("../database/helpers");
-const exceptions_1 = require("../exceptions");
-const apply_function_to_column_name_1 = require("./apply-function-to-column-name");
+import { REGEX_BETWEEN_PARENS } from '@directus/constants';
+import { getFunctionsForType } from '@directus/utils';
+import { getFunctions } from '../database/helpers/index.js';
+import { InvalidQueryException } from '../exceptions/index.js';
+import { applyFunctionToColumnName } from './apply-function-to-column-name.js';
 /**
  * Return column prefixed by table. If column includes functions (like `year(date_created)`), the
  * column is replaced with the appropriate SQL
@@ -18,17 +15,17 @@ const apply_function_to_column_name_1 = require("./apply-function-to-column-name
  * @param options Optional parameters
  * @returns Knex raw instance
  */
-function getColumn(knex, table, column, alias = (0, apply_function_to_column_name_1.applyFunctionToColumnName)(column), schema, options) {
-    const fn = (0, helpers_1.getFunctions)(knex, schema);
+export function getColumn(knex, table, column, alias = applyFunctionToColumnName(column), schema, options) {
+    const fn = getFunctions(knex, schema);
     if (column.includes('(') && column.includes(')')) {
         const functionName = column.split('(')[0];
-        const columnName = column.match(constants_1.REGEX_BETWEEN_PARENS)[1];
+        const columnName = column.match(REGEX_BETWEEN_PARENS)[1];
         if (functionName in fn) {
             const collectionName = options?.originalCollectionName || table;
             const type = schema?.collections[collectionName]?.fields?.[columnName]?.type ?? 'unknown';
-            const allowedFunctions = (0, utils_1.getFunctionsForType)(type);
+            const allowedFunctions = getFunctionsForType(type);
             if (allowedFunctions.includes(functionName) === false) {
-                throw new exceptions_1.InvalidQueryException(`Invalid function specified "${functionName}"`);
+                throw new InvalidQueryException(`Invalid function specified "${functionName}"`);
             }
             const result = fn[functionName](table, columnName, {
                 type,
@@ -41,7 +38,7 @@ function getColumn(knex, table, column, alias = (0, apply_function_to_column_nam
             return result;
         }
         else {
-            throw new exceptions_1.InvalidQueryException(`Invalid function specified "${functionName}"`);
+            throw new InvalidQueryException(`Invalid function specified "${functionName}"`);
         }
     }
     if (alias && column !== alias) {
@@ -49,4 +46,3 @@ function getColumn(knex, table, column, alias = (0, apply_function_to_column_nam
     }
     return knex.ref(`${table}.${column}`);
 }
-exports.getColumn = getColumn;

@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GeometryHelperRedshift = void 0;
-const types_1 = require("../types");
-class GeometryHelperRedshift extends types_1.GeometryHelper {
+import { GeometryHelper } from '../types.js';
+export class GeometryHelperRedshift extends GeometryHelper {
     createColumn(table, field) {
         if (field.type.split('.')[1]) {
             field.meta.special = [field.type];
@@ -13,4 +10,3 @@ class GeometryHelperRedshift extends types_1.GeometryHelper {
         return this.knex.raw('st_asgeojson(??.??) as ??', [table, column, column]);
     }
 }
-exports.GeometryHelperRedshift = GeometryHelperRedshift;

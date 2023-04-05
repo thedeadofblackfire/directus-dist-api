@@ -1,4 +1,4 @@
-import { OperationHandler } from '@directus/shared/types';
+import { OperationHandler } from '@directus/types';
 export declare function getFlowManager(): FlowManager;
 declare class FlowManager {
     private isLoaded;

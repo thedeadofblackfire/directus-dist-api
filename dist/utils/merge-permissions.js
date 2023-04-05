@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergePermission = exports.mergePermissions = void 0;
-const lodash_1 = require("lodash");
-function mergePermissions(strategy, ...permissions) {
-    const allPermissions = (0, lodash_1.flatten)(permissions);
+import { flatten, intersection, isEqual, merge, omit } from 'lodash-es';
+export function mergePermissions(strategy, ...permissions) {
+    const allPermissions = flatten(permissions);
     const mergedPermissions = allPermissions
         .reduce((acc, val) => {
         const key = `${val.collection}__${val.action}__${val.role || '$PUBLIC'}`;
@@ -14,8 +11,7 @@ function mergePermissions(strategy, ...permissions) {
         .values();
     return Array.from(mergedPermissions);
 }
-exports.mergePermissions = mergePermissions;
-function mergePermission(strategy, currentPerm, newPerm) {
+export function mergePermission(strategy, currentPerm, newPerm) {
     const logicalKey = `_${strategy}`;
     let permissions = currentPerm.permissions;
     let validation = currentPerm.validation;
@@ -32,7 +28,7 @@ function mergePermission(strategy, currentPerm, newPerm) {
         }
         else if (currentPerm.permissions) {
             // Empty {} supersedes other permissions in _OR merge
-            if (strategy === 'or' && ((0, lodash_1.isEqual)(currentPerm.permissions, {}) || (0, lodash_1.isEqual)(newPerm.permissions, {}))) {
+            if (strategy === 'or' && (isEqual(currentPerm.permissions, {}) || isEqual(newPerm.permissions, {}))) {
                 permissions = {};
             }
             else {
@@ -58,7 +54,7 @@ function mergePermission(strategy, currentPerm, newPerm) {
         }
         else if (currentPerm.validation) {
             // Empty {} supersedes other validations in _OR merge
-            if (strategy === 'or' && ((0, lodash_1.isEqual)(currentPerm.validation, {}) || (0, lodash_1.isEqual)(newPerm.validation, {}))) {
+            if (strategy === 'or' && (isEqual(currentPerm.validation, {}) || isEqual(newPerm.validation, {}))) {
                 validation = {};
             }
             else {
@@ -78,7 +74,7 @@ function mergePermission(strategy, currentPerm, newPerm) {
             fields = [...new Set([...currentPerm.fields, ...newPerm.fields])];
         }
         else if (Array.isArray(currentPerm.fields) && strategy === 'and') {
-            fields = (0, lodash_1.intersection)(currentPerm.fields, newPerm.fields);
+            fields = intersection(currentPerm.fields, newPerm.fields);
         }
         else {
             fields = newPerm.fields;
@@ -87,9 +83,9 @@ function mergePermission(strategy, currentPerm, newPerm) {
             fields = ['*'];
     }
     if (newPerm.presets) {
-        presets = (0, lodash_1.merge)({}, presets, newPerm.presets);
+        presets = merge({}, presets, newPerm.presets);
     }
-    return (0, lodash_1.omit)({
+    return omit({
         ...currentPerm,
         permissions,
         validation,
@@ -97,4 +93,3 @@ function mergePermission(strategy, currentPerm, newPerm) {
         presets,
     }, ['id', 'system']);
 }
-exports.mergePermission = mergePermission;

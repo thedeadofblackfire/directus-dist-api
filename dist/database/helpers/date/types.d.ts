@@ -1,4 +1,4 @@
-import { DatabaseHelper } from '../types';
+import { DatabaseHelper } from '../types.js';
 export declare abstract class DateHelper extends DatabaseHelper {
     parse(date: string | Date): string;
     readTimestampString(date: string): string;

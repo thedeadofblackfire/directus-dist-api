@@ -1,28 +1,22 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.UsersService = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-const utils_1 = require("@directus/shared/utils");
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const lodash_1 = require("lodash");
-const perf_hooks_1 = require("perf_hooks");
-const database_1 = __importDefault(require("../database"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_2 = require("../exceptions");
-const record_not_unique_1 = require("../exceptions/database/record-not-unique");
-const is_url_allowed_1 = __importDefault(require("../utils/is-url-allowed"));
-const stall_1 = require("../utils/stall");
-const url_1 = require("../utils/url");
-const items_1 = require("./items");
-const mail_1 = require("./mail");
-const settings_1 = require("./settings");
-class UsersService extends items_1.ItemsService {
+import { FailedValidationException } from '@directus/exceptions';
+import { getSimpleHash, toArray } from '@directus/utils';
+import jwt from 'jsonwebtoken';
+import { cloneDeep } from 'lodash-es';
+import { performance } from 'perf_hooks';
+import getDatabase from '../database/index.js';
+import env from '../env.js';
+import { ForbiddenException, InvalidPayloadException, UnprocessableEntityException } from '../exceptions/index.js';
+import { RecordNotUniqueException } from '../exceptions/database/record-not-unique.js';
+import isUrlAllowed from '../utils/is-url-allowed.js';
+import { stall } from '../utils/stall.js';
+import { Url } from '../utils/url.js';
+import { ItemsService } from './items.js';
+import { MailService } from './mail/index.js';
+import { SettingsService } from './settings.js';
+export class UsersService extends ItemsService {
     constructor(options) {
         super('directus_users', options);
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.accountability = options.accountability || null;
         this.schema = options.schema;
     }
@@ -34,7 +28,7 @@ class UsersService extends items_1.ItemsService {
         emails = emails.map((email) => email.toLowerCase());
         const duplicates = emails.filter((value, index, array) => array.indexOf(value) !== index);
         if (duplicates.length) {
-            throw new record_not_unique_1.RecordNotUniqueException('email', {
+            throw new RecordNotUniqueException('email', {
                 collection: 'directus_users',
                 field: 'email',
                 invalid: duplicates[0],
@@ -49,7 +43,7 @@ class UsersService extends items_1.ItemsService {
         }
         const results = await query;
         if (results.length) {
-            throw new record_not_unique_1.RecordNotUniqueException('email', {
+            throw new RecordNotUniqueException('email', {
                 collection: 'directus_users',
                 field: 'email',
                 invalid: results[0].email,
@@ -61,7 +55,7 @@ class UsersService extends items_1.ItemsService {
      * directus_settings.auth_password_policy
      */
     async checkPasswordPolicy(passwords) {
-        const settingsService = new settings_1.SettingsService({
+        const settingsService = new SettingsService({
             schema: this.schema,
             knex: this.knex,
         });
@@ -75,7 +69,7 @@ class UsersService extends items_1.ItemsService {
         const regex = new RegExp(wrapped ? policyRegExString.slice(1, -1) : policyRegExString);
         for (const password of passwords) {
             if (!regex.test(password)) {
-                throw new exceptions_1.FailedValidationException({
+                throw new FailedValidationException({
                     message: `Provided password doesn't match password policy`,
                     path: ['password'],
                     type: 'custom.pattern.base',
@@ -97,7 +91,7 @@ class UsersService extends items_1.ItemsService {
             .first();
         const otherAdminUsersCount = +(otherAdminUsers?.count || 0);
         if (otherAdminUsersCount === 0) {
-            throw new exceptions_2.UnprocessableEntityException(`You can't remove the last admin user from the role.`);
+            throw new UnprocessableEntityException(`You can't remove the last admin user from the role.`);
         }
     }
     /**
@@ -114,7 +108,7 @@ class UsersService extends items_1.ItemsService {
             .first();
         const otherAdminUsersCount = +(otherAdminUsers?.count || 0);
         if (otherAdminUsersCount === 0) {
-            throw new exceptions_2.UnprocessableEntityException(`You can't change the active status of the last admin user.`);
+            throw new UnprocessableEntityException(`You can't change the active status of the last admin user.`);
         }
     }
     /**
@@ -168,7 +162,7 @@ class UsersService extends items_1.ItemsService {
             });
             for (const item of data) {
                 if (!item[primaryKeyField])
-                    throw new exceptions_2.InvalidPayloadException(`User in update misses primary key.`);
+                    throw new InvalidPayloadException(`User in update misses primary key.`);
                 keys.push(await service.updateOne(item[primaryKeyField], item, opts));
             }
         });
@@ -192,7 +186,7 @@ class UsersService extends items_1.ItemsService {
             }
             if (data['email']) {
                 if (keys.length > 1) {
-                    throw new record_not_unique_1.RecordNotUniqueException('email', {
+                    throw new RecordNotUniqueException('email', {
                         collection: 'directus_users',
                         field: 'email',
                         invalid: data['email'],
@@ -204,17 +198,17 @@ class UsersService extends items_1.ItemsService {
                 await this.checkPasswordPolicy([data['password']]);
             }
             if (data['tfa_secret'] !== undefined) {
-                throw new exceptions_2.InvalidPayloadException(`You can't change the "tfa_secret" value manually.`);
+                throw new InvalidPayloadException(`You can't change the "tfa_secret" value manually.`);
             }
             if (data['provider'] !== undefined) {
                 if (this.accountability && this.accountability.admin !== true) {
-                    throw new exceptions_2.InvalidPayloadException(`You can't change the "provider" value manually.`);
+                    throw new InvalidPayloadException(`You can't change the "provider" value manually.`);
                 }
                 data['auth_data'] = null;
             }
             if (data['external_identifier'] !== undefined) {
                 if (this.accountability && this.accountability.admin !== true) {
-                    throw new exceptions_2.InvalidPayloadException(`You can't change the "external_identifier" value manually.`);
+                    throw new InvalidPayloadException(`You can't change the "external_identifier" value manually.`);
                 }
                 data['auth_data'] = null;
             }
@@ -247,10 +241,10 @@ class UsersService extends items_1.ItemsService {
     }
     async deleteByQuery(query, opts) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
-        const readQuery = (0, lodash_1.cloneDeep)(query);
+        const readQuery = cloneDeep(query);
         readQuery.fields = [primaryKeyField];
         // Not authenticated:
-        const itemsService = new items_1.ItemsService(this.collection, {
+        const itemsService = new ItemsService(this.collection, {
             knex: this.knex,
             schema: this.schema,
         });
@@ -263,23 +257,23 @@ class UsersService extends items_1.ItemsService {
     async inviteUser(email, role, url, subject) {
         const opts = {};
         try {
-            if (url && (0, is_url_allowed_1.default)(url, env_1.default['USER_INVITE_URL_ALLOW_LIST']) === false) {
-                throw new exceptions_2.InvalidPayloadException(`Url "${url}" can't be used to invite users.`);
+            if (url && isUrlAllowed(url, env['USER_INVITE_URL_ALLOW_LIST']) === false) {
+                throw new InvalidPayloadException(`Url "${url}" can't be used to invite users.`);
             }
         }
         catch (err) {
             opts.preMutationException = err;
         }
-        const emails = (0, utils_1.toArray)(email);
-        const mailService = new mail_1.MailService({
+        const emails = toArray(email);
+        const mailService = new MailService({
             schema: this.schema,
             accountability: this.accountability,
         });
         for (const email of emails) {
             const payload = { email, scope: 'invite' };
-            const token = jsonwebtoken_1.default.sign(payload, env_1.default['SECRET'], { expiresIn: '7d', issuer: 'directus' });
+            const token = jwt.sign(payload, env['SECRET'], { expiresIn: '7d', issuer: 'directus' });
             const subjectLine = subject ?? "You've been invited";
-            const inviteURL = url ? new url_1.Url(url) : new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'accept-invite');
+            const inviteURL = url ? new Url(url) : new Url(env['PUBLIC_URL']).addPath('admin', 'accept-invite');
             inviteURL.setQuery('token', token);
             // Create user first to verify uniqueness
             await this.createOne({ email, role, status: 'invited' }, opts);
@@ -297,12 +291,12 @@ class UsersService extends items_1.ItemsService {
         }
     }
     async acceptInvite(token, password) {
-        const { email, scope } = jsonwebtoken_1.default.verify(token, env_1.default['SECRET'], { issuer: 'directus' });
+        const { email, scope } = jwt.verify(token, env['SECRET'], { issuer: 'directus' });
         if (scope !== 'invite')
-            throw new exceptions_2.ForbiddenException();
+            throw new ForbiddenException();
         const user = await this.knex.select('id', 'status').from('directus_users').where({ email }).first();
         if (user?.status !== 'invited') {
-            throw new exceptions_2.InvalidPayloadException(`Email address ${email} hasn't been invited.`);
+            throw new InvalidPayloadException(`Email address ${email} hasn't been invited.`);
         }
         // Allow unauthenticated update
         const service = new UsersService({
@@ -313,29 +307,29 @@ class UsersService extends items_1.ItemsService {
     }
     async requestPasswordReset(email, url, subject) {
         const STALL_TIME = 500;
-        const timeStart = perf_hooks_1.performance.now();
+        const timeStart = performance.now();
         const user = await this.knex
             .select('status', 'password')
             .from('directus_users')
             .whereRaw('LOWER(??) = ?', ['email', email.toLowerCase()])
             .first();
         if (user?.status !== 'active') {
-            await (0, stall_1.stall)(STALL_TIME, timeStart);
-            throw new exceptions_2.ForbiddenException();
+            await stall(STALL_TIME, timeStart);
+            throw new ForbiddenException();
         }
-        if (url && (0, is_url_allowed_1.default)(url, env_1.default['PASSWORD_RESET_URL_ALLOW_LIST']) === false) {
-            throw new exceptions_2.InvalidPayloadException(`Url "${url}" can't be used to reset passwords.`);
+        if (url && isUrlAllowed(url, env['PASSWORD_RESET_URL_ALLOW_LIST']) === false) {
+            throw new InvalidPayloadException(`Url "${url}" can't be used to reset passwords.`);
         }
-        const mailService = new mail_1.MailService({
+        const mailService = new MailService({
             schema: this.schema,
             knex: this.knex,
             accountability: this.accountability,
         });
-        const payload = { email, scope: 'password-reset', hash: (0, utils_1.getSimpleHash)('' + user.password) };
-        const token = jsonwebtoken_1.default.sign(payload, env_1.default['SECRET'], { expiresIn: '1d', issuer: 'directus' });
+        const payload = { email, scope: 'password-reset', hash: getSimpleHash('' + user.password) };
+        const token = jwt.sign(payload, env['SECRET'], { expiresIn: '1d', issuer: 'directus' });
         const acceptURL = url
-            ? new url_1.Url(url).setQuery('token', token).toString()
-            : new url_1.Url(env_1.default['PUBLIC_URL']).addPath('admin', 'reset-password').setQuery('token', token);
+            ? new Url(url).setQuery('token', token).toString()
+            : new Url(env['PUBLIC_URL']).addPath('admin', 'reset-password').setQuery('token', token).toString();
         const subjectLine = subject ? subject : 'Password Reset Request';
         await mailService.send({
             to: email,
@@ -348,12 +342,12 @@ class UsersService extends items_1.ItemsService {
                 },
             },
         });
-        await (0, stall_1.stall)(STALL_TIME, timeStart);
+        await stall(STALL_TIME, timeStart);
     }
     async resetPassword(token, password) {
-        const { email, scope, hash } = jsonwebtoken_1.default.verify(token, env_1.default['SECRET'], { issuer: 'directus' });
+        const { email, scope, hash } = jwt.verify(token, env['SECRET'], { issuer: 'directus' });
         if (scope !== 'password-reset' || !hash)
-            throw new exceptions_2.ForbiddenException();
+            throw new ForbiddenException();
         const opts = {};
         try {
             await this.checkPasswordPolicy([password]);
@@ -362,8 +356,8 @@ class UsersService extends items_1.ItemsService {
             opts.preMutationException = err;
         }
         const user = await this.knex.select('id', 'status', 'password').from('directus_users').where({ email }).first();
-        if (user?.status !== 'active' || hash !== (0, utils_1.getSimpleHash)('' + user.password)) {
-            throw new exceptions_2.ForbiddenException();
+        if (user?.status !== 'active' || hash !== getSimpleHash('' + user.password)) {
+            throw new ForbiddenException();
         }
         // Allow unauthenticated update
         const service = new UsersService({
@@ -377,4 +371,3 @@ class UsersService extends items_1.ItemsService {
         await service.updateOne(user.id, { password, status: 'active' }, opts);
     }
 }
-exports.UsersService = UsersService;

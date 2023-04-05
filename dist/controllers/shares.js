@@ -1,57 +1,52 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const joi_1 = __importDefault(require("joi"));
-const constants_1 = require("../constants");
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const respond_1 = require("../middleware/respond");
-const use_collection_1 = __importDefault(require("../middleware/use-collection"));
-const validate_batch_1 = require("../middleware/validate-batch");
-const services_1 = require("../services");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const sanitize_query_1 = require("../utils/sanitize-query");
-const router = express_1.default.Router();
-router.use((0, use_collection_1.default)('directus_shares'));
-const sharedLoginSchema = joi_1.default.object({
-    share: joi_1.default.string().required(),
-    password: joi_1.default.string(),
+import express from 'express';
+import Joi from 'joi';
+import { COOKIE_OPTIONS, UUID_REGEX } from '../constants.js';
+import env from '../env.js';
+import { ForbiddenException, InvalidPayloadException } from '../exceptions/index.js';
+import { respond } from '../middleware/respond.js';
+import useCollection from '../middleware/use-collection.js';
+import { validateBatch } from '../middleware/validate-batch.js';
+import { SharesService } from '../services/shares.js';
+import asyncHandler from '../utils/async-handler.js';
+import { sanitizeQuery } from '../utils/sanitize-query.js';
+const router = express.Router();
+router.use(useCollection('directus_shares'));
+const sharedLoginSchema = Joi.object({
+    share: Joi.string().required(),
+    password: Joi.string(),
 }).unknown();
-router.post('/auth', (0, async_handler_1.default)(async (req, res, next) => {
+router.post('/auth', asyncHandler(async (req, res, next) => {
     // This doesn't use accountability, as the user isn't logged in at this point
-    const service = new services_1.SharesService({
+    const service = new SharesService({
         schema: req.schema,
     });
     const { error } = sharedLoginSchema.validate(req.body);
     if (error) {
-        throw new exceptions_1.InvalidPayloadException(error.message);
+        throw new InvalidPayloadException(error.message);
     }
     const { accessToken, refreshToken, expires } = await service.login(req.body);
-    res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, constants_1.COOKIE_OPTIONS);
+    res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, COOKIE_OPTIONS);
     res.locals['payload'] = { data: { access_token: accessToken, expires } };
     return next();
-}), respond_1.respond);
-const sharedInviteSchema = joi_1.default.object({
-    share: joi_1.default.string().required(),
-    emails: joi_1.default.array().items(joi_1.default.string()),
+}), respond);
+const sharedInviteSchema = Joi.object({
+    share: Joi.string().required(),
+    emails: Joi.array().items(Joi.string()),
 }).unknown();
-router.post('/invite', (0, async_handler_1.default)(async (req, _res, next) => {
-    const service = new services_1.SharesService({
+router.post('/invite', asyncHandler(async (req, _res, next) => {
+    const service = new SharesService({
         schema: req.schema,
         accountability: req.accountability,
     });
     const { error } = sharedInviteSchema.validate(req.body);
     if (error) {
-        throw new exceptions_1.InvalidPayloadException(error.message);
+        throw new InvalidPayloadException(error.message);
     }
     await service.invite(req.body);
     return next();
-}), respond_1.respond);
-router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+router.post('/', asyncHandler(async (req, res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -75,15 +70,15 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
         }
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+const readHandler = asyncHandler(async (req, res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -91,10 +86,10 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     res.locals['payload'] = { data: records || null };
     return next();
 });
-router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.search('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.get(`/info/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.SharesService({
+router.get('/', validateBatch('read'), readHandler, respond);
+router.search('/', validateBatch('read'), readHandler, respond);
+router.get(`/info/:pk(${UUID_REGEX})`, asyncHandler(async (req, res, next) => {
+    const service = new SharesService({
         schema: req.schema,
     });
     const record = await service.readOne(req.params['pk'], {
@@ -134,18 +129,18 @@ router.get(`/info/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(
     });
     res.locals['payload'] = { data: record || null };
     return next();
-}), respond_1.respond);
-router.get(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+router.get(`/:pk(${UUID_REGEX})`, asyncHandler(async (req, res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
     const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
     res.locals['payload'] = { data: record || null };
     return next();
-}), respond_1.respond);
-router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+router.patch('/', validateBatch('update'), asyncHandler(async (req, res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -157,7 +152,7 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
         keys = await service.updateMany(req.body.keys, req.body.data);
     }
     else {
-        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        const sanitizedQuery = sanitizeQuery(req.body.query, req.accountability);
         keys = await service.updateByQuery(sanitizedQuery, req.body.data);
     }
     try {
@@ -165,15 +160,15 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
         res.locals['payload'] = { data: result };
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-router.patch(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+router.patch(`/:pk(${UUID_REGEX})`, asyncHandler(async (req, res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -183,15 +178,15 @@ router.patch(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(asy
         res.locals['payload'] = { data: item || null };
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-router.delete('/', (0, async_handler_1.default)(async (req, _res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+router.delete('/', asyncHandler(async (req, _res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -202,17 +197,17 @@ router.delete('/', (0, async_handler_1.default)(async (req, _res, next) => {
         await service.deleteMany(req.body.keys);
     }
     else {
-        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        const sanitizedQuery = sanitizeQuery(req.body.query, req.accountability);
         await service.deleteByQuery(sanitizedQuery);
     }
     return next();
-}), respond_1.respond);
-router.delete(`/:pk(${constants_1.UUID_REGEX})`, (0, async_handler_1.default)(async (req, _res, next) => {
-    const service = new services_1.SharesService({
+}), respond);
+router.delete(`/:pk(${UUID_REGEX})`, asyncHandler(async (req, _res, next) => {
+    const service = new SharesService({
         accountability: req.accountability,
         schema: req.schema,
     });
     await service.deleteOne(req.params['pk']);
     return next();
-}), respond_1.respond);
-exports.default = router;
+}), respond);
+export default router;

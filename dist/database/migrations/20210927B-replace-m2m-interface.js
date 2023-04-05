@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-async function up(knex) {
+export async function up(knex) {
     await knex('directus_fields')
         .update({
         interface: 'files',
@@ -9,8 +6,7 @@ async function up(knex) {
         .where('interface', '=', 'list-m2m')
         .andWhere('special', '=', 'files');
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex('directus_fields')
         .update({
         interface: 'list-m2m',
@@ -18,4 +14,3 @@ async function down(knex) {
         .where('interface', '=', 'files')
         .andWhere('special', '=', 'files');
 }
-exports.down = down;

@@ -1,12 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const knex_1 = require("knex");
-const path_1 = __importDefault(require("path"));
-const util_1 = require("util");
-function createDBConnection(client, credentials) {
+import knex from 'knex';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+import { promisify } from 'util';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export default function createDBConnection(client, credentials) {
     let connection = {};
     if (client === 'sqlite3') {
         const { filename } = credentials;
@@ -40,7 +38,7 @@ function createDBConnection(client, credentials) {
         connection: connection,
         seeds: {
             extension: 'js',
-            directory: path_1.default.resolve(__dirname, '../../database/seeds/'),
+            directory: path.resolve(__dirname, '../../database/seeds/'),
         },
         pool: {},
     };
@@ -49,13 +47,12 @@ function createDBConnection(client, credentials) {
     }
     if (client === 'cockroachdb') {
         knexConfig.pool.afterCreate = async (conn, callback) => {
-            const run = (0, util_1.promisify)(conn.query.bind(conn));
+            const run = promisify(conn.query.bind(conn));
             await run('SET serial_normalization = "sql_sequence"');
             await run('SET default_int_size = 4');
             callback(null, conn);
         };
     }
-    const db = (0, knex_1.knex)(knexConfig);
+    const db = knex.default(knexConfig);
     return db;
 }
-exports.default = createDBConnection;

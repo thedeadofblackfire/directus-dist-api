@@ -1,10 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.UnexpectedResponseException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class UnexpectedResponseException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class UnexpectedResponseException extends BaseException {
     constructor(message) {
         super(message, 503, 'UNEXPECTED_RESPONSE');
     }
 }
-exports.UnexpectedResponseException = UnexpectedResponseException;

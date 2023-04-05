@@ -1,6 +1,6 @@
-import { UsersService } from '../../services';
-import type { AuthDriverOptions, User } from '../../types';
-import { LocalAuthDriver } from './local';
+import { UsersService } from '../../services/users.js';
+import type { AuthDriverOptions, User } from '../../types/index.js';
+import { LocalAuthDriver } from './local.js';
 export declare class SAMLAuthDriver extends LocalAuthDriver {
     idp: any;
     sp: any;

@@ -1,11 +1,5 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const knex_schema_inspector_1 = __importDefault(require("knex-schema-inspector"));
-const logger_1 = __importDefault(require("../../logger"));
+import { createInspector } from '@directus/schema';
+import logger from '../../logger.js';
 /**
  * Things to keep in mind:
  *
@@ -82,8 +76,8 @@ const updates = [
         ],
     },
 ];
-async function up(knex) {
-    const inspector = (0, knex_schema_inspector_1.default)(knex);
+export async function up(knex) {
+    const inspector = createInspector(knex);
     const foreignKeys = await inspector.foreignKeys();
     for (const update of updates) {
         for (const constraint of update.constraints) {
@@ -97,8 +91,8 @@ async function up(knex) {
                 });
             }
             catch (err) {
-                logger_1.default.warn(`Couldn't drop foreign key ${update.table}.${constraint.column}->${constraint.references}`);
-                logger_1.default.warn(err);
+                logger.warn(`Couldn't drop foreign key ${update.table}.${constraint.column}->${constraint.references}`);
+                logger.warn(err);
             }
             /**
              * MySQL won't delete the index when you drop the foreign key constraint. Gotta make
@@ -112,8 +106,8 @@ async function up(knex) {
                     });
                 }
                 catch (err) {
-                    logger_1.default.warn(`Couldn't clean up index for foreign key ${update.table}.${constraint.column}->${constraint.references}`);
-                    logger_1.default.warn(err);
+                    logger.warn(`Couldn't clean up index for foreign key ${update.table}.${constraint.column}->${constraint.references}`);
+                    logger.warn(err);
                 }
             }
             try {
@@ -122,14 +116,13 @@ async function up(knex) {
                 });
             }
             catch (err) {
-                logger_1.default.warn(`Couldn't add foreign key to ${update.table}.${constraint.column}->${constraint.references}`);
-                logger_1.default.warn(err);
+                logger.warn(`Couldn't add foreign key to ${update.table}.${constraint.column}->${constraint.references}`);
+                logger.warn(err);
             }
         }
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     for (const update of updates) {
         for (const constraint of update.constraints) {
             try {
@@ -138,8 +131,8 @@ async function down(knex) {
                 });
             }
             catch (err) {
-                logger_1.default.warn(`Couldn't drop foreign key ${update.table}.${constraint.column}->${constraint.references}`);
-                logger_1.default.warn(err);
+                logger.warn(`Couldn't drop foreign key ${update.table}.${constraint.column}->${constraint.references}`);
+                logger.warn(err);
             }
             /**
              * MySQL won't delete the index when you drop the foreign key constraint. Gotta make
@@ -153,8 +146,8 @@ async function down(knex) {
                     });
                 }
                 catch (err) {
-                    logger_1.default.warn(`Couldn't clean up index for foreign key ${update.table}.${constraint.column}->${constraint.references}`);
-                    logger_1.default.warn(err);
+                    logger.warn(`Couldn't clean up index for foreign key ${update.table}.${constraint.column}->${constraint.references}`);
+                    logger.warn(err);
                 }
             }
             try {
@@ -163,10 +156,9 @@ async function down(knex) {
                 });
             }
             catch (err) {
-                logger_1.default.warn(`Couldn't add foreign key to ${update.table}.${constraint.column}->${constraint.references}`);
-                logger_1.default.warn(err);
+                logger.warn(`Couldn't add foreign key to ${update.table}.${constraint.column}->${constraint.references}`);
+                logger.warn(err);
             }
         }
     }
 }
-exports.down = down;

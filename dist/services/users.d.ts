@@ -1,6 +1,6 @@
-import type { Query } from '@directus/shared/types';
-import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
-import { ItemsService } from './items';
+import type { Query } from '@directus/types';
+import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types/index.js';
+import { ItemsService } from './items.js';
 export declare class UsersService extends ItemsService {
     constructor(options: AbstractServiceOptions);
     /**

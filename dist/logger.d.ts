@@ -1,5 +1,5 @@
 /// <reference types="qs" />
-import { LoggerOptions } from 'pino';
+import type { LoggerOptions } from 'pino';
 import type { RequestHandler } from 'express';
 export declare const httpLoggerOptions: LoggerOptions;
 declare const logger: import("pino").Logger<LoggerOptions & Record<string, any>>;

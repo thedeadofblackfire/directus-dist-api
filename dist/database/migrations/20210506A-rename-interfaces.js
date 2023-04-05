@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
+import { parseJSON } from '@directus/utils';
 // [before, after, after-option additions]
 const changes = [
     ['button-links', 'presentation-links'],
@@ -46,7 +43,7 @@ const changes = [
     ['system-language', 'system-language'],
     ['tfa-setup', 'system-mfa-setup'],
 ];
-async function up(knex) {
+export async function up(knex) {
     for (const [before, after, options] of changes) {
         // If any options need to be added, update the fields one by one in order to update the pre-existing field options
         if (options) {
@@ -55,7 +52,7 @@ async function up(knex) {
                 .from('directus_fields')
                 .where({ interface: before });
             for (const { id, options: existingOptionsRaw } of fields) {
-                const existingOptions = typeof existingOptionsRaw === 'string' ? (0, utils_1.parseJSON)(existingOptionsRaw) : existingOptionsRaw;
+                const existingOptions = typeof existingOptionsRaw === 'string' ? parseJSON(existingOptionsRaw) : existingOptionsRaw;
                 const newOptions = {
                     ...(existingOptions || {}),
                     ...options,
@@ -70,10 +67,8 @@ async function up(knex) {
         }
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     for (const [before, after] of changes) {
         await knex('directus_fields').update({ interface: before }).where({ interface: after });
     }
 }
-exports.down = down;

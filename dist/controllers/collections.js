@@ -1,17 +1,13 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const exceptions_1 = require("../exceptions");
-const respond_1 = require("../middleware/respond");
-const validate_batch_1 = require("../middleware/validate-batch");
-const services_1 = require("../services");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const router = (0, express_1.Router)();
-router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
-    const collectionsService = new services_1.CollectionsService({
+import { Router } from 'express';
+import { ForbiddenException } from '../exceptions/index.js';
+import { respond } from '../middleware/respond.js';
+import { validateBatch } from '../middleware/validate-batch.js';
+import { CollectionsService } from '../services/collections.js';
+import { MetaService } from '../services/meta.js';
+import asyncHandler from '../utils/async-handler.js';
+const router = Router();
+router.post('/', asyncHandler(async (req, res, next) => {
+    const collectionsService = new CollectionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -26,13 +22,13 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
         res.locals['payload'] = { data: record || null };
     }
     return next();
-}), respond_1.respond);
-const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
-    const collectionsService = new services_1.CollectionsService({
+}), respond);
+const readHandler = asyncHandler(async (req, res, next) => {
+    const collectionsService = new CollectionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    const metaService = new services_1.MetaService({
+    const metaService = new MetaService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -47,19 +43,19 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     res.locals['payload'] = { data: result, meta };
     return next();
 });
-router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.search('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.get('/:collection', (0, async_handler_1.default)(async (req, res, next) => {
-    const collectionsService = new services_1.CollectionsService({
+router.get('/', validateBatch('read'), readHandler, respond);
+router.search('/', validateBatch('read'), readHandler, respond);
+router.get('/:collection', asyncHandler(async (req, res, next) => {
+    const collectionsService = new CollectionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
     const collection = await collectionsService.readOne(req.params['collection']);
     res.locals['payload'] = { data: collection || null };
     return next();
-}), respond_1.respond);
-router.patch('/', (0, async_handler_1.default)(async (req, res, next) => {
-    const collectionsService = new services_1.CollectionsService({
+}), respond);
+router.patch('/', asyncHandler(async (req, res, next) => {
+    const collectionsService = new CollectionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -69,15 +65,15 @@ router.patch('/', (0, async_handler_1.default)(async (req, res, next) => {
         res.locals['payload'] = { data: collections || null };
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-router.patch('/:collection', (0, async_handler_1.default)(async (req, res, next) => {
-    const collectionsService = new services_1.CollectionsService({
+}), respond);
+router.patch('/:collection', asyncHandler(async (req, res, next) => {
+    const collectionsService = new CollectionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -87,19 +83,19 @@ router.patch('/:collection', (0, async_handler_1.default)(async (req, res, next)
         res.locals['payload'] = { data: collection || null };
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-router.delete('/:collection', (0, async_handler_1.default)(async (req, _res, next) => {
-    const collectionsService = new services_1.CollectionsService({
+}), respond);
+router.delete('/:collection', asyncHandler(async (req, _res, next) => {
+    const collectionsService = new CollectionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
     await collectionsService.deleteOne(req.params['collection']);
     return next();
-}), respond_1.respond);
-exports.default = router;
+}), respond);
+export default router;

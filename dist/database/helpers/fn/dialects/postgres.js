@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FnHelperPostgres = void 0;
-const types_1 = require("../types");
+import { FnHelper } from '../types.js';
 const parseLocaltime = (columnType) => {
     if (columnType === 'timestamp') {
         return ` AT TIME ZONE 'UTC'`;
     }
     return '';
 };
-class FnHelperPostgres extends types_1.FnHelper {
+export class FnHelperPostgres extends FnHelper {
     year(table, column, options) {
         return this.knex.raw(`EXTRACT(YEAR FROM ??.??${parseLocaltime(options?.type)})`, [table, column]);
     }
@@ -49,4 +46,3 @@ class FnHelperPostgres extends types_1.FnHelper {
         throw new Error(`Couldn't extract type from ${table}.${column}`);
     }
 }
-exports.FnHelperPostgres = FnHelperPostgres;

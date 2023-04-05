@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-async function up(knex) {
+export async function up(knex) {
     await knex.schema.alterTable('directus_fields', (table) => {
         table.dropForeign(['collection']);
     });
@@ -22,8 +19,7 @@ async function up(knex) {
         table.dropForeign(['collection']);
     });
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex.schema.alterTable('directus_fields', (table) => {
         table.foreign('collection').references('directus_collections.collection');
     });
@@ -44,4 +40,3 @@ async function down(knex) {
         table.foreign('collection').references('directus_collections.collection');
     });
 }
-exports.down = down;

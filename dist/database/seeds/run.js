@@ -1,25 +1,23 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const js_yaml_1 = __importDefault(require("js-yaml"));
-const lodash_1 = require("lodash");
-const path_1 = __importDefault(require("path"));
-const helpers_1 = require("../helpers");
-async function runSeed(database) {
-    const helpers = (0, helpers_1.getHelpers)(database);
+import fse from 'fs-extra';
+import yaml from 'js-yaml';
+import { isObject } from 'lodash-es';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+import { getHelpers } from '../helpers/index.js';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export default async function runSeed(database) {
+    const helpers = getHelpers(database);
     const exists = await database.schema.hasTable('directus_collections');
     if (exists) {
         throw new Error('Database is already installed');
     }
-    const tableSeeds = await fs_extra_1.default.readdir(path_1.default.resolve(__dirname));
+    const tableSeeds = await fse.readdir(path.resolve(__dirname));
     for (const tableSeedFile of tableSeeds) {
         if (tableSeedFile.startsWith('run'))
             continue;
-        const yamlRaw = await fs_extra_1.default.readFile(path_1.default.resolve(__dirname, tableSeedFile), 'utf8');
-        const seedData = js_yaml_1.default.load(yamlRaw);
+        const yamlRaw = await fse.readFile(path.resolve(__dirname, tableSeedFile), 'utf8');
+        const seedData = yaml.load(yamlRaw);
         await database.schema.createTable(seedData.table, (tableBuilder) => {
             for (const [columnName, columnInfo] of Object.entries(seedData.columns)) {
                 let column;
@@ -52,7 +50,7 @@ async function runSeed(database) {
                 }
                 if (columnInfo.default !== undefined) {
                     let defaultValue = columnInfo.default;
-                    if ((0, lodash_1.isObject)(defaultValue) || Array.isArray(defaultValue)) {
+                    if (isObject(defaultValue) || Array.isArray(defaultValue)) {
                         defaultValue = JSON.stringify(defaultValue);
                     }
                     if (defaultValue === '$now') {
@@ -73,4 +71,3 @@ async function runSeed(database) {
         });
     }
 }
-exports.default = runSeed;

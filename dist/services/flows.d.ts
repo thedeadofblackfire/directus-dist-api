@@ -1,6 +1,6 @@
-import type { FlowRaw } from '@directus/shared/types';
-import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
-import { ItemsService } from './items';
+import type { FlowRaw } from '@directus/types';
+import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types/index.js';
+import { ItemsService } from './items.js';
 export declare class FlowsService extends ItemsService<FlowRaw> {
     constructor(options: AbstractServiceOptions);
     createOne(data: Partial<Item>, opts?: MutationOptions): Promise<PrimaryKey>;

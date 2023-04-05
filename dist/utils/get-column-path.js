@@ -1,24 +1,21 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getColumnPath = void 0;
-const exceptions_1 = require("../exceptions");
-const get_relation_info_1 = require("./get-relation-info");
+import { InvalidQueryException } from '../exceptions/index.js';
+import { getRelationInfo } from './get-relation-info.js';
 /**
  * Converts a Directus field list path to the correct SQL names based on the constructed alias map.
  * For example: ['author', 'role', 'name'] -> 'ljnsv.name'
  * Also returns the target collection of the column: 'directus_roles'
  * If the last filter path is an alias field, a nested PK is appended to the path
  */
-function getColumnPath({ path, collection, aliasMap, relations, schema }) {
+export function getColumnPath({ path, collection, aliasMap, relations, schema }) {
     return followRelation(path);
     function followRelation(pathParts, parentCollection = collection, parentFields, addNestedPkField) {
         /**
          * For A2M fields, the path can contain an optional collection scope <field>:<scope>
          */
         const pathRoot = pathParts[0].split(':')[0];
-        const { relation, relationType } = (0, get_relation_info_1.getRelationInfo)(relations, parentCollection, pathRoot);
+        const { relation, relationType } = getRelationInfo(relations, parentCollection, pathRoot);
         if (!relation) {
-            throw new exceptions_1.InvalidQueryException(`"${parentCollection}.${pathRoot}" is not a relational field`);
+            throw new InvalidQueryException(`"${parentCollection}.${pathRoot}" is not a relational field`);
         }
         const alias = parentFields ? aliasMap[`${parentFields}.${pathParts[0]}`]?.alias : aliasMap[pathParts[0]]?.alias;
         const remainingParts = pathParts.slice(1);
@@ -26,7 +23,7 @@ function getColumnPath({ path, collection, aliasMap, relations, schema }) {
         if (relationType === 'a2o') {
             const pathScope = pathParts[0].split(':')[1];
             if (!pathScope) {
-                throw new exceptions_1.InvalidQueryException(`You have to provide a collection scope when sorting on a many-to-any item`);
+                throw new InvalidQueryException(`You have to provide a collection scope when sorting on a many-to-any item`);
             }
             parent = pathScope;
         }
@@ -62,4 +59,3 @@ function getColumnPath({ path, collection, aliasMap, relations, schema }) {
         return { columnPath: '', targetCollection: '', addNestedPkField };
     }
 }
-exports.getColumnPath = getColumnPath;

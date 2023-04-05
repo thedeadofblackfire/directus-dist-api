@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FnHelperMySQL = void 0;
-const types_1 = require("../types");
-class FnHelperMySQL extends types_1.FnHelper {
+import { FnHelper } from '../types.js';
+export class FnHelperMySQL extends FnHelper {
     year(table, column) {
         return this.knex.raw('YEAR(??.??)', [table, column]);
     }
@@ -39,4 +36,3 @@ class FnHelperMySQL extends types_1.FnHelper {
         throw new Error(`Couldn't extract type from ${table}.${column}`);
     }
 }
-exports.FnHelperMySQL = FnHelperMySQL;

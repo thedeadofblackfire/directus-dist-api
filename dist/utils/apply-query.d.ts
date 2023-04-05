@@ -1,6 +1,6 @@
-import type { Aggregate, Filter, Query, SchemaOverview } from '@directus/shared/types';
+import type { Aggregate, Filter, Query, SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
-import { AliasMap } from './get-column-path';
+import { AliasMap } from './get-column-path.js';
 export declare const generateAlias: (size?: number | undefined) => string;
 /**
  * Apply the Query to a given Knex query builder instance

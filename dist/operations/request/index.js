@@ -1,25 +1,20 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const utils_1 = require("@directus/shared/utils");
-const encodeurl_1 = __importDefault(require("encodeurl"));
-const index_1 = require("../../request/index");
-exports.default = (0, utils_1.defineOperationApi)({
+import { defineOperationApi, isValidJSON } from '@directus/utils';
+import encodeUrl from 'encodeurl';
+import { getAxios } from '../../request/index.js';
+export default defineOperationApi({
     id: 'request',
     handler: async ({ url, method, body, headers }) => {
         const customHeaders = headers?.reduce((acc, { header, value }) => {
             acc[header] = value;
             return acc;
         }, {}) ?? {};
-        if (!customHeaders['Content-Type'] && (typeof body === 'object' || (0, utils_1.isValidJSON)(body))) {
+        if (!customHeaders['Content-Type'] && (typeof body === 'object' || isValidJSON(body))) {
             customHeaders['Content-Type'] = 'application/json';
         }
-        const axios = await (0, index_1.getAxios)();
+        const axios = await getAxios();
         try {
             const result = await axios({
-                url: (0, encodeurl_1.default)(url),
+                url: encodeUrl(url),
                 method,
                 data: body,
                 headers: customHeaders,

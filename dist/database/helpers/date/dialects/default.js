@@ -1,7 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DateHelperDefault = void 0;
-const types_1 = require("../types");
-class DateHelperDefault extends types_1.DateHelper {
+import { DateHelper } from '../types.js';
+export class DateHelperDefault extends DateHelper {
 }
-exports.DateHelperDefault = DateHelperDefault;

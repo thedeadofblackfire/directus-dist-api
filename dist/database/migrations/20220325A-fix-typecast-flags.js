@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
-const lodash_1 = require("lodash");
-async function up(knex) {
+import { toArray } from '@directus/utils';
+import { isArray } from 'lodash-es';
+export async function up(knex) {
     const fields = await knex
         .select('id', 'special')
         .from('directus_fields')
@@ -14,16 +11,16 @@ async function up(knex) {
         try {
             if (special.includes('{')) {
                 // Fix invalid data in Postgres
-                parsedSpecial = (0, utils_1.toArray)(special.replace(/{/g, '').replace(/}/g, '').replace(/"/g, ''));
+                parsedSpecial = toArray(special.replace(/{/g, '').replace(/}/g, '').replace(/"/g, ''));
             }
             else {
-                parsedSpecial = (0, utils_1.toArray)(special);
+                parsedSpecial = toArray(special);
             }
         }
         catch {
             continue;
         }
-        if (parsedSpecial && (0, lodash_1.isArray)(parsedSpecial)) {
+        if (parsedSpecial && isArray(parsedSpecial)) {
             // Perform the update again in case it was not performed prior
             parsedSpecial = parsedSpecial.map((special) => {
                 switch (special) {
@@ -42,8 +39,6 @@ async function up(knex) {
         }
     }
 }
-exports.up = up;
-async function down(_knex) {
+export async function down(_knex) {
     // Do nothing
 }
-exports.down = down;

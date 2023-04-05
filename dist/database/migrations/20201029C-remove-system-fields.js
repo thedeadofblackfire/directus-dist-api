@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const lodash_1 = require("lodash");
+import { merge, uniq } from 'lodash-es';
 const defaults = {
     collection: null,
     field: null,
@@ -1635,14 +1632,12 @@ const systemFields = [
             row[key] = JSON.stringify(value);
         }
     }
-    return (0, lodash_1.merge)({}, defaults, row);
+    return merge({}, defaults, row);
 });
-async function up(knex) {
-    const fieldKeys = (0, lodash_1.uniq)(systemFields.map((field) => field.field));
+export async function up(knex) {
+    const fieldKeys = uniq(systemFields.map((field) => field.field));
     await knex('directus_fields').delete().where('collection', 'like', 'directus_%').whereIn('field', fieldKeys);
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex.insert(systemFields).into('directus_fields');
 }
-exports.down = down;

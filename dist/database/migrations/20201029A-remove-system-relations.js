@@ -1,15 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const lodash_1 = require("lodash");
-async function up(knex) {
+import { merge } from 'lodash-es';
+export async function up(knex) {
     await knex('directus_relations')
         .delete()
         .where('many_collection', 'like', 'directus_%')
         .andWhere('one_collection', 'like', 'directus_%');
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     const defaults = {
         many_collection: 'directus_users',
         many_field: null,
@@ -120,8 +116,7 @@ async function down(knex) {
                 row[key] = JSON.stringify(value);
             }
         }
-        return (0, lodash_1.merge)({}, defaults, row);
+        return merge({}, defaults, row);
     });
     await knex.insert(systemRelations).into('directus_relations');
 }
-exports.down = down;

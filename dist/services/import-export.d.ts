@@ -1,8 +1,8 @@
-/// <reference types="node" />
-import type { Accountability, Query, SchemaOverview } from '@directus/shared/types';
+/// <reference types="node" resolution-mode="require"/>
+import type { Accountability, Query, SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
 import type { Readable } from 'node:stream';
-import type { AbstractServiceOptions, File } from '../types';
+import type { AbstractServiceOptions, File } from '../types/index.js';
 type ExportFormat = 'csv' | 'json' | 'xml' | 'yaml';
 export declare class ImportService {
     knex: Knex;

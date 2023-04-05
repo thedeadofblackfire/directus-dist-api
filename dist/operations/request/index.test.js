@@ -1,11 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const axiosDefault = vitest_1.vi.fn();
-vitest_1.vi.mock('../../request', () => ({
+import { afterEach, expect, test, vi } from 'vitest';
+const axiosDefault = vi.fn();
+vi.mock('../../request/index.js', () => ({
     getAxios: () => axiosDefault.mockResolvedValue({
         status: 200,
         statusText: 'OK',
@@ -15,72 +10,72 @@ vitest_1.vi.mock('../../request', () => ({
 }));
 const url = '/';
 const method = 'POST';
-const index_1 = __importDefault(require("./index"));
-(0, vitest_1.afterEach)(() => {
-    vitest_1.vi.clearAllMocks();
+import config from './index.js';
+afterEach(() => {
+    vi.clearAllMocks();
 });
-(0, vitest_1.test)('no headers configured', async () => {
+test('no headers configured', async () => {
     const body = 'body';
-    await index_1.default.handler({ url, method, body }, {});
-    (0, vitest_1.expect)(axiosDefault).toHaveBeenCalledWith(vitest_1.expect.objectContaining({
+    await config.handler({ url, method, body }, {});
+    expect(axiosDefault).toHaveBeenCalledWith(expect.objectContaining({
         url,
         method,
         data: body,
         headers: {},
     }));
 });
-(0, vitest_1.test)('headers array is converted to object', async () => {
+test('headers array is converted to object', async () => {
     const body = 'body';
     const headers = [
         { header: 'header1', value: 'value1' },
         { header: 'header2', value: 'value2' },
     ];
-    await index_1.default.handler({ url, method, body, headers }, {});
-    (0, vitest_1.expect)(axiosDefault).toHaveBeenCalledWith(vitest_1.expect.objectContaining({
+    await config.handler({ url, method, body, headers }, {});
+    expect(axiosDefault).toHaveBeenCalledWith(expect.objectContaining({
         url,
         method,
         data: body,
-        headers: vitest_1.expect.objectContaining({
+        headers: expect.objectContaining({
             header1: 'value1',
             header2: 'value2',
         }),
     }));
 });
-(0, vitest_1.test)('should not automatically set Content-Type header when it is already defined', async () => {
+test('should not automatically set Content-Type header when it is already defined', async () => {
     const body = 'body';
     const headers = [{ header: 'Content-Type', value: 'application/octet-stream' }];
-    await index_1.default.handler({ url, method, body, headers }, {});
-    (0, vitest_1.expect)(axiosDefault).toHaveBeenCalledWith(vitest_1.expect.objectContaining({
+    await config.handler({ url, method, body, headers }, {});
+    expect(axiosDefault).toHaveBeenCalledWith(expect.objectContaining({
         url,
         method,
         data: body,
-        headers: vitest_1.expect.objectContaining({
-            'Content-Type': vitest_1.expect.not.stringContaining('application/json'),
+        headers: expect.objectContaining({
+            'Content-Type': expect.not.stringContaining('application/json'),
         }),
     }));
 });
-(0, vitest_1.test)('should not automatically set Content-Type header to "application/json" when the body is not a valid JSON string', async () => {
+test('should not automatically set Content-Type header to "application/json" when the body is not a valid JSON string', async () => {
     const body = '"a": "b"';
     const headers = [{ header: 'header1', value: 'value1' }];
-    await index_1.default.handler({ url, method, body, headers }, {});
-    (0, vitest_1.expect)(axiosDefault).toHaveBeenCalledWith(vitest_1.expect.objectContaining({
+    await config.handler({ url, method, body, headers }, {});
+    expect(axiosDefault).toHaveBeenCalledWith(expect.objectContaining({
         url,
         method,
         data: body,
-        headers: vitest_1.expect.not.objectContaining({
+        headers: expect.not.objectContaining({
             'Content-Type': 'application/json',
         }),
     }));
 });
-(0, vitest_1.test)('should automatically set Content-Type header to "application/json" when the body is a valid JSON string', async () => {
+test('should automatically set Content-Type header to "application/json" when the body is a valid JSON string', async () => {
     const body = '{ "a": "b" }';
     const headers = [{ header: 'header1', value: 'value1' }];
-    await index_1.default.handler({ url, method, body, headers }, {});
-    (0, vitest_1.expect)(axiosDefault).toHaveBeenCalledWith(vitest_1.expect.objectContaining({
+    await config.handler({ url, method, body, headers }, {});
+    expect(axiosDefault).toHaveBeenCalledWith(expect.objectContaining({
         url,
         method,
         data: body,
-        headers: vitest_1.expect.objectContaining({
+        headers: expect.objectContaining({
             header1: 'value1',
             'Content-Type': 'application/json',
         }),

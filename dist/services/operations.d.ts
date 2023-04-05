@@ -1,6 +1,6 @@
-import type { OperationRaw } from '@directus/shared/types';
-import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types';
-import { ItemsService } from './items';
+import type { OperationRaw } from '@directus/types';
+import type { AbstractServiceOptions, Item, MutationOptions, PrimaryKey } from '../types/index.js';
+import { ItemsService } from './items.js';
 export declare class OperationsService extends ItemsService<OperationRaw> {
     constructor(options: AbstractServiceOptions);
     createOne(data: Partial<Item>, opts?: MutationOptions): Promise<PrimaryKey>;

@@ -1,8 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const uuid_1 = require("uuid");
-const vitest_1 = require("vitest");
-const validate_keys_1 = require("../../src/utils/validate-keys");
+import { v4 as uuid } from 'uuid';
+import { describe, expect, it } from 'vitest';
+import { validateKeys } from '../../src/utils/validate-keys.js';
 const schema = {
     collections: {
         pk_integer: {
@@ -56,43 +54,43 @@ const schema = {
     },
     relations: [],
 };
-(0, vitest_1.describe)('validate keys', () => {
-    (0, vitest_1.describe)('of integer type', () => {
-        (0, vitest_1.it)('Throws an error when provided with an invalid integer key', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', 'invalid')).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', NaN)).toThrowError();
+describe('validate keys', () => {
+    describe('of integer type', () => {
+        it('Throws an error when provided with an invalid integer key', () => {
+            expect(() => validateKeys(schema, 'pk_integer', 'id', 'invalid')).toThrowError();
+            expect(() => validateKeys(schema, 'pk_integer', 'id', NaN)).toThrowError();
         });
-        (0, vitest_1.it)('Throws an error when provided with an array containing an invalid integer key', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', [111, 'invalid', 222])).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', [555, NaN, 666])).toThrowError();
+        it('Throws an error when provided with an array containing an invalid integer key', () => {
+            expect(() => validateKeys(schema, 'pk_integer', 'id', [111, 'invalid', 222])).toThrowError();
+            expect(() => validateKeys(schema, 'pk_integer', 'id', [555, NaN, 666])).toThrowError();
         });
-        (0, vitest_1.it)('Does not throw an error when provided with a valid integer key', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', 111)).not.toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', '222')).not.toThrowError();
+        it('Does not throw an error when provided with a valid integer key', () => {
+            expect(() => validateKeys(schema, 'pk_integer', 'id', 111)).not.toThrowError();
+            expect(() => validateKeys(schema, 'pk_integer', 'id', '222')).not.toThrowError();
         });
-        (0, vitest_1.it)('Does not throw an error when provided with an array of valid integer keys', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', [111, 222, 333])).not.toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_integer', 'id', ['444', '555', '666'])).not.toThrowError();
+        it('Does not throw an error when provided with an array of valid integer keys', () => {
+            expect(() => validateKeys(schema, 'pk_integer', 'id', [111, 222, 333])).not.toThrowError();
+            expect(() => validateKeys(schema, 'pk_integer', 'id', ['444', '555', '666'])).not.toThrowError();
         });
     });
-    (0, vitest_1.describe)('of uuid type', () => {
-        (0, vitest_1.it)('Throws an error when provided with an invalid uuid key', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', 'fakeuuid-62d9-434d-a7c7-878c8376782e')).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', 'invalid')).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', NaN)).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', 111)).toThrowError();
+    describe('of uuid type', () => {
+        it('Throws an error when provided with an invalid uuid key', () => {
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', 'fakeuuid-62d9-434d-a7c7-878c8376782e')).toThrowError();
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', 'invalid')).toThrowError();
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', NaN)).toThrowError();
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', 111)).toThrowError();
         });
-        (0, vitest_1.it)('Throws an error when provided with an array containing an invalid uuid key', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', [(0, uuid_1.v4)(), 'fakeuuid-62d9-434d-a7c7-878c8376782e', (0, uuid_1.v4)()])).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', [(0, uuid_1.v4)(), 'invalid', (0, uuid_1.v4)()])).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', [(0, uuid_1.v4)(), NaN, (0, uuid_1.v4)()])).toThrowError();
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', [(0, uuid_1.v4)(), 111, (0, uuid_1.v4)()])).toThrowError();
+        it('Throws an error when provided with an array containing an invalid uuid key', () => {
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', [uuid(), 'fakeuuid-62d9-434d-a7c7-878c8376782e', uuid()])).toThrowError();
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', [uuid(), 'invalid', uuid()])).toThrowError();
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', [uuid(), NaN, uuid()])).toThrowError();
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', [uuid(), 111, uuid()])).toThrowError();
         });
-        (0, vitest_1.it)('Does not throw an error when provided with a valid uuid key', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', (0, uuid_1.v4)())).not.toThrowError();
+        it('Does not throw an error when provided with a valid uuid key', () => {
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', uuid())).not.toThrowError();
         });
-        (0, vitest_1.it)('Does not throw an error when provided with an array of valid uuid keys', () => {
-            (0, vitest_1.expect)(() => (0, validate_keys_1.validateKeys)(schema, 'pk_uuid', 'id', [(0, uuid_1.v4)(), (0, uuid_1.v4)(), (0, uuid_1.v4)()])).not.toThrowError();
+        it('Does not throw an error when provided with an array of valid uuid keys', () => {
+            expect(() => validateKeys(schema, 'pk_uuid', 'id', [uuid(), uuid(), uuid()])).not.toThrowError();
         });
     });
 });

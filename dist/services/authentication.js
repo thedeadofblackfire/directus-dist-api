@@ -1,35 +1,29 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthenticationService = void 0;
-const types_1 = require("@directus/shared/types");
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const lodash_1 = require("lodash");
-const perf_hooks_1 = require("perf_hooks");
-const auth_1 = require("../auth");
-const constants_1 = require("../constants");
-const database_1 = __importDefault(require("../database"));
-const emitter_1 = __importDefault(require("../emitter"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_1 = require("../exceptions");
-const rate_limiter_1 = require("../rate-limiter");
-const get_milliseconds_1 = require("../utils/get-milliseconds");
-const stall_1 = require("../utils/stall");
-const activity_1 = require("./activity");
-const settings_1 = require("./settings");
-const tfa_1 = require("./tfa");
-const loginAttemptsLimiter = (0, rate_limiter_1.createRateLimiter)('RATE_LIMITER', { duration: 0 });
-class AuthenticationService {
+import { Action } from '@directus/types';
+import jwt from 'jsonwebtoken';
+import { clone, cloneDeep } from 'lodash-es';
+import { performance } from 'perf_hooks';
+import { getAuthProvider } from '../auth.js';
+import { DEFAULT_AUTH_PROVIDER } from '../constants.js';
+import getDatabase from '../database/index.js';
+import emitter from '../emitter.js';
+import env from '../env.js';
+import { InvalidCredentialsException, InvalidOTPException, InvalidProviderException, UserSuspendedException, } from '../exceptions/index.js';
+import { createRateLimiter } from '../rate-limiter.js';
+import { getMilliseconds } from '../utils/get-milliseconds.js';
+import { stall } from '../utils/stall.js';
+import { ActivityService } from './activity.js';
+import { SettingsService } from './settings.js';
+import { TFAService } from './tfa.js';
+const loginAttemptsLimiter = createRateLimiter('RATE_LIMITER', { duration: 0 });
+export class AuthenticationService {
     knex;
     accountability;
     activityService;
     schema;
     constructor(options) {
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.accountability = options.accountability || null;
-        this.activityService = new activity_1.ActivityService({ knex: this.knex, schema: options.schema });
+        this.activityService = new ActivityService({ knex: this.knex, schema: options.schema });
         this.schema = options.schema;
     }
     /**
@@ -38,17 +32,17 @@ class AuthenticationService {
      * Password is optional to allow usage of this function within the SSO flow and extensions. Make sure
      * to handle password existence checks elsewhere
      */
-    async login(providerName = constants_1.DEFAULT_AUTH_PROVIDER, payload, otp) {
+    async login(providerName = DEFAULT_AUTH_PROVIDER, payload, otp) {
         const { nanoid } = await import('nanoid');
-        const STALL_TIME = env_1.default['LOGIN_STALL_TIME'];
-        const timeStart = perf_hooks_1.performance.now();
-        const provider = (0, auth_1.getAuthProvider)(providerName);
+        const STALL_TIME = env['LOGIN_STALL_TIME'];
+        const timeStart = performance.now();
+        const provider = getAuthProvider(providerName);
         let userId;
         try {
-            userId = await provider.getUserID((0, lodash_1.cloneDeep)(payload));
+            userId = await provider.getUserID(cloneDeep(payload));
         }
         catch (err) {
-            await (0, stall_1.stall)(STALL_TIME, timeStart);
+            await stall(STALL_TIME, timeStart);
             throw err;
         }
         const user = await this.knex
@@ -57,7 +51,7 @@ class AuthenticationService {
             .leftJoin('directus_roles as r', 'u.role', 'r.id')
             .where('u.id', userId)
             .first();
-        const updatedPayload = await emitter_1.default.emitFilter('auth.login', payload, {
+        const updatedPayload = await emitter.emitFilter('auth.login', payload, {
             status: 'pending',
             user: user?.id,
             provider: providerName,
@@ -67,7 +61,7 @@ class AuthenticationService {
             accountability: this.accountability,
         });
         const emitStatus = (status) => {
-            emitter_1.default.emitAction('auth.login', {
+            emitter.emitAction('auth.login', {
                 payload: updatedPayload,
                 status,
                 user: user?.id,
@@ -81,19 +75,19 @@ class AuthenticationService {
         if (user?.status !== 'active') {
             emitStatus('fail');
             if (user?.status === 'suspended') {
-                await (0, stall_1.stall)(STALL_TIME, timeStart);
-                throw new exceptions_1.UserSuspendedException();
+                await stall(STALL_TIME, timeStart);
+                throw new UserSuspendedException();
             }
             else {
-                await (0, stall_1.stall)(STALL_TIME, timeStart);
-                throw new exceptions_1.InvalidCredentialsException();
+                await stall(STALL_TIME, timeStart);
+                throw new InvalidCredentialsException();
             }
         }
         else if (user.provider !== providerName) {
-            await (0, stall_1.stall)(STALL_TIME, timeStart);
-            throw new exceptions_1.InvalidProviderException();
+            await stall(STALL_TIME, timeStart);
+            throw new InvalidProviderException();
         }
-        const settingsService = new settings_1.SettingsService({
+        const settingsService = new SettingsService({
             knex: this.knex,
             schema: this.schema,
         });
@@ -113,25 +107,25 @@ class AuthenticationService {
             }
         }
         try {
-            await provider.login((0, lodash_1.clone)(user), (0, lodash_1.cloneDeep)(updatedPayload));
+            await provider.login(clone(user), cloneDeep(updatedPayload));
         }
         catch (e) {
             emitStatus('fail');
-            await (0, stall_1.stall)(STALL_TIME, timeStart);
+            await stall(STALL_TIME, timeStart);
             throw e;
         }
         if (user.tfa_secret && !otp) {
             emitStatus('fail');
-            await (0, stall_1.stall)(STALL_TIME, timeStart);
-            throw new exceptions_1.InvalidOTPException(`"otp" is required`);
+            await stall(STALL_TIME, timeStart);
+            throw new InvalidOTPException(`"otp" is required`);
         }
         if (user.tfa_secret && otp) {
-            const tfaService = new tfa_1.TFAService({ knex: this.knex, schema: this.schema });
+            const tfaService = new TFAService({ knex: this.knex, schema: this.schema });
             const otpValid = await tfaService.verifyOTP(user.id, otp);
             if (otpValid === false) {
                 emitStatus('fail');
-                await (0, stall_1.stall)(STALL_TIME, timeStart);
-                throw new exceptions_1.InvalidOTPException(`"otp" is invalid`);
+                await stall(STALL_TIME, timeStart);
+                throw new InvalidOTPException(`"otp" is invalid`);
             }
         }
         const tokenPayload = {
@@ -140,7 +134,7 @@ class AuthenticationService {
             app_access: user.app_access,
             admin_access: user.admin_access,
         };
-        const customClaims = await emitter_1.default.emitFilter('auth.jwt', tokenPayload, {
+        const customClaims = await emitter.emitFilter('auth.jwt', tokenPayload, {
             status: 'pending',
             user: user?.id,
             provider: providerName,
@@ -150,12 +144,12 @@ class AuthenticationService {
             schema: this.schema,
             accountability: this.accountability,
         });
-        const accessToken = jsonwebtoken_1.default.sign(customClaims, env_1.default['SECRET'], {
-            expiresIn: env_1.default['ACCESS_TOKEN_TTL'],
+        const accessToken = jwt.sign(customClaims, env['SECRET'], {
+            expiresIn: env['ACCESS_TOKEN_TTL'],
             issuer: 'directus',
         });
         const refreshToken = nanoid(64);
-        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL'], 0));
+        const refreshTokenExpiration = new Date(Date.now() + getMilliseconds(env['REFRESH_TOKEN_TTL'], 0));
         await this.knex('directus_sessions').insert({
             token: refreshToken,
             user: user.id,
@@ -167,7 +161,7 @@ class AuthenticationService {
         await this.knex('directus_sessions').delete().where('expires', '<', new Date());
         if (this.accountability) {
             await this.activityService.createOne({
-                action: types_1.Action.LOGIN,
+                action: Action.LOGIN,
                 user: user.id,
                 ip: this.accountability.ip,
                 user_agent: this.accountability.userAgent,
@@ -181,18 +175,18 @@ class AuthenticationService {
         if (allowedAttempts !== null) {
             await loginAttemptsLimiter.set(user.id, 0, 0);
         }
-        await (0, stall_1.stall)(STALL_TIME, timeStart);
+        await stall(STALL_TIME, timeStart);
         return {
             accessToken,
             refreshToken,
-            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default['ACCESS_TOKEN_TTL']),
+            expires: getMilliseconds(env['ACCESS_TOKEN_TTL']),
             id: user.id,
         };
     }
     async refresh(refreshToken) {
         const { nanoid } = await import('nanoid');
         if (!refreshToken) {
-            throw new exceptions_1.InvalidCredentialsException();
+            throw new InvalidCredentialsException();
         }
         const record = await this.knex
             .select({
@@ -234,10 +228,10 @@ class AuthenticationService {
         })
             .first();
         if (!record || (!record.share_id && !record.user_id)) {
-            throw new exceptions_1.InvalidCredentialsException();
+            throw new InvalidCredentialsException();
         }
         if (record.user_id) {
-            const provider = (0, auth_1.getAuthProvider)(record.user_provider);
+            const provider = getAuthProvider(record.user_provider);
             await provider.refresh({
                 id: record.user_id,
                 first_name: record.user_first_name,
@@ -270,7 +264,7 @@ class AuthenticationService {
             tokenPayload.admin_access = false;
             delete tokenPayload.id;
         }
-        const customClaims = await emitter_1.default.emitFilter('auth.jwt', tokenPayload, {
+        const customClaims = await emitter.emitFilter('auth.jwt', tokenPayload, {
             status: 'pending',
             user: record.user_id,
             provider: record.user_provider,
@@ -280,12 +274,12 @@ class AuthenticationService {
             schema: this.schema,
             accountability: this.accountability,
         });
-        const accessToken = jsonwebtoken_1.default.sign(customClaims, env_1.default['SECRET'], {
-            expiresIn: env_1.default['ACCESS_TOKEN_TTL'],
+        const accessToken = jwt.sign(customClaims, env['SECRET'], {
+            expiresIn: env['ACCESS_TOKEN_TTL'],
             issuer: 'directus',
         });
         const newRefreshToken = nanoid(64);
-        const refreshTokenExpiration = new Date(Date.now() + (0, get_milliseconds_1.getMilliseconds)(env_1.default['REFRESH_TOKEN_TTL'], 0));
+        const refreshTokenExpiration = new Date(Date.now() + getMilliseconds(env['REFRESH_TOKEN_TTL'], 0));
         await this.knex('directus_sessions')
             .update({
             token: newRefreshToken,
@@ -298,7 +292,7 @@ class AuthenticationService {
         return {
             accessToken,
             refreshToken: newRefreshToken,
-            expires: (0, get_milliseconds_1.getMilliseconds)(env_1.default['ACCESS_TOKEN_TTL']),
+            expires: getMilliseconds(env['ACCESS_TOKEN_TTL']),
             id: record.user_id,
         };
     }
@@ -311,8 +305,8 @@ class AuthenticationService {
             .first();
         if (record) {
             const user = record;
-            const provider = (0, auth_1.getAuthProvider)(user.provider);
-            await provider.logout((0, lodash_1.clone)(user));
+            const provider = getAuthProvider(user.provider);
+            await provider.logout(clone(user));
             await this.knex.delete().from('directus_sessions').where('token', refreshToken);
         }
     }
@@ -323,10 +317,9 @@ class AuthenticationService {
             .where('id', userID)
             .first();
         if (!user) {
-            throw new exceptions_1.InvalidCredentialsException();
+            throw new InvalidCredentialsException();
         }
-        const provider = (0, auth_1.getAuthProvider)(user.provider);
-        await provider.verify((0, lodash_1.clone)(user), password);
+        const provider = getAuthProvider(user.provider);
+        await provider.verify(clone(user), password);
     }
 }
-exports.AuthenticationService = AuthenticationService;

@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-async function up(knex) {
+export async function up(knex) {
     await knex.schema.createTable('directus_notifications', (table) => {
         table.increments();
         table.timestamp('timestamp').notNullable();
@@ -18,11 +15,9 @@ async function up(knex) {
     });
     await knex('directus_users').update({ email_notifications: true });
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex.schema.dropTable('directus_notifications');
     await knex.schema.alterTable('directus_users', (table) => {
         table.dropColumn('email_notifications');
     });
 }
-exports.down = down;

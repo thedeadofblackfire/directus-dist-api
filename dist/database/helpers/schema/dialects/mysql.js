@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SchemaHelperMySQL = void 0;
-const database_1 = require("../../../../database");
-const types_1 = require("../types");
-class SchemaHelperMySQL extends types_1.SchemaHelper {
+import { getDatabaseVersion } from '../../../../database/index.js';
+import { SchemaHelper } from '../types.js';
+export class SchemaHelperMySQL extends SchemaHelper {
     applyMultiRelationalSort(knex, dbQuery, table, primaryKey, orderByString, orderByFields) {
-        if ((0, database_1.getDatabaseVersion)()?.startsWith('5.7')) {
+        if (getDatabaseVersion()?.startsWith('5.7')) {
             dbQuery.orderByRaw(`?? asc, ${orderByString}`, [`${table}.${primaryKey}`, ...orderByFields]);
             dbQuery = knex
                 .select(knex.raw(`??, ( @rank := IF ( @cur_id = deep.${primaryKey}, @rank + 1, 1 ) ) AS directus_row_number, ( @cur_id := deep.${primaryKey} ) AS current_id`, 'deep.*'))
@@ -15,4 +12,3 @@ class SchemaHelperMySQL extends types_1.SchemaHelper {
         return super.applyMultiRelationalSort(knex, dbQuery, table, primaryKey, orderByString, orderByFields);
     }
 }
-exports.SchemaHelperMySQL = SchemaHelperMySQL;

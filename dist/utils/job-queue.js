@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.JobQueue = void 0;
-class JobQueue {
+export class JobQueue {
     running;
     jobs;
     constructor() {
@@ -23,4 +20,3 @@ class JobQueue {
         this.running = false;
     }
 }
-exports.JobQueue = JobQueue;

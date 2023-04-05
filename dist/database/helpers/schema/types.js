@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SchemaHelper = void 0;
-const index_1 = require("../../index");
-const types_1 = require("../types");
-class SchemaHelper extends types_1.DatabaseHelper {
+import { getDatabaseClient } from '../../index.js';
+import { DatabaseHelper } from '../types.js';
+export class SchemaHelper extends DatabaseHelper {
     isOneOfClients(clients) {
-        return clients.includes((0, index_1.getDatabaseClient)(this.knex));
+        return clients.includes(getDatabaseClient(this.knex));
     }
     async changeNullable(table, column, nullable) {
         await this.knex.schema.alterTable(table, (builder) => {
@@ -92,4 +89,3 @@ class SchemaHelper extends types_1.DatabaseHelper {
         return uuid; // no-op by default
     }
 }
-exports.SchemaHelper = SchemaHelper;

@@ -1,31 +1,6 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const get_cache_key_1 = require("./get-cache-key");
-const getGraphqlQueryUtil = __importStar(require("./get-graphql-query-and-variables"));
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { getCacheKey } from './get-cache-key.js';
+import * as getGraphqlQueryUtil from './get-graphql-query-and-variables.js';
 const baseUrl = 'http://localhost';
 const restUrl = `${baseUrl}/items/example`;
 const graphQlUrl = `${baseUrl}/graphql`;
@@ -74,33 +49,33 @@ const requests = [
     },
 ];
 const cases = requests.map(({ name, params, key }) => [name, params, key]);
-(0, vitest_1.afterEach)(() => {
-    vitest_1.vi.clearAllMocks();
+afterEach(() => {
+    vi.clearAllMocks();
 });
-(0, vitest_1.describe)('get cache key', () => {
-    (0, vitest_1.describe)('isGraphQl', () => {
+describe('get cache key', () => {
+    describe('isGraphQl', () => {
         let getGraphqlQuerySpy;
-        (0, vitest_1.beforeAll)(() => {
-            getGraphqlQuerySpy = vitest_1.vi.spyOn(getGraphqlQueryUtil, 'getGraphqlQueryAndVariables');
+        beforeAll(() => {
+            getGraphqlQuerySpy = vi.spyOn(getGraphqlQueryUtil, 'getGraphqlQueryAndVariables');
         });
-        vitest_1.test.each(['/items/test', '/items/graphql', '/collections/test', '/collections/graphql'])('path "%s" should not be interpreted as a graphql query', (path) => {
-            (0, get_cache_key_1.getCacheKey)({ originalUrl: `${baseUrl}${path}` });
-            (0, vitest_1.expect)(getGraphqlQuerySpy).not.toHaveBeenCalled();
+        test.each(['/items/test', '/items/graphql', '/collections/test', '/collections/graphql'])('path "%s" should not be interpreted as a graphql query', (path) => {
+            getCacheKey({ originalUrl: `${baseUrl}${path}` });
+            expect(getGraphqlQuerySpy).not.toHaveBeenCalled();
         });
-        vitest_1.test.each(['/graphql', '/graphql/system'])('path "%s" should be interpreted as a graphql query', (path) => {
-            (0, get_cache_key_1.getCacheKey)({ originalUrl: `${baseUrl}${path}` });
-            (0, vitest_1.expect)(getGraphqlQuerySpy).toHaveBeenCalledOnce();
+        test.each(['/graphql', '/graphql/system'])('path "%s" should be interpreted as a graphql query', (path) => {
+            getCacheKey({ originalUrl: `${baseUrl}${path}` });
+            expect(getGraphqlQuerySpy).toHaveBeenCalledOnce();
         });
     });
-    vitest_1.test.each(cases)('should create a cache key for %s', (_, params, key) => {
-        (0, vitest_1.expect)((0, get_cache_key_1.getCacheKey)(params)).toEqual(key);
+    test.each(cases)('should create a cache key for %s', (_, params, key) => {
+        expect(getCacheKey(params)).toEqual(key);
     });
-    (0, vitest_1.test)('should create a unique key for each request', () => {
-        const keys = cases.map(([, params]) => (0, get_cache_key_1.getCacheKey)(params));
+    test('should create a unique key for each request', () => {
+        const keys = cases.map(([, params]) => getCacheKey(params));
         const hasDuplicate = keys.some((key) => keys.indexOf(key) !== keys.lastIndexOf(key));
-        (0, vitest_1.expect)(hasDuplicate).toBeFalsy();
+        expect(hasDuplicate).toBeFalsy();
     });
-    (0, vitest_1.test)('should create a unique key for GraphQL requests with different variables', () => {
+    test('should create a unique key for GraphQL requests with different variables', () => {
         const query = 'query Test ($name: String) { test (filter: { name: { _eq: $name } }) { id } }';
         const operationName = 'test';
         const variables1 = JSON.stringify({ name: 'test 1' });
@@ -109,9 +84,9 @@ const cases = requests.map(({ name, params, key }) => [name, params, key]);
         const req2 = { method, originalUrl: graphQlUrl, query: { query, operationName, variables: variables2 } };
         const postReq1 = { method: 'POST', originalUrl: req1.originalUrl, body: req1.query };
         const postReq2 = { method: 'POST', originalUrl: req2.originalUrl, body: req2.query };
-        (0, vitest_1.expect)((0, get_cache_key_1.getCacheKey)(req1)).not.toEqual((0, get_cache_key_1.getCacheKey)(req2));
-        (0, vitest_1.expect)((0, get_cache_key_1.getCacheKey)(postReq1)).not.toEqual((0, get_cache_key_1.getCacheKey)(postReq2));
-        (0, vitest_1.expect)((0, get_cache_key_1.getCacheKey)(req1)).toEqual((0, get_cache_key_1.getCacheKey)(postReq1));
-        (0, vitest_1.expect)((0, get_cache_key_1.getCacheKey)(req2)).toEqual((0, get_cache_key_1.getCacheKey)(postReq2));
+        expect(getCacheKey(req1)).not.toEqual(getCacheKey(req2));
+        expect(getCacheKey(postReq1)).not.toEqual(getCacheKey(postReq2));
+        expect(getCacheKey(req1)).toEqual(getCacheKey(postReq1));
+        expect(getCacheKey(req2)).toEqual(getCacheKey(postReq2));
     });
 });

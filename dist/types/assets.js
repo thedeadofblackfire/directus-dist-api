@@ -1,10 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.TransformationMethods = void 0;
 // List of allowed sharp methods to expose.
 //
 // This is a literal, so we can use it to validate request parameters.
-exports.TransformationMethods /*: readonly (keyof Sharp)[]*/ = [
+export const TransformationMethods /*: readonly (keyof Sharp)[]*/ = [
     // Output options
     // https://sharp.pixelplumbing.com/api-output
     'toFormat',

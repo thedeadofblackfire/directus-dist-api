@@ -1,9 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const get_auth_providers_1 = require("../../src/utils/get-auth-providers");
+import { describe, expect, vi, test } from 'vitest';
+import { getAuthProviders } from '../../src/utils/get-auth-providers.js';
 let factoryEnv = {};
-vitest_1.vi.mock('../../src/env', () => ({
+vi.mock('../../src/env', () => ({
     default: new Proxy({}, {
         get(_target, prop) {
             return factoryEnv[prop];
@@ -65,11 +63,11 @@ const scenarios = [
         ],
     },
 ];
-(0, vitest_1.describe)('get auth providers', () => {
+describe('get auth providers', () => {
     for (const scenario of scenarios) {
-        (0, vitest_1.test)(scenario.name, () => {
+        test(scenario.name, () => {
             factoryEnv = scenario.input;
-            (0, vitest_1.expect)((0, get_auth_providers_1.getAuthProviders)()).toEqual(scenario.output);
+            expect(getAuthProviders()).toEqual(scenario.output);
         });
     }
 });

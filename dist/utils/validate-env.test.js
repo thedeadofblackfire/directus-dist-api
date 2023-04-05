@@ -1,37 +1,32 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const validate_env_1 = require("./validate-env");
-const logger_1 = __importDefault(require("../logger"));
-vitest_1.vi.mock('../env', () => ({
-    getEnv: vitest_1.vi.fn().mockReturnValue({
+import { afterEach, beforeAll, expect, test, vi } from 'vitest';
+import { validateEnv } from './validate-env.js';
+import logger from '../logger.js';
+vi.mock('../env', () => ({
+    getEnv: vi.fn().mockReturnValue({
         PRESENT_TEST_VARIABLE: true,
     }),
 }));
-vitest_1.vi.mock('../logger', () => ({
+vi.mock('../logger', () => ({
     default: {
-        error: vitest_1.vi.fn(),
+        error: vi.fn(),
     },
 }));
-vitest_1.vi.mock('process', () => ({
-    exit: vitest_1.vi.fn(),
+vi.mock('process', () => ({
+    exit: vi.fn(),
 }));
-(0, vitest_1.beforeAll)(() => {
-    vitest_1.vi.spyOn(process, 'exit').mockImplementation(() => undefined);
+beforeAll(() => {
+    vi.spyOn(process, 'exit').mockImplementation(() => undefined);
 });
-(0, vitest_1.afterEach)(() => {
-    vitest_1.vi.clearAllMocks();
+afterEach(() => {
+    vi.clearAllMocks();
 });
-(0, vitest_1.test)('should not have any error when key is present', () => {
-    (0, validate_env_1.validateEnv)(['PRESENT_TEST_VARIABLE']);
-    (0, vitest_1.expect)(logger_1.default.error).not.toHaveBeenCalled();
-    (0, vitest_1.expect)(process.exit).not.toHaveBeenCalled();
+test('should not have any error when key is present', () => {
+    validateEnv(['PRESENT_TEST_VARIABLE']);
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(process.exit).not.toHaveBeenCalled();
 });
-(0, vitest_1.test)('should have error when key is missing', () => {
-    (0, validate_env_1.validateEnv)(['ABSENT_TEST_VARIABLE']);
-    (0, vitest_1.expect)(logger_1.default.error).toHaveBeenCalled();
-    (0, vitest_1.expect)(process.exit).toHaveBeenCalled();
+test('should have error when key is missing', () => {
+    validateEnv(['ABSENT_TEST_VARIABLE']);
+    expect(logger.error).toHaveBeenCalled();
+    expect(process.exit).toHaveBeenCalled();
 });

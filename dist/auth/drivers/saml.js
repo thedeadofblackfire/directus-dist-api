@@ -1,50 +1,22 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createSAMLAuthRouter = exports.SAMLAuthDriver = void 0;
-const validator = __importStar(require("@authenio/samlify-node-xmllint"));
-const exceptions_1 = require("@directus/shared/exceptions");
-const express_1 = __importStar(require("express"));
-const samlify = __importStar(require("samlify"));
-const auth_1 = require("../../auth");
-const constants_1 = require("../../constants");
-const env_1 = __importDefault(require("../../env"));
-const exceptions_2 = require("../../exceptions");
-const record_not_unique_1 = require("../../exceptions/database/record-not-unique");
-const logger_1 = __importDefault(require("../../logger"));
-const respond_1 = require("../../middleware/respond");
-const services_1 = require("../../services");
-const async_handler_1 = __importDefault(require("../../utils/async-handler"));
-const get_config_from_env_1 = require("../../utils/get-config-from-env");
-const local_1 = require("./local");
+import * as validator from '@authenio/samlify-node-xmllint';
+import { BaseException } from '@directus/exceptions';
+import express, { Router } from 'express';
+import * as samlify from 'samlify';
+import { getAuthProvider } from '../../auth.js';
+import { COOKIE_OPTIONS } from '../../constants.js';
+import env from '../../env.js';
+import { RecordNotUniqueException } from '../../exceptions/database/record-not-unique.js';
+import { InvalidCredentialsException, InvalidProviderException } from '../../exceptions/index.js';
+import logger from '../../logger.js';
+import { respond } from '../../middleware/respond.js';
+import { AuthenticationService } from '../../services/authentication.js';
+import { UsersService } from '../../services/users.js';
+import asyncHandler from '../../utils/async-handler.js';
+import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
+import { LocalAuthDriver } from './local.js';
 // tell samlify to use validator...
 samlify.setSchemaValidator(validator);
-class SAMLAuthDriver extends local_1.LocalAuthDriver {
+export class SAMLAuthDriver extends LocalAuthDriver {
     idp;
     sp;
     usersService;
@@ -52,9 +24,9 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
     constructor(options, config) {
         super(options, config);
         this.config = config;
-        this.usersService = new services_1.UsersService({ knex: this.knex, schema: this.schema });
-        this.sp = samlify.ServiceProvider((0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config['provider'].toUpperCase()}_SP`));
-        this.idp = samlify.IdentityProvider((0, get_config_from_env_1.getConfigFromEnv)(`AUTH_${config['provider'].toUpperCase()}_IDP`));
+        this.usersService = new UsersService({ knex: this.knex, schema: this.schema });
+        this.sp = samlify.ServiceProvider(getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_SP`));
+        this.idp = samlify.IdentityProvider(getConfigFromEnv(`AUTH_${config['provider'].toUpperCase()}_IDP`));
     }
     async fetchUserID(identifier) {
         const user = await this.knex
@@ -72,8 +44,8 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
         if (userID)
             return userID;
         if (!allowPublicRegistration) {
-            logger_1.default.trace(`[SAML] User doesn't exist, and public registration not allowed for provider "${provider}"`);
-            throw new exceptions_2.InvalidCredentialsException();
+            logger.trace(`[SAML] User doesn't exist, and public registration not allowed for provider "${provider}"`);
+            throw new InvalidCredentialsException();
         }
         const firstName = payload[givenNameKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
         const lastName = payload[familyNameKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
@@ -88,9 +60,9 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
             });
         }
         catch (error) {
-            if (error instanceof record_not_unique_1.RecordNotUniqueException) {
-                logger_1.default.warn(error, '[SAML] Failed to register user. User not unique');
-                throw new exceptions_2.InvalidProviderException();
+            if (error instanceof RecordNotUniqueException) {
+                logger.warn(error, '[SAML] Failed to register user. User not unique');
+                throw new InvalidProviderException();
             }
             throw error;
         }
@@ -100,15 +72,14 @@ class SAMLAuthDriver extends local_1.LocalAuthDriver {
         return;
     }
 }
-exports.SAMLAuthDriver = SAMLAuthDriver;
-function createSAMLAuthRouter(providerName) {
-    const router = (0, express_1.Router)();
-    router.get('/metadata', (0, async_handler_1.default)(async (_req, res) => {
-        const { sp } = (0, auth_1.getAuthProvider)(providerName);
+export function createSAMLAuthRouter(providerName) {
+    const router = Router();
+    router.get('/metadata', asyncHandler(async (_req, res) => {
+        const { sp } = getAuthProvider(providerName);
         return res.header('Content-Type', 'text/xml').send(sp.getMetadata());
     }));
-    router.get('/', (0, async_handler_1.default)(async (req, res) => {
-        const { sp, idp } = (0, auth_1.getAuthProvider)(providerName);
+    router.get('/', asyncHandler(async (req, res) => {
+        const { sp, idp } = getAuthProvider(providerName);
         const { context: url } = await sp.createLoginRequest(idp, 'redirect');
         const parsedUrl = new URL(url);
         if (req.query['redirect']) {
@@ -116,25 +87,25 @@ function createSAMLAuthRouter(providerName) {
         }
         return res.redirect(parsedUrl.toString());
     }));
-    router.post('/logout', (0, async_handler_1.default)(async (req, res) => {
-        const { sp, idp } = (0, auth_1.getAuthProvider)(providerName);
+    router.post('/logout', asyncHandler(async (req, res) => {
+        const { sp, idp } = getAuthProvider(providerName);
         const { context } = await sp.createLogoutRequest(idp, 'redirect', req.body);
-        const authService = new services_1.AuthenticationService({ accountability: req.accountability, schema: req.schema });
-        if (req.cookies[env_1.default['REFRESH_TOKEN_COOKIE_NAME']]) {
-            const currentRefreshToken = req.cookies[env_1.default['REFRESH_TOKEN_COOKIE_NAME']];
+        const authService = new AuthenticationService({ accountability: req.accountability, schema: req.schema });
+        if (req.cookies[env['REFRESH_TOKEN_COOKIE_NAME']]) {
+            const currentRefreshToken = req.cookies[env['REFRESH_TOKEN_COOKIE_NAME']];
             if (currentRefreshToken) {
                 await authService.logout(currentRefreshToken);
-                res.clearCookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], constants_1.COOKIE_OPTIONS);
+                res.clearCookie(env['REFRESH_TOKEN_COOKIE_NAME'], COOKIE_OPTIONS);
             }
         }
         return res.redirect(context);
     }));
-    router.post('/acs', express_1.default.urlencoded({ extended: false }), (0, async_handler_1.default)(async (req, res, next) => {
+    router.post('/acs', express.urlencoded({ extended: false }), asyncHandler(async (req, res, next) => {
         const relayState = req.body?.RelayState;
         try {
-            const { sp, idp } = (0, auth_1.getAuthProvider)(providerName);
+            const { sp, idp } = getAuthProvider(providerName);
             const { extract } = await sp.parseLoginResponse(idp, 'post', req);
-            const authService = new services_1.AuthenticationService({ accountability: req.accountability, schema: req.schema });
+            const authService = new AuthenticationService({ accountability: req.accountability, schema: req.schema });
             const { accessToken, refreshToken, expires } = await authService.login(providerName, extract.attributes);
             res.locals['payload'] = {
                 data: {
@@ -144,7 +115,7 @@ function createSAMLAuthRouter(providerName) {
                 },
             };
             if (relayState) {
-                res.cookie(env_1.default['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, constants_1.COOKIE_OPTIONS);
+                res.cookie(env['REFRESH_TOKEN_COOKIE_NAME'], refreshToken, COOKIE_OPTIONS);
                 return res.redirect(relayState);
             }
             return next();
@@ -152,18 +123,17 @@ function createSAMLAuthRouter(providerName) {
         catch (error) {
             if (relayState) {
                 let reason = 'UNKNOWN_EXCEPTION';
-                if (error instanceof exceptions_1.BaseException) {
+                if (error instanceof BaseException) {
                     reason = error.code;
                 }
                 else {
-                    logger_1.default.warn(error, `[SAML] Unexpected error during SAML login`);
+                    logger.warn(error, `[SAML] Unexpected error during SAML login`);
                 }
                 return res.redirect(`${relayState.split('?')[0]}?reason=${reason}`);
             }
-            logger_1.default.warn(error, `[SAML] Unexpected error during SAML login`);
+            logger.warn(error, `[SAML] Unexpected error during SAML login`);
             throw error;
         }
-    }), respond_1.respond);
+    }), respond);
     return router;
 }
-exports.createSAMLAuthRouter = createSAMLAuthRouter;

@@ -1,8 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ForbiddenException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class ForbiddenException extends exceptions_1.BaseException {
+import * as exceptions from '@directus/exceptions';
+const { BaseException } = exceptions;
+export class ForbiddenException extends BaseException {
     constructor() {
         super(`You don't have permission to access this.`, 403, 'FORBIDDEN');
         /**
@@ -13,4 +11,3 @@ class ForbiddenException extends exceptions_1.BaseException {
          */
     }
 }
-exports.ForbiddenException = ForbiddenException;

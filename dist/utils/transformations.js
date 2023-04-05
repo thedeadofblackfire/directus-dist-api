@@ -1,16 +1,12 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.maybeExtractFormat = exports.resolvePreset = void 0;
-const lodash_1 = require("lodash");
+import { isNil } from 'lodash-es';
 // Extract transforms from a preset
-function resolvePreset(input, file) {
+export function resolvePreset(input, file) {
     // Do the format conversion last
     return [extractResize(input), ...(input.transforms ?? []), extractToFormat(input, file)].filter((transform) => transform !== undefined);
 }
-exports.resolvePreset = resolvePreset;
 function extractOptions(keys, numberKeys = [], booleanKeys = []) {
     return function (input) {
-        return Object.entries(input).reduce((config, [key, value]) => keys.includes(key) && (0, lodash_1.isNil)(value) === false
+        return Object.entries(input).reduce((config, [key, value]) => keys.includes(key) && isNil(value) === false
             ? {
                 ...config,
                 [key]: numberKeys.includes(key)
@@ -47,9 +43,8 @@ function extractResize(input) {
 /**
  * Try to extract a file format from an array of `Transformation`'s.
  */
-function maybeExtractFormat(transforms) {
+export function maybeExtractFormat(transforms) {
     const toFormats = transforms.filter((t) => t[0] === 'toFormat');
     const lastToFormat = toFormats[toFormats.length - 1];
     return lastToFormat ? lastToFormat[1]?.toString() : undefined;
 }
-exports.maybeExtractFormat = maybeExtractFormat;

@@ -1,17 +1,15 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const calculate_field_depth_1 = require("../../src/utils/calculate-field-depth");
-const vitest_1 = require("vitest");
-(0, vitest_1.test)('Calculates basic depth', () => {
+import { calculateFieldDepth } from '../../src/utils/calculate-field-depth.js';
+import { test, expect } from 'vitest';
+test('Calculates basic depth', () => {
     const filter = {
         name: {
             _eq: 'test',
         },
     };
-    const result = (0, calculate_field_depth_1.calculateFieldDepth)(filter);
-    (0, vitest_1.expect)(result).toBe(1);
+    const result = calculateFieldDepth(filter);
+    expect(result).toBe(1);
 });
-(0, vitest_1.test)('Calculates relational depth', () => {
+test('Calculates relational depth', () => {
     const filter = {
         author: {
             name: {
@@ -19,10 +17,10 @@ const vitest_1 = require("vitest");
             },
         },
     };
-    const result = (0, calculate_field_depth_1.calculateFieldDepth)(filter);
-    (0, vitest_1.expect)(result).toBe(2);
+    const result = calculateFieldDepth(filter);
+    expect(result).toBe(2);
 });
-(0, vitest_1.test)('Ignores _and/_or', () => {
+test('Ignores _and/_or', () => {
     const filter = {
         _and: [
             {
@@ -48,10 +46,10 @@ const vitest_1 = require("vitest");
             },
         ],
     };
-    const result = (0, calculate_field_depth_1.calculateFieldDepth)(filter);
-    (0, vitest_1.expect)(result).toBe(2);
+    const result = calculateFieldDepth(filter);
+    expect(result).toBe(2);
 });
-(0, vitest_1.test)('Skips underscore prefix in tree', () => {
+test('Skips underscore prefix in tree', () => {
     const deep = {
         translations: {
             _filter: {
@@ -63,15 +61,15 @@ const vitest_1 = require("vitest");
             },
         },
     };
-    const result = (0, calculate_field_depth_1.calculateFieldDepth)(deep);
-    (0, vitest_1.expect)(result).toBe(3);
+    const result = calculateFieldDepth(deep);
+    expect(result).toBe(3);
 });
-(0, vitest_1.test)('Calculates _sort in deep correctly', () => {
+test('Calculates _sort in deep correctly', () => {
     const deep = {
         articles: {
             _sort: ['sort', 'category.type.sort'],
         },
     };
-    const result = (0, calculate_field_depth_1.calculateFieldDepth)(deep, ['_sort']);
-    (0, vitest_1.expect)(result).toBe(4);
+    const result = calculateFieldDepth(deep, ['_sort']);
+    expect(result).toBe(4);
 });

@@ -1,39 +1,34 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const knex_1 = __importDefault(require("knex"));
-const knex_mock_client_1 = require("knex-mock-client");
-const vitest_1 = require("vitest");
-const services_1 = require("../../src/services");
-class Client_PG extends knex_mock_client_1.MockClient {
+import knex from 'knex';
+import { createTracker, MockClient } from 'knex-mock-client';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CollectionsService, FieldsService, RelationsService, SpecificationService } from '../../src/services/index.js';
+class Client_PG extends MockClient {
 }
-(0, vitest_1.describe)('Integration Tests', () => {
+describe('Integration Tests', () => {
     let db;
     let tracker;
-    (0, vitest_1.beforeAll)(async () => {
-        db = vitest_1.vi.mocked((0, knex_1.default)({ client: Client_PG }));
-        tracker = (0, knex_mock_client_1.createTracker)(db);
+    beforeAll(async () => {
+        db = vi.mocked(knex.default({ client: Client_PG }));
+        tracker = createTracker(db);
     });
-    (0, vitest_1.afterEach)(() => {
+    afterEach(() => {
         tracker.reset();
-        vitest_1.vi.clearAllMocks();
+        vi.clearAllMocks();
     });
-    (0, vitest_1.describe)('Services / Specifications', () => {
-        (0, vitest_1.describe)('oas', () => {
-            (0, vitest_1.describe)('generate', () => {
+    describe('Services / Specifications', () => {
+        describe('oas', () => {
+            describe('generate', () => {
                 let service;
-                (0, vitest_1.beforeEach)(() => {
-                    service = new services_1.SpecificationService({
+                beforeEach(() => {
+                    service = new SpecificationService({
                         knex: db,
                         schema: { collections: {}, relations: [] },
                         accountability: { role: 'admin', admin: true },
                     });
                 });
-                (0, vitest_1.describe)('schema', () => {
-                    (0, vitest_1.it)('returns untyped schema for json fields', async () => {
-                        vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'readByQuery').mockResolvedValue([
+                describe('schema', () => {
+                    it('returns untyped schema for json fields', async () => {
+                        vi.spyOn(CollectionsService.prototype, 'readByQuery').mockResolvedValue([
                             {
                                 collection: 'test_table',
                                 meta: {
@@ -52,7 +47,7 @@ class Client_PG extends knex_mock_client_1.MockClient {
                                 },
                             },
                         ]);
-                        vitest_1.vi.spyOn(services_1.FieldsService.prototype, 'readAll').mockResolvedValue([
+                        vi.spyOn(FieldsService.prototype, 'readAll').mockResolvedValue([
                             {
                                 collection: 'test_table',
                                 field: 'id',
@@ -146,9 +141,9 @@ class Client_PG extends knex_mock_client_1.MockClient {
                                 },
                             },
                         ]);
-                        vitest_1.vi.spyOn(services_1.RelationsService.prototype, 'readAll').mockResolvedValue([]);
+                        vi.spyOn(RelationsService.prototype, 'readAll').mockResolvedValue([]);
                         const spec = await service.oas.generate();
-                        (0, vitest_1.expect)(spec.components?.schemas).toMatchInlineSnapshot(`
+                        expect(spec.components?.schemas).toMatchInlineSnapshot(`
 							{
 							  "Diff": {
 							    "properties": {
@@ -345,8 +340,8 @@ class Client_PG extends knex_mock_client_1.MockClient {
 						`);
                     });
                 });
-                (0, vitest_1.describe)('path', () => {
-                    (0, vitest_1.it)('requestBody for CreateItems POST path should not have type in schema', async () => {
+                describe('path', () => {
+                    it('requestBody for CreateItems POST path should not have type in schema', async () => {
                         const collection = {
                             collection: 'test_table',
                             meta: {
@@ -364,8 +359,8 @@ class Client_PG extends knex_mock_client_1.MockClient {
                                 name: 'test_table',
                             },
                         };
-                        vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'readByQuery').mockResolvedValue([collection]);
-                        vitest_1.vi.spyOn(services_1.FieldsService.prototype, 'readAll').mockResolvedValue([
+                        vi.spyOn(CollectionsService.prototype, 'readByQuery').mockResolvedValue([collection]);
+                        vi.spyOn(FieldsService.prototype, 'readAll').mockResolvedValue([
                             {
                                 collection: collection.collection,
                                 field: 'id',
@@ -413,11 +408,11 @@ class Client_PG extends knex_mock_client_1.MockClient {
                                 },
                             },
                         ]);
-                        vitest_1.vi.spyOn(services_1.RelationsService.prototype, 'readAll').mockResolvedValue([]);
+                        vi.spyOn(RelationsService.prototype, 'readAll').mockResolvedValue([]);
                         const spec = await service.oas.generate();
                         const targetSchema = spec.paths[`/items/${collection.collection}`].post.requestBody.content['application/json'].schema;
-                        (0, vitest_1.expect)(targetSchema).toHaveProperty('oneOf');
-                        (0, vitest_1.expect)(targetSchema).not.toHaveProperty('type');
+                        expect(targetSchema).toHaveProperty('oneOf');
+                        expect(targetSchema).not.toHaveProperty('type');
                     });
                 });
             });

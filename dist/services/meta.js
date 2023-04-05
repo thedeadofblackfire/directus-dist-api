@@ -1,18 +1,12 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MetaService = void 0;
-const database_1 = __importDefault(require("../database"));
-const exceptions_1 = require("../exceptions");
-const apply_query_1 = require("../utils/apply-query");
-class MetaService {
+import getDatabase from '../database/index.js';
+import { ForbiddenException } from '../exceptions/index.js';
+import { applyFilter, applySearch } from '../utils/apply-query.js';
+export class MetaService {
     knex;
     accountability;
     schema;
     constructor(options) {
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.accountability = options.accountability || null;
         this.schema = options.schema;
     }
@@ -41,9 +35,9 @@ class MetaService {
                 return permission.action === 'read' && permission.collection === collection;
             });
             if (!permissionsRecord)
-                throw new exceptions_1.ForbiddenException();
+                throw new ForbiddenException();
             const permissions = permissionsRecord.permissions ?? {};
-            (0, apply_query_1.applyFilter)(this.knex, this.schema, dbQuery, permissions, collection, {});
+            applyFilter(this.knex, this.schema, dbQuery, permissions, collection, {});
         }
         const result = await dbQuery;
         return Number(result?.count ?? 0);
@@ -56,7 +50,7 @@ class MetaService {
                 return permission.action === 'read' && permission.collection === collection;
             });
             if (!permissionsRecord)
-                throw new exceptions_1.ForbiddenException();
+                throw new ForbiddenException();
             const permissions = permissionsRecord.permissions ?? {};
             if (Object.keys(filter).length > 0) {
                 filter = { _and: [permissions, filter] };
@@ -66,13 +60,12 @@ class MetaService {
             }
         }
         if (Object.keys(filter).length > 0) {
-            (0, apply_query_1.applyFilter)(this.knex, this.schema, dbQuery, filter, collection, {});
+            applyFilter(this.knex, this.schema, dbQuery, filter, collection, {});
         }
         if (query.search) {
-            (0, apply_query_1.applySearch)(this.schema, dbQuery, query.search, collection);
+            applySearch(this.schema, dbQuery, query.search, collection);
         }
         const records = await dbQuery;
         return Number(records[0].count);
     }
 }
-exports.MetaService = MetaService;

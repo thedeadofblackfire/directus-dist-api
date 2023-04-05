@@ -1,14 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const knex_schema_inspector_1 = __importDefault(require("knex-schema-inspector"));
-const logger_1 = __importDefault(require("../../logger"));
-const get_default_index_name_1 = require("../../utils/get-default-index-name");
-async function up(knex) {
-    const inspector = (0, knex_schema_inspector_1.default)(knex);
+import { createInspector } from '@directus/schema';
+import logger from '../../logger.js';
+import { getDefaultIndexName } from '../../utils/get-default-index-name.js';
+export async function up(knex) {
+    const inspector = createInspector(knex);
     const foreignKeys = await inspector.foreignKeys();
     const relations = await knex
         .select('id', 'many_collection', 'many_field', 'one_collection')
@@ -23,14 +17,14 @@ async function up(knex) {
             continue;
         if ((await inspector.hasTable(constraint.many_collection)) === false ||
             (await inspector.hasTable(constraint.one_collection)) === false) {
-            logger_1.default.warn(`Ignoring ${constraint.many_collection}.${constraint.many_field}<->${constraint.one_collection}. Tables don't exist.`);
+            logger.warn(`Ignoring ${constraint.many_collection}.${constraint.many_field}<->${constraint.one_collection}. Tables don't exist.`);
             corruptedRelations.push(constraint.id);
             continue;
         }
         const currentPrimaryKeyField = await inspector.primary(constraint.many_collection);
         const relatedPrimaryKeyField = await inspector.primary(constraint.one_collection);
         if (constraint.many_field === currentPrimaryKeyField) {
-            logger_1.default.warn(`Illegal relationship ${constraint.many_collection}.${constraint.many_field}<->${constraint.one_collection} encountered. Many field equals collections primary key.`);
+            logger.warn(`Illegal relationship ${constraint.many_collection}.${constraint.many_field}<->${constraint.one_collection} encountered. Many field equals collections primary key.`);
             corruptedRelations.push(constraint.id);
             continue;
         }
@@ -49,12 +43,12 @@ async function up(knex) {
                     .whereIn(currentPrimaryKeyField, ids);
             }
             catch (err) {
-                logger_1.default.error(`${constraint.many_collection}.${constraint.many_field} contains illegal foreign keys which couldn't be set to NULL. Please fix these references and rerun this migration to complete the upgrade.`);
+                logger.error(`${constraint.many_collection}.${constraint.many_field} contains illegal foreign keys which couldn't be set to NULL. Please fix these references and rerun this migration to complete the upgrade.`);
                 if (ids.length < 25) {
-                    logger_1.default.error(`Items with illegal foreign keys: ${ids.join(', ')}`);
+                    logger.error(`Items with illegal foreign keys: ${ids.join(', ')}`);
                 }
                 else {
-                    logger_1.default.error(`Items with illegal foreign keys: ${ids.slice(0, 25).join(', ')} and ${ids.length} others`);
+                    logger.error(`Items with illegal foreign keys: ${ids.slice(0, 25).join(', ')} and ${ids.length} others`);
                 }
                 throw 'Migration aborted';
             }
@@ -72,7 +66,7 @@ async function up(knex) {
                     relatedColumnInfo.data_type === 'int unsigned') {
                     table.specificType(constraint.many_field, 'int unsigned').alter();
                 }
-                const indexName = (0, get_default_index_name_1.getDefaultIndexName)('foreign', constraint.many_collection, constraint.many_field);
+                const indexName = getDefaultIndexName('foreign', constraint.many_collection, constraint.many_field);
                 const builder = table
                     .foreign(constraint.many_field, indexName)
                     .references(relatedPrimaryKeyField)
@@ -84,16 +78,15 @@ async function up(knex) {
             });
         }
         catch (err) {
-            logger_1.default.warn(`Couldn't add foreign key constraint for ${constraint.many_collection}.${constraint.many_field}<->${constraint.one_collection}`);
-            logger_1.default.warn(err);
+            logger.warn(`Couldn't add foreign key constraint for ${constraint.many_collection}.${constraint.many_field}<->${constraint.one_collection}`);
+            logger.warn(err);
         }
     }
     if (corruptedRelations.length > 0) {
-        logger_1.default.warn(`Encountered one or more corrupted relationships. Please check the following rows in "directus_relations": ${corruptedRelations.join(', ')}`);
+        logger.warn(`Encountered one or more corrupted relationships. Please check the following rows in "directus_relations": ${corruptedRelations.join(', ')}`);
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     const relations = await knex
         .select('many_collection', 'many_field', 'one_collection')
         .from('directus_relations');
@@ -106,9 +99,8 @@ async function down(knex) {
             });
         }
         catch (err) {
-            logger_1.default.warn(`Couldn't drop foreign key constraint for ${relation.many_collection}.${relation.many_field}<->${relation.one_collection}`);
-            logger_1.default.warn(err);
+            logger.warn(`Couldn't drop foreign key constraint for ${relation.many_collection}.${relation.many_field}<->${relation.one_collection}`);
+            logger.warn(err);
         }
     }
 }
-exports.down = down;

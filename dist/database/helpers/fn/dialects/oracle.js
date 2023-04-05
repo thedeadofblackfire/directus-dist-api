@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FnHelperOracle = void 0;
-const types_1 = require("../types");
+import { FnHelper } from '../types.js';
 const parseLocaltime = (columnType) => {
     if (columnType === 'timestamp') {
         return ` AT TIME ZONE 'UTC'`;
     }
     return '';
 };
-class FnHelperOracle extends types_1.FnHelper {
+export class FnHelperOracle extends FnHelper {
     year(table, column, options) {
         return this.knex.raw(`TO_CHAR(??.??${parseLocaltime(options?.type)}, 'IYYY')`, [table, column]);
     }
@@ -45,4 +42,3 @@ class FnHelperOracle extends types_1.FnHelper {
         throw new Error(`Couldn't extract type from ${table}.${column}`);
     }
 }
-exports.FnHelperOracle = FnHelperOracle;

@@ -1,40 +1,36 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getGraphQLType = void 0;
-const graphql_1 = require("graphql");
-const graphql_compose_1 = require("graphql-compose");
-const bigint_1 = require("../services/graphql/types/bigint");
-const date_1 = require("../services/graphql/types/date");
-const geojson_1 = require("../services/graphql/types/geojson");
-const hash_1 = require("../services/graphql/types/hash");
-function getGraphQLType(localType, special) {
+import { GraphQLBoolean, GraphQLFloat, GraphQLInt, GraphQLList, GraphQLString, } from 'graphql';
+import { GraphQLJSON } from 'graphql-compose';
+import { GraphQLBigInt } from '../services/graphql/types/bigint.js';
+import { GraphQLDate } from '../services/graphql/types/date.js';
+import { GraphQLGeoJSON } from '../services/graphql/types/geojson.js';
+import { GraphQLHash } from '../services/graphql/types/hash.js';
+export function getGraphQLType(localType, special) {
     if (special.includes('conceal')) {
-        return hash_1.GraphQLHash;
+        return GraphQLHash;
     }
     switch (localType) {
         case 'boolean':
-            return graphql_1.GraphQLBoolean;
+            return GraphQLBoolean;
         case 'bigInteger':
-            return bigint_1.GraphQLBigInt;
+            return GraphQLBigInt;
         case 'integer':
-            return graphql_1.GraphQLInt;
+            return GraphQLInt;
         case 'decimal':
         case 'float':
-            return graphql_1.GraphQLFloat;
+            return GraphQLFloat;
         case 'csv':
-            return new graphql_1.GraphQLList(graphql_1.GraphQLString);
+            return new GraphQLList(GraphQLString);
         case 'json':
-            return graphql_compose_1.GraphQLJSON;
+            return GraphQLJSON;
         case 'geometry':
-            return geojson_1.GraphQLGeoJSON;
+            return GraphQLGeoJSON;
         case 'timestamp':
         case 'dateTime':
         case 'date':
-            return date_1.GraphQLDate;
+            return GraphQLDate;
         case 'hash':
-            return hash_1.GraphQLHash;
+            return GraphQLHash;
         default:
-            return graphql_1.GraphQLString;
+            return GraphQLString;
     }
 }
-exports.getGraphQLType = getGraphQLType;

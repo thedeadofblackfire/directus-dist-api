@@ -1,25 +1,23 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = __importDefault(require("fs"));
-const liquidjs_1 = require("liquidjs");
-const path_1 = __importDefault(require("path"));
-const util_1 = require("util");
-const uuid_1 = require("uuid");
-const readFile = (0, util_1.promisify)(fs_1.default.readFile);
-const writeFile = (0, util_1.promisify)(fs_1.default.writeFile);
-const fchmod = (0, util_1.promisify)(fs_1.default.fchmod);
-const open = (0, util_1.promisify)(fs_1.default.open);
-const liquidEngine = new liquidjs_1.Liquid({
+import fs from 'fs';
+import { Liquid } from 'liquidjs';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+import { promisify } from 'util';
+import { v4 as uuid } from 'uuid';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
+const fchmod = promisify(fs.fchmod);
+const open = promisify(fs.open);
+const liquidEngine = new Liquid({
     extname: '.liquid',
 });
-async function createEnv(client, credentials, directory) {
+export default async function createEnv(client, credentials, directory) {
     const { nanoid } = await import('nanoid');
     const config = {
         security: {
-            KEY: (0, uuid_1.v4)(),
+            KEY: uuid(),
             SECRET: nanoid(32),
         },
         database: {
@@ -36,9 +34,8 @@ async function createEnv(client, credentials, directory) {
             configAsStrings[key] += `${envKey}="${envValue}"\n`;
         }
     }
-    const templateString = await readFile(path_1.default.join(__dirname, 'env-stub.liquid'), 'utf8');
+    const templateString = await readFile(path.join(__dirname, 'env-stub.liquid'), 'utf8');
     const text = await liquidEngine.parseAndRender(templateString, configAsStrings);
-    await writeFile(path_1.default.join(directory, '.env'), text);
-    await fchmod(await open(path_1.default.join(directory, '.env'), 'r+'), 0o640);
+    await writeFile(path.join(directory, '.env'), text);
+    await fchmod(await open(path.join(directory, '.env'), 'r+'), 0o640);
 }
-exports.default = createEnv;

@@ -1,6 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
 const updates = [
     {
         table: 'directus_fields',
@@ -113,7 +110,7 @@ const updates = [
  * Not all databases allow (or support) recursive onUpdate/onDelete triggers. MS SQL / Oracle flat out deny creating them,
  * Postgres behaves erratic on those triggers, not sure if MySQL / Maria plays nice either.
  */
-async function up(knex) {
+export async function up(knex) {
     for (const update of updates) {
         await knex.schema.alterTable(update.table, (table) => {
             for (const constraint of update.constraints) {
@@ -123,8 +120,7 @@ async function up(knex) {
         });
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     for (const update of updates) {
         await knex.schema.alterTable(update.table, (table) => {
             for (const constraint of update.constraints) {
@@ -133,4 +129,3 @@ async function down(knex) {
         });
     }
 }
-exports.down = down;

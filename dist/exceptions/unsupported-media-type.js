@@ -1,10 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.UnsupportedMediaTypeException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class UnsupportedMediaTypeException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class UnsupportedMediaTypeException extends BaseException {
     constructor(message, extensions) {
         super(message, 415, 'UNSUPPORTED_MEDIA_TYPE', extensions);
     }
 }
-exports.UnsupportedMediaTypeException = UnsupportedMediaTypeException;

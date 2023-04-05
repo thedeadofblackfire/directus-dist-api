@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
-async function up(knex) {
+import { parseJSON } from '@directus/utils';
+export async function up(knex) {
     await knex.schema.alterTable('directus_relations', (table) => {
         table.string('sort_field');
     });
@@ -11,7 +8,7 @@ async function up(knex) {
         .from('directus_fields')
         .whereIn('interface', ['one-to-many', 'm2a-builder', 'many-to-many']);
     for (const field of fieldsWithSort) {
-        const options = typeof field.options === 'string' ? (0, utils_1.parseJSON)(field.options) : field.options ?? {};
+        const options = typeof field.options === 'string' ? parseJSON(field.options) : field.options ?? {};
         if ('sortField' in options) {
             await knex('directus_relations')
                 .update({
@@ -24,10 +21,8 @@ async function up(knex) {
         }
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex.schema.alterTable('directus_relations', (table) => {
         table.dropColumn('sort_field');
     });
 }
-exports.down = down;

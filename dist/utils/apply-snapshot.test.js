@@ -1,58 +1,30 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const knex_1 = __importDefault(require("knex"));
-const knex_mock_client_1 = require("knex-mock-client");
-const vitest_1 = require("vitest");
-const services_1 = require("../services");
-const schemas_1 = require("../__utils__/schemas");
-const snapshots_1 = require("../__utils__/snapshots");
-const apply_snapshot_1 = require("./apply-snapshot");
-const getSchema = __importStar(require("./get-schema"));
-class Client_PG extends knex_mock_client_1.MockClient {
+import knex from 'knex';
+import { createTracker, MockClient } from 'knex-mock-client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CollectionsService, FieldsService } from '../services/index.js';
+import { snapshotApplyTestSchema } from '../__utils__/schemas.js';
+import { snapshotBeforeCreateCollection, snapshotBeforeDeleteCollection, snapshotCreateCollection, snapshotCreateCollectionNotNested, } from '../__utils__/snapshots.js';
+import { applySnapshot } from './apply-snapshot.js';
+import * as getSchema from './get-schema.js';
+class Client_PG extends MockClient {
 }
-(0, vitest_1.describe)('applySnapshot', () => {
+describe('applySnapshot', () => {
     let db;
     let tracker;
     const mutationOptions = {
         autoPurgeSystemCache: false,
-        bypassEmitAction: vitest_1.expect.any(Function),
+        bypassEmitAction: expect.any(Function),
     };
-    (0, vitest_1.beforeEach)(() => {
-        db = vitest_1.vi.mocked((0, knex_1.default)({ client: Client_PG }));
-        tracker = (0, knex_mock_client_1.createTracker)(db);
+    beforeEach(() => {
+        db = vi.mocked(knex.default({ client: Client_PG }));
+        tracker = createTracker(db);
     });
-    (0, vitest_1.afterEach)(() => {
+    afterEach(() => {
         tracker.reset();
-        vitest_1.vi.clearAllMocks();
+        vi.clearAllMocks();
     });
-    (0, vitest_1.describe)('Creating new collection(s)', () => {
-        (0, vitest_1.it)('Creates new top-level collection(s)', async () => {
+    describe('Creating new collection(s)', () => {
+        it('Creates new top-level collection(s)', async () => {
             const expected = {
                 collection: 'test_table_2',
                 meta: {
@@ -113,22 +85,22 @@ class Client_PG extends knex_mock_client_1.MockClient {
                 ],
             };
             // Stop call to db later on in apply-snapshot
-            vitest_1.vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(schemas_1.snapshotApplyTestSchema));
+            vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(snapshotApplyTestSchema));
             // We are not actually testing that createOne works, just that is is called correctly
-            const createOneCollectionSpy = vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'createOne').mockResolvedValue('test');
-            const createFieldSpy = vitest_1.vi.spyOn(services_1.FieldsService.prototype, 'createField').mockResolvedValue();
-            await (0, apply_snapshot_1.applySnapshot)(snapshots_1.snapshotCreateCollectionNotNested, {
+            const createOneCollectionSpy = vi.spyOn(CollectionsService.prototype, 'createOne').mockResolvedValue('test');
+            const createFieldSpy = vi.spyOn(FieldsService.prototype, 'createField').mockResolvedValue();
+            await applySnapshot(snapshotCreateCollectionNotNested, {
                 database: db,
-                current: snapshots_1.snapshotBeforeCreateCollection,
-                schema: schemas_1.snapshotApplyTestSchema,
+                current: snapshotBeforeCreateCollection,
+                schema: snapshotApplyTestSchema,
             });
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledTimes(1);
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledWith(expected, mutationOptions);
+            expect(createOneCollectionSpy).toHaveBeenCalledTimes(1);
+            expect(createOneCollectionSpy).toHaveBeenCalledWith(expected, mutationOptions);
             // There should be no fields left to create
             // they will get filtered in createCollections
-            (0, vitest_1.expect)(createFieldSpy).toHaveBeenCalledTimes(0);
+            expect(createFieldSpy).toHaveBeenCalledTimes(0);
         });
-        (0, vitest_1.it)('Creates the highest-level nested collection(s) with existing parents and any children', async () => {
+        it('Creates the highest-level nested collection(s) with existing parents and any children', async () => {
             const expected = {
                 collection: 'test_table_2',
                 meta: {
@@ -248,26 +220,26 @@ class Client_PG extends knex_mock_client_1.MockClient {
                 schema: { name: 'test_table_3' },
             };
             // Stop call to db later on in apply-snapshot
-            vitest_1.vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(schemas_1.snapshotApplyTestSchema));
+            vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(snapshotApplyTestSchema));
             // We are not actually testing that createOne works, just that is is called correctly
-            const createOneCollectionSpy = vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'createOne').mockResolvedValue('test');
-            const createFieldSpy = vitest_1.vi.spyOn(services_1.FieldsService.prototype, 'createField').mockResolvedValue();
-            await (0, apply_snapshot_1.applySnapshot)(snapshots_1.snapshotCreateCollection, {
+            const createOneCollectionSpy = vi.spyOn(CollectionsService.prototype, 'createOne').mockResolvedValue('test');
+            const createFieldSpy = vi.spyOn(FieldsService.prototype, 'createField').mockResolvedValue();
+            await applySnapshot(snapshotCreateCollection, {
                 database: db,
-                current: snapshots_1.snapshotBeforeCreateCollection,
-                schema: schemas_1.snapshotApplyTestSchema,
+                current: snapshotBeforeCreateCollection,
+                schema: snapshotApplyTestSchema,
             });
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledTimes(2);
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledWith(expected, mutationOptions);
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledWith(expected2, mutationOptions);
+            expect(createOneCollectionSpy).toHaveBeenCalledTimes(2);
+            expect(createOneCollectionSpy).toHaveBeenCalledWith(expected, mutationOptions);
+            expect(createOneCollectionSpy).toHaveBeenCalledWith(expected2, mutationOptions);
             // There should be no fields left to create
             // they will get filtered in createCollections
-            (0, vitest_1.expect)(createFieldSpy).toHaveBeenCalledTimes(0);
+            expect(createFieldSpy).toHaveBeenCalledTimes(0);
         });
     });
-    (0, vitest_1.describe)('Creating new collection with UUID primary key field', () => {
+    describe('Creating new collection with UUID primary key field', () => {
         const fieldSchemaMaxLength = 36;
-        vitest_1.it.each(['char', 'varchar'])('casts non-postgres schema snapshots of UUID fields as %s(36) to UUID type', async (fieldSchemaDataType) => {
+        it.each(['char', 'varchar'])('casts non-postgres schema snapshots of UUID fields as %s(36) to UUID type', async (fieldSchemaDataType) => {
             const snapshotToApply = {
                 version: 1,
                 directus: '0.0.0',
@@ -396,11 +368,11 @@ class Client_PG extends knex_mock_client_1.MockClient {
                 ],
             };
             // Stop call to db later on in apply-snapshot
-            vitest_1.vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(schemas_1.snapshotApplyTestSchema));
+            vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(snapshotApplyTestSchema));
             // We are not actually testing that createOne works, just that is is called with the right data type
-            const createOneCollectionSpy = vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'createOne').mockResolvedValue('test');
-            vitest_1.vi.spyOn(services_1.FieldsService.prototype, 'createField').mockResolvedValue();
-            await (0, apply_snapshot_1.applySnapshot)(snapshotToApply, {
+            const createOneCollectionSpy = vi.spyOn(CollectionsService.prototype, 'createOne').mockResolvedValue('test');
+            vi.spyOn(FieldsService.prototype, 'createField').mockResolvedValue();
+            await applySnapshot(snapshotToApply, {
                 database: db,
                 current: {
                     version: 1,
@@ -409,14 +381,14 @@ class Client_PG extends knex_mock_client_1.MockClient {
                     fields: [],
                     relations: [],
                 },
-                schema: schemas_1.snapshotApplyTestSchema,
+                schema: snapshotApplyTestSchema,
             });
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledOnce();
-            (0, vitest_1.expect)(createOneCollectionSpy).toHaveBeenCalledWith(expected, mutationOptions);
+            expect(createOneCollectionSpy).toHaveBeenCalledOnce();
+            expect(createOneCollectionSpy).toHaveBeenCalledWith(expected, mutationOptions);
         });
     });
-    (0, vitest_1.describe)('Delete collections', () => {
-        (0, vitest_1.it)('Deletes interrelated collections', async () => {
+    describe('Delete collections', () => {
+        it('Deletes interrelated collections', async () => {
             const snapshotToApply = {
                 version: 1,
                 directus: '0.0.0',
@@ -425,15 +397,15 @@ class Client_PG extends knex_mock_client_1.MockClient {
                 relations: [],
             };
             // Stop call to db later on in apply-snapshot
-            vitest_1.vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(schemas_1.snapshotApplyTestSchema));
+            vi.spyOn(getSchema, 'getSchema').mockReturnValue(Promise.resolve(snapshotApplyTestSchema));
             // We are not actually testing that deleteOne works, just that is is called correctly
-            const deleteOneCollectionSpy = vitest_1.vi.spyOn(services_1.CollectionsService.prototype, 'deleteOne').mockResolvedValue('test');
-            await (0, apply_snapshot_1.applySnapshot)(snapshotToApply, {
+            const deleteOneCollectionSpy = vi.spyOn(CollectionsService.prototype, 'deleteOne').mockResolvedValue('test');
+            await applySnapshot(snapshotToApply, {
                 database: db,
-                current: snapshots_1.snapshotBeforeDeleteCollection,
-                schema: schemas_1.snapshotApplyTestSchema,
+                current: snapshotBeforeDeleteCollection,
+                schema: snapshotApplyTestSchema,
             });
-            (0, vitest_1.expect)(deleteOneCollectionSpy).toHaveBeenCalledTimes(3);
+            expect(deleteOneCollectionSpy).toHaveBeenCalledTimes(3);
         });
     });
 });

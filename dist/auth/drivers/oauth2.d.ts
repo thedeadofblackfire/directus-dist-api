@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { Client } from 'openid-client';
-import { UsersService } from '../../services';
-import type { AuthDriverOptions, User } from '../../types';
-import { LocalAuthDriver } from './local';
+import { UsersService } from '../../services/users.js';
+import type { AuthDriverOptions, User } from '../../types/index.js';
+import { LocalAuthDriver } from './local.js';
 export declare class OAuth2AuthDriver extends LocalAuthDriver {
     client: Client;
     redirectUrl: string;

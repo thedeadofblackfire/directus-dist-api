@@ -1,10 +1,9 @@
-import SchemaInspector from '@directus/schema';
-import type { Accountability, RawField, SchemaOverview } from '@directus/shared/types';
+import type { Accountability, RawField, SchemaOverview } from '@directus/types';
 import type Keyv from 'keyv';
 import type { Knex } from 'knex';
-import type { Table } from 'knex-schema-inspector/dist/types/table';
-import { Helpers } from '../database/helpers';
-import type { AbstractServiceOptions, Collection, CollectionMeta, MutationOptions } from '../types';
+import type { Table, SchemaInspector } from '@directus/schema';
+import { Helpers } from '../database/helpers/index.js';
+import type { AbstractServiceOptions, Collection, CollectionMeta, MutationOptions } from '../types/index.js';
 export type RawCollection = {
     collection: string;
     fields?: RawField[];
@@ -15,7 +14,7 @@ export declare class CollectionsService {
     knex: Knex;
     helpers: Helpers;
     accountability: Accountability | null;
-    schemaInspector: ReturnType<typeof SchemaInspector>;
+    schemaInspector: SchemaInspector;
     schema: SchemaOverview;
     cache: Keyv<any> | null;
     systemCache: Keyv<any>;

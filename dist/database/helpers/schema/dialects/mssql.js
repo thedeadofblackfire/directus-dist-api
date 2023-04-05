@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SchemaHelperMSSQL = void 0;
-const types_1 = require("../types");
-class SchemaHelperMSSQL extends types_1.SchemaHelper {
+import { SchemaHelper } from '../types.js';
+export class SchemaHelperMSSQL extends SchemaHelper {
     applyLimit(rootQuery, limit) {
         // The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries,
         // and common table expressions, unless TOP, OFFSET or FOR XML is also specified.
@@ -21,4 +18,3 @@ class SchemaHelperMSSQL extends types_1.SchemaHelper {
         return uuid.toUpperCase();
     }
 }
-exports.SchemaHelperMSSQL = SchemaHelperMSSQL;

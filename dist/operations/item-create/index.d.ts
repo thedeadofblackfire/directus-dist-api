@@ -4,5 +4,5 @@ type Options = {
     emitEvents: boolean;
     permissions: string;
 };
-declare const _default: import("@directus/shared/types").OperationApiConfig<Options>;
+declare const _default: import("@directus/types").OperationApiConfig<Options>;
 export default _default;

@@ -1,16 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+import jwt from 'jsonwebtoken';
 /**
  * Check if a given string conforms to the structure of a JWT
  * and whether it is issued by Directus.
  */
-function isDirectusJWT(string) {
+export default function isDirectusJWT(string) {
     try {
-        const payload = jsonwebtoken_1.default.decode(string, { json: true });
+        const payload = jwt.decode(string, { json: true });
         if (payload?.iss !== 'directus')
             return false;
         return true;
@@ -19,4 +14,3 @@ function isDirectusJWT(string) {
         return false;
     }
 }
-exports.default = isDirectusJWT;

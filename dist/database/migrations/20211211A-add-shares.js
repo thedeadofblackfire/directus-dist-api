@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-async function up(knex) {
+export async function up(knex) {
     await knex.schema.createTable('directus_shares', (table) => {
         table.uuid('id').primary().notNullable();
         table.string('name');
@@ -25,8 +22,7 @@ async function up(knex) {
         table.uuid('share').references('id').inTable('directus_shares').onDelete('CASCADE');
     });
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     await knex.schema.alterTable('directus_sessions', (table) => {
         table.uuid('user').notNullable().alter();
         table.json('data');
@@ -35,4 +31,3 @@ async function down(knex) {
     });
     await knex.schema.dropTable('directus_shares');
 }
-exports.down = down;

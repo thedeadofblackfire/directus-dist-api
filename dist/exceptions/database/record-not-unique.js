@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RecordNotUniqueException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class RecordNotUniqueException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class RecordNotUniqueException extends BaseException {
     constructor(field, extensions) {
         if (field) {
             super(`Field "${field}" has to be unique.`, 400, 'RECORD_NOT_UNIQUE', extensions);
@@ -12,4 +9,3 @@ class RecordNotUniqueException extends exceptions_1.BaseException {
         }
     }
 }
-exports.RecordNotUniqueException = RecordNotUniqueException;

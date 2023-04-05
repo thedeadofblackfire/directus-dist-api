@@ -1,19 +1,14 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const cors_1 = __importDefault(require("cors"));
-const env_1 = __importDefault(require("../env"));
+import cors from 'cors';
+import env from '../env.js';
 let corsMiddleware = (_req, _res, next) => next();
-if (env_1.default['CORS_ENABLED'] === true) {
-    corsMiddleware = (0, cors_1.default)({
-        origin: env_1.default['CORS_ORIGIN'] || true,
-        methods: env_1.default['CORS_METHODS'] || 'GET,POST,PATCH,DELETE',
-        allowedHeaders: env_1.default['CORS_ALLOWED_HEADERS'],
-        exposedHeaders: env_1.default['CORS_EXPOSED_HEADERS'],
-        credentials: env_1.default['CORS_CREDENTIALS'] || undefined,
-        maxAge: env_1.default['CORS_MAX_AGE'] || undefined,
+if (env['CORS_ENABLED'] === true) {
+    corsMiddleware = cors({
+        origin: env['CORS_ORIGIN'] || true,
+        methods: env['CORS_METHODS'] || 'GET,POST,PATCH,DELETE',
+        allowedHeaders: env['CORS_ALLOWED_HEADERS'],
+        exposedHeaders: env['CORS_EXPOSED_HEADERS'],
+        credentials: env['CORS_CREDENTIALS'] || undefined,
+        maxAge: env['CORS_MAX_AGE'] || undefined,
     });
 }
-exports.default = corsMiddleware;
+export default corsMiddleware;

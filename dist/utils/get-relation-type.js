@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRelationType = void 0;
-function getRelationType(getRelationOptions) {
+export function getRelationType(getRelationOptions) {
     const { relation, collection, field } = getRelationOptions;
     if (!relation)
         return null;
@@ -19,4 +16,3 @@ function getRelationType(getRelationOptions) {
     }
     return null;
 }
-exports.getRelationType = getRelationType;

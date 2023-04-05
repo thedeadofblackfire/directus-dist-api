@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DateHelperSQLite = void 0;
-const types_1 = require("../types");
-class DateHelperSQLite extends types_1.DateHelper {
+import { DateHelper } from '../types.js';
+export class DateHelperSQLite extends DateHelper {
     parse(date) {
         if (!date) {
             return date;
@@ -27,4 +24,3 @@ class DateHelperSQLite extends types_1.DateHelper {
         }
     }
 }
-exports.DateHelperSQLite = DateHelperSQLite;

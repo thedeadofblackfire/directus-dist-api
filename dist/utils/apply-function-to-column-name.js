@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyFunctionToColumnName = void 0;
-const constants_1 = require("@directus/shared/constants");
+import { REGEX_BETWEEN_PARENS } from '@directus/constants';
 /**
  * Takes in a column name, and transforms the original name with the generated column name based on
  * the applied function.
@@ -13,14 +10,13 @@ const constants_1 = require("@directus/shared/constants");
  * // => "date_created_year"
  * ```
  */
-function applyFunctionToColumnName(column) {
+export function applyFunctionToColumnName(column) {
     if (column.includes('(') && column.includes(')')) {
         const functionName = column.split('(')[0];
-        const columnName = column.match(constants_1.REGEX_BETWEEN_PARENS)[1];
+        const columnName = column.match(REGEX_BETWEEN_PARENS)[1];
         return `${columnName}_${functionName}`;
     }
     else {
         return column;
     }
 }
-exports.applyFunctionToColumnName = applyFunctionToColumnName;

@@ -1,2 +1,2 @@
-import type { RelationMeta } from '@directus/shared/types';
+import type { RelationMeta } from '@directus/types';
 export declare const systemRelationRows: RelationMeta[];

@@ -1,19 +1,15 @@
-"use strict";
 /**
  * @NOTE
  * For all possible keys, see: https://docs.directus.io/self-hosted/config-options/
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshEnv = exports.getEnv = void 0;
-const dotenv_1 = __importDefault(require("dotenv"));
-const fs_1 = __importDefault(require("fs"));
-const lodash_1 = require("lodash");
-const path_1 = __importDefault(require("path"));
-const require_yaml_1 = require("./utils/require-yaml");
-const utils_1 = require("@directus/shared/utils");
+import { parseJSON, toArray } from '@directus/utils';
+import dotenv from 'dotenv';
+import fs from 'fs';
+import { clone, toNumber, toString } from 'lodash-es';
+import path from 'path';
+import { requireYAML } from './utils/require-yaml.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 // keeping this here for now to prevent a circular import to constants.ts
 const allowedEnvironmentVars = [
     // general
@@ -193,7 +189,7 @@ const allowedEnvironmentVars = [
 ].map((name) => new RegExp(`^${name}$`));
 const acceptedEnvTypes = ['string', 'number', 'regex', 'array', 'json'];
 const defaults = {
-    CONFIG_PATH: path_1.default.resolve(process.cwd(), '.env'),
+    CONFIG_PATH: path.resolve(process.cwd(), '.env'),
     HOST: '0.0.0.0',
     PORT: 8055,
     PUBLIC_URL: '/',
@@ -287,17 +283,16 @@ let env = {
 };
 process.env = env;
 env = processValues(env);
-exports.default = env;
+export default env;
 /**
  * Small wrapper function that makes it easier to write unit tests against changing environments
  */
-const getEnv = () => env;
-exports.getEnv = getEnv;
+export const getEnv = () => env;
 /**
  * When changes have been made during runtime, like in the CLI, we can refresh the env object with
  * the newly created variables
  */
-function refreshEnv() {
+export function refreshEnv() {
     env = {
         ...defaults,
         ...process.env,
@@ -306,12 +301,11 @@ function refreshEnv() {
     process.env = env;
     env = processValues(env);
 }
-exports.refreshEnv = refreshEnv;
 function processConfiguration() {
-    const configPath = path_1.default.resolve(process.env['CONFIG_PATH'] || defaults['CONFIG_PATH']);
-    if (fs_1.default.existsSync(configPath) === false)
+    const configPath = path.resolve(process.env['CONFIG_PATH'] || defaults['CONFIG_PATH']);
+    if (fs.existsSync(configPath) === false)
         return {};
-    const fileExt = path_1.default.extname(configPath).toLowerCase();
+    const fileExt = path.extname(configPath).toLowerCase();
     if (fileExt === '.js') {
         const module = require(configPath);
         const exported = module.default || module;
@@ -327,14 +321,14 @@ function processConfiguration() {
         return require(configPath);
     }
     if (fileExt === '.yaml' || fileExt === '.yml') {
-        const data = (0, require_yaml_1.requireYAML)(configPath);
+        const data = requireYAML(configPath);
         if (typeof data === 'object') {
             return data;
         }
         throw new Error('Invalid YAML configuration. Root has to be an object.');
     }
     // Default to env vars plain text files
-    return dotenv_1.default.parse(fs_1.default.readFileSync(configPath, { encoding: 'utf8' }));
+    return dotenv.parse(fs.readFileSync(configPath, { encoding: 'utf8' }));
 }
 function getVariableType(variable) {
     return variable.split(':').slice(0, -1)[0];
@@ -355,9 +349,9 @@ function getEnvironmentValueByType(envVariableString) {
     const envVariableValue = getEnvVariableValue(envVariableString, variableType);
     switch (variableType) {
         case 'number':
-            return (0, lodash_1.toNumber)(envVariableValue);
+            return toNumber(envVariableValue);
         case 'array':
-            return getEnvironmentValueWithPrefix((0, utils_1.toArray)(envVariableValue));
+            return getEnvironmentValueWithPrefix(toArray(envVariableValue));
         case 'regex':
             return new RegExp(envVariableValue);
         case 'string':
@@ -370,7 +364,7 @@ function isEnvSyntaxPrefixPresent(value) {
     return acceptedEnvTypes.some((envType) => value.includes(`${envType}:`));
 }
 function processValues(env) {
-    env = (0, lodash_1.clone)(env);
+    env = clone(env);
     for (let [key, value] of Object.entries(env)) {
         // If key ends with '_FILE', try to get the value from the file defined in this variable
         // and store it in the variable with the same name but without '_FILE' at the end
@@ -382,7 +376,7 @@ function processValues(env) {
                     throw new Error(`Duplicate environment variable encountered: you can't use "${newKey}" and "${key}" simultaneously.`);
                 }
                 try {
-                    value = fs_1.default.readFileSync(value, { encoding: 'utf8' });
+                    value = fs.readFileSync(value, { encoding: 'utf8' });
                     key = newKey;
                 }
                 catch {
@@ -400,13 +394,13 @@ function processValues(env) {
         if (typeMap[key]) {
             switch (typeMap[key]) {
                 case 'number':
-                    env[key] = (0, lodash_1.toNumber)(value);
+                    env[key] = toNumber(value);
                     break;
                 case 'string':
-                    env[key] = (0, lodash_1.toString)(value);
+                    env[key] = toString(value);
                     break;
                 case 'array':
-                    env[key] = (0, utils_1.toArray)(value);
+                    env[key] = toArray(value);
                     break;
                 case 'json':
                     env[key] = tryJSON(value);
@@ -440,7 +434,7 @@ function processValues(env) {
             continue;
         }
         if (String(value).includes(',')) {
-            env[key] = (0, utils_1.toArray)(value);
+            env[key] = toArray(value);
             continue;
         }
         // Try converting the value to a JS object. This allows JSON objects to be passed for nested
@@ -455,7 +449,7 @@ function processValues(env) {
 }
 function tryJSON(value) {
     try {
-        return (0, utils_1.parseJSON)(value);
+        return parseJSON(value);
     }
     catch {
         return value;

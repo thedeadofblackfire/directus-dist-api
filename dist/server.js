@@ -1,52 +1,23 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.startServer = exports.createServer = void 0;
-const terminus_1 = require("@godaddy/terminus");
-const http = __importStar(require("http"));
-const https = __importStar(require("https"));
-const lodash_1 = require("lodash");
-const qs_1 = __importDefault(require("qs"));
-const update_check_1 = __importDefault(require("update-check"));
-const url_1 = __importDefault(require("url"));
-const package_json_1 = __importDefault(require("../package.json"));
-const app_1 = __importDefault(require("./app"));
-const database_1 = __importDefault(require("./database"));
-const emitter_1 = __importDefault(require("./emitter"));
-const env_1 = __importDefault(require("./env"));
-const logger_1 = __importDefault(require("./logger"));
-const get_config_from_env_1 = require("./utils/get-config-from-env");
-async function createServer() {
-    const server = http.createServer(await (0, app_1.default)());
-    Object.assign(server, (0, get_config_from_env_1.getConfigFromEnv)('SERVER_'));
+import { createTerminus } from '@godaddy/terminus';
+import * as http from 'http';
+import * as https from 'https';
+import { once } from 'lodash-es';
+import qs from 'qs';
+import { isUpToDate } from '@directus/update-check';
+import url from 'url';
+import * as pkg from './utils/package.js';
+import createApp from './app.js';
+import getDatabase from './database/index.js';
+import emitter from './emitter.js';
+import env from './env.js';
+import logger from './logger.js';
+import { getConfigFromEnv } from './utils/get-config-from-env.js';
+export async function createServer() {
+    const server = http.createServer(await createApp());
+    Object.assign(server, getConfigFromEnv('SERVER_'));
     server.on('request', function (req, res) {
         const startTime = process.hrtime();
-        const complete = (0, lodash_1.once)(function (finished) {
+        const complete = once(function (finished) {
             const elapsedTime = process.hrtime(startTime);
             const elapsedNanoseconds = elapsedTime[0] * 1e9 + elapsedTime[1];
             const elapsedMilliseconds = elapsedNanoseconds / 1e6;
@@ -64,7 +35,7 @@ async function createServer() {
             const protocol = server instanceof https.Server ? 'https' : 'http';
             // Rely on url.parse for path extraction
             // Doesn't break on illegal URLs
-            const urlInfo = url_1.default.parse(req.originalUrl || req.url);
+            const urlInfo = url.parse(req.originalUrl || req.url);
             const info = {
                 finished,
                 request: {
@@ -76,7 +47,7 @@ async function createServer() {
                     protocol,
                     host: req.headers.host,
                     size: metrics.in,
-                    query: urlInfo.query ? qs_1.default.parse(urlInfo.query) : {},
+                    query: urlInfo.query ? qs.parse(urlInfo.query) : {},
                     headers: req.headers,
                 },
                 response: {
@@ -87,8 +58,8 @@ async function createServer() {
                 ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
                 duration: elapsedMilliseconds.toFixed(),
             };
-            emitter_1.default.emitAction('response', info, {
-                database: (0, database_1.default)(),
+            emitter.emitAction('response', info, {
+                database: getDatabase(),
                 schema: req.schema,
                 accountability: req.accountability ?? null,
             });
@@ -103,55 +74,54 @@ async function createServer() {
         onSignal,
         onShutdown,
     };
-    (0, terminus_1.createTerminus)(server, terminusOptions);
+    createTerminus(server, terminusOptions);
     return server;
     async function beforeShutdown() {
-        if (env_1.default['NODE_ENV'] !== 'development') {
-            logger_1.default.info('Shutting down...');
+        if (env['NODE_ENV'] !== 'development') {
+            logger.info('Shutting down...');
         }
     }
     async function onSignal() {
-        const database = (0, database_1.default)();
+        const database = getDatabase();
         await database.destroy();
-        logger_1.default.info('Database connections destroyed');
+        logger.info('Database connections destroyed');
     }
     async function onShutdown() {
-        emitter_1.default.emitAction('server.stop', { server }, {
-            database: (0, database_1.default)(),
+        emitter.emitAction('server.stop', { server }, {
+            database: getDatabase(),
             schema: null,
             accountability: null,
         });
-        if (env_1.default['NODE_ENV'] !== 'development') {
-            logger_1.default.info('Directus shut down OK. Bye bye!');
+        if (env['NODE_ENV'] !== 'development') {
+            logger.info('Directus shut down OK. Bye bye!');
         }
     }
 }
-exports.createServer = createServer;
-async function startServer() {
+export async function startServer() {
     const server = await createServer();
-    const host = env_1.default['HOST'];
-    const port = env_1.default['PORT'];
+    const host = env['HOST'];
+    const port = env['PORT'];
     server
         .listen(port, host, () => {
-        (0, update_check_1.default)(package_json_1.default)
+        isUpToDate(pkg.name, pkg.version)
             .then((update) => {
             if (update) {
-                logger_1.default.warn(`Update available: ${package_json_1.default.version} -> ${update.latest}`);
+                logger.warn(`Update available: ${pkg.version} -> ${update}`);
             }
         })
             .catch(() => {
             // No need to log/warn here. The update message is only an informative nice-to-have
         });
-        logger_1.default.info(`Server started at http://${host}:${port}`);
-        emitter_1.default.emitAction('server.start', { server }, {
-            database: (0, database_1.default)(),
+        logger.info(`Server started at http://${host}:${port}`);
+        emitter.emitAction('server.start', { server }, {
+            database: getDatabase(),
             schema: null,
             accountability: null,
         });
     })
         .once('error', (err) => {
         if (err?.code === 'EADDRINUSE') {
-            logger_1.default.error(`Port ${port} is already in use`);
+            logger.error(`Port ${port} is already in use`);
             process.exit(1);
         }
         else {
@@ -159,4 +129,3 @@ async function startServer() {
         }
     });
 }
-exports.startServer = startServer;

@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.calculateFieldDepth = void 0;
-const lodash_1 = require("lodash");
+import { isPlainObject, isArray } from 'lodash-es';
 /**
  * Calculates the depth of a given JSON structure, not counting any _ prefixed properties
  *
@@ -34,7 +31,7 @@ const lodash_1 = require("lodash");
  * const result = calculateFieldDepth(deep); // => 3
  * ```
  */
-function calculateFieldDepth(obj, dotNotationKeys = []) {
+export function calculateFieldDepth(obj, dotNotationKeys = []) {
     if (!obj) {
         return 0;
     }
@@ -54,7 +51,7 @@ function calculateFieldDepth(obj, dotNotationKeys = []) {
             }
         }
         else {
-            if (!(0, lodash_1.isPlainObject)(nestedValue) && !(0, lodash_1.isArray)(nestedValue))
+            if (!isPlainObject(nestedValue) && !isArray(nestedValue))
                 continue;
             let nestedDepth = 0;
             if (Array.isArray(nestedValue)) {
@@ -72,4 +69,3 @@ function calculateFieldDepth(obj, dotNotationKeys = []) {
     }
     return depth;
 }
-exports.calculateFieldDepth = calculateFieldDepth;

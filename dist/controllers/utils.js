@@ -1,72 +1,69 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const argon2_1 = __importDefault(require("argon2"));
-const express_1 = require("express");
-const joi_1 = __importDefault(require("joi"));
-const exceptions_1 = require("../exceptions");
-const collection_exists_1 = __importDefault(require("../middleware/collection-exists"));
-const respond_1 = require("../middleware/respond");
-const services_1 = require("../services");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const busboy_1 = __importDefault(require("busboy"));
-const cache_1 = require("../cache");
-const generate_hash_1 = require("../utils/generate-hash");
-const sanitize_query_1 = require("../utils/sanitize-query");
-const router = (0, express_1.Router)();
-router.get('/random/string', (0, async_handler_1.default)(async (req, res) => {
+import argon2 from 'argon2';
+import Busboy from 'busboy';
+import { Router } from 'express';
+import Joi from 'joi';
+import { flushCaches } from '../cache.js';
+import { ForbiddenException, InvalidPayloadException, InvalidQueryException, UnsupportedMediaTypeException, } from '../exceptions/index.js';
+import collectionExists from '../middleware/collection-exists.js';
+import { respond } from '../middleware/respond.js';
+import { ExportService, ImportService } from '../services/import-export.js';
+import { RevisionsService } from '../services/revisions.js';
+import { UtilsService } from '../services/utils.js';
+import asyncHandler from '../utils/async-handler.js';
+import { generateHash } from '../utils/generate-hash.js';
+import { sanitizeQuery } from '../utils/sanitize-query.js';
+const router = Router();
+router.get('/random/string', asyncHandler(async (req, res) => {
     const { nanoid } = await import('nanoid');
     if (req.query && req.query['length'] && Number(req.query['length']) > 500)
-        throw new exceptions_1.InvalidQueryException(`"length" can't be more than 500 characters`);
+        throw new InvalidQueryException(`"length" can't be more than 500 characters`);
     const string = nanoid(req.query?.['length'] ? Number(req.query['length']) : 32);
     return res.json({ data: string });
 }));
-router.post('/hash/generate', (0, async_handler_1.default)(async (req, res) => {
+router.post('/hash/generate', asyncHandler(async (req, res) => {
     if (!req.body?.string) {
-        throw new exceptions_1.InvalidPayloadException(`"string" is required`);
+        throw new InvalidPayloadException(`"string" is required`);
     }
-    const hash = await (0, generate_hash_1.generateHash)(req.body.string);
+    const hash = await generateHash(req.body.string);
     return res.json({ data: hash });
 }));
-router.post('/hash/verify', (0, async_handler_1.default)(async (req, res) => {
+router.post('/hash/verify', asyncHandler(async (req, res) => {
     if (!req.body?.string) {
-        throw new exceptions_1.InvalidPayloadException(`"string" is required`);
+        throw new InvalidPayloadException(`"string" is required`);
     }
     if (!req.body?.hash) {
-        throw new exceptions_1.InvalidPayloadException(`"hash" is required`);
+        throw new InvalidPayloadException(`"hash" is required`);
     }
-    const result = await argon2_1.default.verify(req.body.hash, req.body.string);
+    const result = await argon2.verify(req.body.hash, req.body.string);
     return res.json({ data: result });
 }));
-const SortSchema = joi_1.default.object({
-    item: joi_1.default.alternatives(joi_1.default.string(), joi_1.default.number()).required(),
-    to: joi_1.default.alternatives(joi_1.default.string(), joi_1.default.number()).required(),
+const SortSchema = Joi.object({
+    item: Joi.alternatives(Joi.string(), Joi.number()).required(),
+    to: Joi.alternatives(Joi.string(), Joi.number()).required(),
 });
-router.post('/sort/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, res) => {
+router.post('/sort/:collection', collectionExists, asyncHandler(async (req, res) => {
     const { error } = SortSchema.validate(req.body);
     if (error)
-        throw new exceptions_1.InvalidPayloadException(error.message);
-    const service = new services_1.UtilsService({
+        throw new InvalidPayloadException(error.message);
+    const service = new UtilsService({
         accountability: req.accountability,
         schema: req.schema,
     });
     await service.sort(req.collection, req.body);
     return res.status(200).end();
 }));
-router.post('/revert/:revision', (0, async_handler_1.default)(async (req, _res, next) => {
-    const service = new services_1.RevisionsService({
+router.post('/revert/:revision', asyncHandler(async (req, _res, next) => {
+    const service = new RevisionsService({
         accountability: req.accountability,
         schema: req.schema,
     });
     await service.revert(req.params['revision']);
     next();
-}), respond_1.respond);
-router.post('/import/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, res, next) => {
+}), respond);
+router.post('/import/:collection', collectionExists, asyncHandler(async (req, res, next) => {
     if (req.is('multipart/form-data') === false)
-        throw new exceptions_1.UnsupportedMediaTypeException(`Unsupported Content-Type header`);
-    const service = new services_1.ImportService({
+        throw new UnsupportedMediaTypeException(`Unsupported Content-Type header`);
+    const service = new ImportService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -80,7 +77,7 @@ router.post('/import/:collection', collection_exists_1.default, (0, async_handle
             'content-type': 'application/octet-stream',
         };
     }
-    const busboy = (0, busboy_1.default)({ headers });
+    const busboy = Busboy({ headers });
     busboy.on('file', async (_fieldname, fileStream, { mimeType }) => {
         try {
             await service.import(req.params['collection'], mimeType, fileStream);
@@ -93,29 +90,29 @@ router.post('/import/:collection', collection_exists_1.default, (0, async_handle
     busboy.on('error', (err) => next(err));
     req.pipe(busboy);
 }));
-router.post('/export/:collection', collection_exists_1.default, (0, async_handler_1.default)(async (req, _res, next) => {
+router.post('/export/:collection', collectionExists, asyncHandler(async (req, _res, next) => {
     if (!req.body.query) {
-        throw new exceptions_1.InvalidPayloadException(`"query" is required.`);
+        throw new InvalidPayloadException(`"query" is required.`);
     }
     if (!req.body.format) {
-        throw new exceptions_1.InvalidPayloadException(`"format" is required.`);
+        throw new InvalidPayloadException(`"format" is required.`);
     }
-    const service = new services_1.ExportService({
+    const service = new ExportService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability ?? null);
+    const sanitizedQuery = sanitizeQuery(req.body.query, req.accountability ?? null);
     // We're not awaiting this, as it's supposed to run async in the background
     service.exportToFile(req.params['collection'], sanitizedQuery, req.body.format, {
         file: req.body.file,
     });
     return next();
-}), respond_1.respond);
-router.post('/cache/clear', (0, async_handler_1.default)(async (req, res) => {
+}), respond);
+router.post('/cache/clear', asyncHandler(async (req, res) => {
     if (req.accountability?.admin !== true) {
-        throw new exceptions_1.ForbiddenException();
+        throw new ForbiddenException();
     }
-    await (0, cache_1.flushCaches)(true);
+    await flushCaches(true);
     res.status(200).end();
 }));
-exports.default = router;
+export default router;

@@ -1,6 +1,6 @@
-import type { Query, SchemaOverview } from '@directus/shared/types';
+import type { Query, SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
-import { DatabaseHelper } from '../types';
+import { DatabaseHelper } from '../types.js';
 export type FnHelperOptions = {
     type: string | undefined;
     query: Query | undefined;

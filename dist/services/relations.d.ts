@@ -1,15 +1,15 @@
-import SchemaInspector from '@directus/schema';
-import type { Accountability, Relation, RelationMeta, SchemaOverview } from '@directus/shared/types';
+import type { Accountability, Relation, RelationMeta, SchemaOverview } from '@directus/types';
 import type Keyv from 'keyv';
 import type { Knex } from 'knex';
-import { Helpers } from '../database/helpers';
-import type { AbstractServiceOptions, MutationOptions } from '../types';
-import { ItemsService, QueryOptions } from './items';
-import { PermissionsService } from './permissions';
+import type { SchemaInspector } from '@directus/schema';
+import { Helpers } from '../database/helpers/index.js';
+import type { AbstractServiceOptions, MutationOptions } from '../types/index.js';
+import { ItemsService, QueryOptions } from './items.js';
+import { PermissionsService } from './permissions.js';
 export declare class RelationsService {
     knex: Knex;
     permissionsService: PermissionsService;
-    schemaInspector: ReturnType<typeof SchemaInspector>;
+    schemaInspector: SchemaInspector;
     accountability: Accountability | null;
     schema: SchemaOverview;
     relationsItemService: ItemsService<RelationMeta>;

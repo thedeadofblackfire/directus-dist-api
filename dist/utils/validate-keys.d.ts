@@ -1,5 +1,5 @@
-import type { SchemaOverview } from '@directus/shared/types';
-import type { PrimaryKey } from '../types';
+import type { SchemaOverview } from '@directus/types';
+import type { PrimaryKey } from '../types/index.js';
 /**
  * Validate keys based on its type
  */

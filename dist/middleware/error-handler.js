@@ -1,23 +1,18 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const exceptions_1 = require("@directus/shared/exceptions");
-const utils_1 = require("@directus/shared/utils");
-const database_1 = __importDefault(require("../database"));
-const emitter_1 = __importDefault(require("../emitter"));
-const env_1 = __importDefault(require("../env"));
-const exceptions_2 = require("../exceptions");
-const logger_1 = __importDefault(require("../logger"));
+import { BaseException } from '@directus/exceptions';
+import { toArray } from '@directus/utils';
+import getDatabase from '../database/index.js';
+import emitter from '../emitter.js';
+import env from '../env.js';
+import { MethodNotAllowedException } from '../exceptions/index.js';
+import logger from '../logger.js';
 // Note: keep all 4 parameters here. That's how Express recognizes it's the error handler, even if
 // we don't use next
 const errorHandler = (err, req, res, _next) => {
     let payload = {
         errors: [],
     };
-    const errors = (0, utils_1.toArray)(err);
-    if (errors.some((err) => err instanceof exceptions_1.BaseException === false)) {
+    const errors = toArray(err);
+    if (errors.some((err) => err instanceof BaseException === false)) {
         res.status(500);
     }
     else {
@@ -32,14 +27,14 @@ const errorHandler = (err, req, res, _next) => {
         res.status(status);
     }
     for (const err of errors) {
-        if (env_1.default['NODE_ENV'] === 'development') {
+        if (env['NODE_ENV'] === 'development') {
             err.extensions = {
                 ...(err.extensions || {}),
                 stack: err.stack,
             };
         }
-        if (err instanceof exceptions_1.BaseException) {
-            logger_1.default.debug(err);
+        if (err instanceof BaseException) {
+            logger.debug(err);
             res.status(err.status);
             payload.errors.push({
                 message: err.message,
@@ -48,12 +43,12 @@ const errorHandler = (err, req, res, _next) => {
                     ...err.extensions,
                 },
             });
-            if (err instanceof exceptions_2.MethodNotAllowedException) {
+            if (err instanceof MethodNotAllowedException) {
                 res.header('Allow', err.extensions['allow'].join(', '));
             }
         }
         else {
-            logger_1.default.error(err);
+            logger.error(err);
             res.status(500);
             if (req.accountability?.admin === true) {
                 payload = {
@@ -82,9 +77,9 @@ const errorHandler = (err, req, res, _next) => {
             }
         }
     }
-    emitter_1.default
+    emitter
         .emitFilter('request.error', payload.errors, {}, {
-        database: (0, database_1.default)(),
+        database: getDatabase(),
         schema: req.schema,
         accountability: req.accountability ?? null,
     })
@@ -92,4 +87,4 @@ const errorHandler = (err, req, res, _next) => {
         return res.json(payload);
     });
 };
-exports.default = errorHandler;
+export default errorHandler;

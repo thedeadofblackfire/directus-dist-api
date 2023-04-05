@@ -1,20 +1,16 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const exceptions_1 = require("../exceptions");
-const respond_1 = require("../middleware/respond");
-const use_collection_1 = __importDefault(require("../middleware/use-collection"));
-const validate_batch_1 = require("../middleware/validate-batch");
-const services_1 = require("../services");
-const async_handler_1 = __importDefault(require("../utils/async-handler"));
-const sanitize_query_1 = require("../utils/sanitize-query");
-const router = express_1.default.Router();
-router.use((0, use_collection_1.default)('directus_folders'));
-router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.FoldersService({
+import express from 'express';
+import { ForbiddenException } from '../exceptions/index.js';
+import { respond } from '../middleware/respond.js';
+import useCollection from '../middleware/use-collection.js';
+import { validateBatch } from '../middleware/validate-batch.js';
+import { FoldersService } from '../services/folders.js';
+import { MetaService } from '../services/meta.js';
+import asyncHandler from '../utils/async-handler.js';
+import { sanitizeQuery } from '../utils/sanitize-query.js';
+const router = express.Router();
+router.use(useCollection('directus_folders'));
+router.post('/', asyncHandler(async (req, res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -38,19 +34,19 @@ router.post('/', (0, async_handler_1.default)(async (req, res, next) => {
         }
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.FoldersService({
+}), respond);
+const readHandler = asyncHandler(async (req, res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
-    const metaService = new services_1.MetaService({
+    const metaService = new MetaService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -68,19 +64,19 @@ const readHandler = (0, async_handler_1.default)(async (req, res, next) => {
     res.locals['payload'] = { data: result, meta };
     return next();
 });
-router.get('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.search('/', (0, validate_batch_1.validateBatch)('read'), readHandler, respond_1.respond);
-router.get('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.FoldersService({
+router.get('/', validateBatch('read'), readHandler, respond);
+router.search('/', validateBatch('read'), readHandler, respond);
+router.get('/:pk', asyncHandler(async (req, res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
     const record = await service.readOne(req.params['pk'], req.sanitizedQuery);
     res.locals['payload'] = { data: record || null };
     return next();
-}), respond_1.respond);
-router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.FoldersService({
+}), respond);
+router.patch('/', validateBatch('update'), asyncHandler(async (req, res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -92,7 +88,7 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
         keys = await service.updateMany(req.body.keys, req.body.data);
     }
     else {
-        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        const sanitizedQuery = sanitizeQuery(req.body.query, req.accountability);
         keys = await service.updateByQuery(sanitizedQuery, req.body.data);
     }
     try {
@@ -100,15 +96,15 @@ router.patch('/', (0, validate_batch_1.validateBatch)('update'), (0, async_handl
         res.locals['payload'] = { data: result || null };
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-router.patch('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
-    const service = new services_1.FoldersService({
+}), respond);
+router.patch('/:pk', asyncHandler(async (req, res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -118,15 +114,15 @@ router.patch('/:pk', (0, async_handler_1.default)(async (req, res, next) => {
         res.locals['payload'] = { data: record || null };
     }
     catch (error) {
-        if (error instanceof exceptions_1.ForbiddenException) {
+        if (error instanceof ForbiddenException) {
             return next();
         }
         throw error;
     }
     return next();
-}), respond_1.respond);
-router.delete('/', (0, validate_batch_1.validateBatch)('delete'), (0, async_handler_1.default)(async (req, _res, next) => {
-    const service = new services_1.FoldersService({
+}), respond);
+router.delete('/', validateBatch('delete'), asyncHandler(async (req, _res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
@@ -137,17 +133,17 @@ router.delete('/', (0, validate_batch_1.validateBatch)('delete'), (0, async_hand
         await service.deleteMany(req.body.keys);
     }
     else {
-        const sanitizedQuery = (0, sanitize_query_1.sanitizeQuery)(req.body.query, req.accountability);
+        const sanitizedQuery = sanitizeQuery(req.body.query, req.accountability);
         await service.deleteByQuery(sanitizedQuery);
     }
     return next();
-}), respond_1.respond);
-router.delete('/:pk', (0, async_handler_1.default)(async (req, _res, next) => {
-    const service = new services_1.FoldersService({
+}), respond);
+router.delete('/:pk', asyncHandler(async (req, _res, next) => {
+    const service = new FoldersService({
         accountability: req.accountability,
         schema: req.schema,
     });
     await service.deleteOne(req.params['pk']);
     return next();
-}), respond_1.respond);
-exports.default = router;
+}), respond);
+export default router;

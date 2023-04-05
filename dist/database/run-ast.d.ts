@@ -1,6 +1,6 @@
-import type { Item, SchemaOverview } from '@directus/shared/types';
+import type { Item, SchemaOverview } from '@directus/types';
 import type { Knex } from 'knex';
-import type { AST, NestedCollectionNode } from '../types/ast';
+import type { AST, NestedCollectionNode } from '../types/ast.js';
 type RunASTOptions = {
     /**
      * Query override for the current level

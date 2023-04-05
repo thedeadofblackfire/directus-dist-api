@@ -1,10 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotNullViolationException = void 0;
-const exceptions_1 = require("@directus/shared/exceptions");
-class NotNullViolationException extends exceptions_1.BaseException {
+import { BaseException } from '@directus/exceptions';
+export class NotNullViolationException extends BaseException {
     constructor(field, exceptions) {
         super(`Value for field "${field}" can't be null.`, 400, 'NOT_NULL_VIOLATION', exceptions);
     }
 }
-exports.NotNullViolationException = NotNullViolationException;

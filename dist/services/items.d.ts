@@ -1,7 +1,7 @@
-import { Accountability, PermissionsAction, Query, SchemaOverview } from '@directus/shared/types';
+import { Accountability, PermissionsAction, Query, SchemaOverview } from '@directus/types';
 import type Keyv from 'keyv';
 import type { Knex } from 'knex';
-import type { AbstractService, AbstractServiceOptions, Item as AnyItem, MutationOptions, PrimaryKey } from '../types';
+import type { AbstractService, AbstractServiceOptions, Item as AnyItem, MutationOptions, PrimaryKey } from '../types/index.js';
 export type QueryOptions = {
     stripNonRequested?: boolean;
     permissionsAction?: PermissionsAction;

@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DateHelper = void 0;
-const types_1 = require("../types");
-const date_fns_1 = require("date-fns");
-class DateHelper extends types_1.DatabaseHelper {
+import { DatabaseHelper } from '../types.js';
+import { parseISO } from 'date-fns';
+export class DateHelper extends DatabaseHelper {
     parse(date) {
         // Date generated from NOW()
         if (date instanceof Date) {
@@ -15,10 +12,9 @@ class DateHelper extends types_1.DatabaseHelper {
         return date;
     }
     writeTimestamp(date) {
-        return (0, date_fns_1.parseISO)(date);
+        return parseISO(date);
     }
     fieldFlagForField(_fieldType) {
         return '';
     }
 }
-exports.DateHelper = DateHelper;

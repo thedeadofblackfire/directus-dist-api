@@ -1,4 +1,4 @@
-import { BaseException } from '@directus/shared/exceptions';
+import { BaseException } from '@directus/exceptions';
 export declare class InvalidCredentialsException extends BaseException {
     constructor(message?: string);
 }

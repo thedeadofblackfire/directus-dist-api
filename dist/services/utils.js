@@ -1,39 +1,33 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.UtilsService = void 0;
-const database_1 = __importDefault(require("../database"));
-const collections_1 = require("../database/system-data/collections");
-const emitter_1 = __importDefault(require("../emitter"));
-const exceptions_1 = require("../exceptions");
-class UtilsService {
+import getDatabase from '../database/index.js';
+import { systemCollectionRows } from '../database/system-data/collections/index.js';
+import emitter from '../emitter.js';
+import { ForbiddenException, InvalidPayloadException } from '../exceptions/index.js';
+export class UtilsService {
     knex;
     accountability;
     schema;
     constructor(options) {
-        this.knex = options.knex || (0, database_1.default)();
+        this.knex = options.knex || getDatabase();
         this.accountability = options.accountability || null;
         this.schema = options.schema;
     }
     async sort(collection, { item, to }) {
         const sortFieldResponse = (await this.knex.select('sort_field').from('directus_collections').where({ collection }).first()) ||
-            collections_1.systemCollectionRows;
+            systemCollectionRows;
         const sortField = sortFieldResponse?.sort_field;
         if (!sortField) {
-            throw new exceptions_1.InvalidPayloadException(`Collection "${collection}" doesn't have a sort field.`);
+            throw new InvalidPayloadException(`Collection "${collection}" doesn't have a sort field.`);
         }
         if (this.accountability?.admin !== true) {
             const permissions = this.accountability?.permissions?.find((permission) => {
                 return permission.collection === collection && permission.action === 'update';
             });
             if (!permissions) {
-                throw new exceptions_1.ForbiddenException();
+                throw new ForbiddenException();
             }
             const allowedFields = permissions.fields ?? [];
             if (allowedFields[0] !== '*' && allowedFields.includes(sortField) === false) {
-                throw new exceptions_1.ForbiddenException();
+                throw new ForbiddenException();
             }
         }
         const primaryKeyField = this.schema.collections[collection].primary;
@@ -101,7 +95,7 @@ class UtilsService {
                 .andWhere(sortField, '<=', sourceSortValue)
                 .andWhereNot({ [primaryKeyField]: item });
         }
-        emitter_1.default.emitAction(['items.sort', `${collection}.items.sort`], {
+        emitter.emitAction(['items.sort', `${collection}.items.sort`], {
             collection,
             item,
             to,
@@ -112,4 +106,3 @@ class UtilsService {
         });
     }
 }
-exports.UtilsService = UtilsService;

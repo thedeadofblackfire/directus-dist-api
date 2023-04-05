@@ -1,11 +1,6 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const database_1 = __importDefault(require("../database"));
-const emitter_1 = __importDefault(require("../emitter"));
-const exceptions_1 = require("../exceptions");
+import getDatabase from '../database/index.js';
+import emitter from '../emitter.js';
+import { RouteNotFoundException } from '../exceptions/index.js';
 /**
  * Handles not found routes.
  *
@@ -19,18 +14,18 @@ const exceptions_1 = require("../exceptions");
  */
 const notFound = async (req, res, next) => {
     try {
-        const hooksResult = await emitter_1.default.emitFilter('request.not_found', false, { request: req, response: res }, {
-            database: (0, database_1.default)(),
+        const hooksResult = await emitter.emitFilter('request.not_found', false, { request: req, response: res }, {
+            database: getDatabase(),
             schema: req.schema,
             accountability: req.accountability ?? null,
         });
         if (hooksResult) {
             return next();
         }
-        next(new exceptions_1.RouteNotFoundException(req.path));
+        next(new RouteNotFoundException(req.path));
     }
     catch (err) {
         next(err);
     }
 };
-exports.default = notFound;
+export default notFound;

@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphQLVoid = void 0;
-const graphql_1 = require("graphql");
-exports.GraphQLVoid = new graphql_1.GraphQLScalarType({
+import { GraphQLScalarType } from 'graphql';
+export const GraphQLVoid = new GraphQLScalarType({
     name: 'Void',
     description: 'Represents NULL values',
     serialize() {

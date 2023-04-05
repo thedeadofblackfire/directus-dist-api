@@ -1,4 +1,4 @@
-import type { Extension, ExtensionInfo, ExtensionType } from '@directus/shared/types';
+import type { Extension, ExtensionInfo, ExtensionType } from '@directus/types';
 import { Router } from 'express';
 export declare function getExtensionManager(): ExtensionManager;
 type Options = {

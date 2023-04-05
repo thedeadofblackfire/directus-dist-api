@@ -1,12 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RolesService = void 0;
-const exceptions_1 = require("../exceptions");
-const items_1 = require("./items");
-const permissions_1 = require("./permissions");
-const presets_1 = require("./presets");
-const users_1 = require("./users");
-class RolesService extends items_1.ItemsService {
+import { ForbiddenException, UnprocessableEntityException } from '../exceptions/index.js';
+import { ItemsService } from './items.js';
+import { PermissionsService } from './permissions.js';
+import { PresetsService } from './presets.js';
+import { UsersService } from './users.js';
+export class RolesService extends ItemsService {
     constructor(options) {
         super('directus_roles', options);
     }
@@ -20,12 +17,12 @@ class RolesService extends items_1.ItemsService {
             .first();
         const otherAdminRolesCount = +(otherAdminRoles?.count || 0);
         if (otherAdminRolesCount === 0)
-            throw new exceptions_1.UnprocessableEntityException(`You can't delete the last admin role.`);
+            throw new UnprocessableEntityException(`You can't delete the last admin role.`);
     }
     async checkForOtherAdminUsers(key, users) {
         const role = await this.knex.select('admin_access').from('directus_roles').where('id', '=', key).first();
         if (!role)
-            throw new exceptions_1.ForbiddenException();
+            throw new ForbiddenException();
         // The users that will now be in this new non-admin role
         let userKeys = [];
         if (Array.isArray(users)) {
@@ -51,7 +48,7 @@ class RolesService extends items_1.ItemsService {
             .first();
         const otherAdminUsersCount = +(otherAdminUsers?.count || 0);
         if (otherAdminUsersCount === 0) {
-            throw new exceptions_1.UnprocessableEntityException(`You can't remove the last admin user from the admin role.`);
+            throw new UnprocessableEntityException(`You can't remove the last admin user from the admin role.`);
         }
         return;
     }
@@ -104,22 +101,22 @@ class RolesService extends items_1.ItemsService {
             opts.preMutationException = err;
         }
         await this.knex.transaction(async (trx) => {
-            const itemsService = new items_1.ItemsService('directus_roles', {
+            const itemsService = new ItemsService('directus_roles', {
                 knex: trx,
                 accountability: this.accountability,
                 schema: this.schema,
             });
-            const permissionsService = new permissions_1.PermissionsService({
+            const permissionsService = new PermissionsService({
                 knex: trx,
                 accountability: this.accountability,
                 schema: this.schema,
             });
-            const presetsService = new presets_1.PresetsService({
+            const presetsService = new PresetsService({
                 knex: trx,
                 accountability: this.accountability,
                 schema: this.schema,
             });
-            const usersService = new users_1.UsersService({
+            const usersService = new UsersService({
                 knex: trx,
                 accountability: this.accountability,
                 schema: this.schema,
@@ -145,4 +142,3 @@ class RolesService extends items_1.ItemsService {
         return super.deleteByQuery(query, opts);
     }
 }
-exports.RolesService = RolesService;

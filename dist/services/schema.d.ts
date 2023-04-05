@@ -1,6 +1,6 @@
-import type { Accountability } from '@directus/shared/types';
+import type { Accountability } from '@directus/types';
 import type { Knex } from 'knex';
-import type { AbstractServiceOptions, Snapshot, SnapshotDiff, SnapshotDiffWithHash, SnapshotWithHash } from '../types';
+import type { AbstractServiceOptions, Snapshot, SnapshotDiff, SnapshotDiffWithHash, SnapshotWithHash } from '../types/index.js';
 export declare class SchemaService {
     knex: Knex;
     accountability: Accountability | null;

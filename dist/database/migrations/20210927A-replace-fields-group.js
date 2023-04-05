@@ -1,10 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const lodash_1 = require("lodash");
-async function up(knex) {
+import { uniq } from 'lodash-es';
+export async function up(knex) {
     const groupsInUse = await knex.select('id', 'group').from('directus_fields').whereNotNull('group');
-    const groupIDs = (0, lodash_1.uniq)(groupsInUse.map(({ group }) => group));
+    const groupIDs = uniq(groupsInUse.map(({ group }) => group));
     const groupFields = await knex.select('id', 'field').from('directus_fields').whereIn('id', groupIDs);
     const groupMap = new Map();
     for (const { id, field } of groupFields) {
@@ -25,8 +22,7 @@ async function up(knex) {
             .where({ id });
     }
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     const fieldsThatUseAGroup = await knex
         .select('id', 'collection', 'group')
         .from('directus_fields')
@@ -50,4 +46,3 @@ async function down(knex) {
             .where({ id });
     }
 }
-exports.down = down;

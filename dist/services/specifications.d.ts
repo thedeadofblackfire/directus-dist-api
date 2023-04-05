@@ -1,11 +1,11 @@
 import type { Knex } from 'knex';
 import type { OpenAPIObject } from 'openapi3-ts';
-import type { Accountability, SchemaOverview } from '@directus/shared/types';
-import type { AbstractServiceOptions } from '../types';
-import { CollectionsService } from './collections';
-import { FieldsService } from './fields';
-import { GraphQLService } from './graphql';
-import { RelationsService } from './relations';
+import type { Accountability, SchemaOverview } from '@directus/types';
+import type { AbstractServiceOptions } from '../types/index.js';
+import { CollectionsService } from './collections.js';
+import { FieldsService } from './fields.js';
+import { GraphQLService } from './graphql/index.js';
+import { RelationsService } from './relations.js';
 export declare class SpecificationService {
     accountability: Accountability | null;
     knex: Knex;

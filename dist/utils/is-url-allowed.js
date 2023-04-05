@@ -1,36 +1,30 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const utils_1 = require("@directus/shared/utils");
-const logger_1 = __importDefault(require("../logger"));
-const url_1 = require("url");
+import { toArray } from '@directus/utils';
+import logger from '../logger.js';
+import { URL } from 'url';
 /**
  * Check if url matches allow list either exactly or by domain+path
  */
-function isUrlAllowed(url, allowList) {
-    const urlAllowList = (0, utils_1.toArray)(allowList);
+export default function isUrlAllowed(url, allowList) {
+    const urlAllowList = toArray(allowList);
     if (urlAllowList.includes(url))
         return true;
     const parsedWhitelist = urlAllowList
         .map((allowedURL) => {
         try {
-            const { hostname, pathname } = new url_1.URL(allowedURL);
+            const { hostname, pathname } = new URL(allowedURL);
             return hostname + pathname;
         }
         catch {
-            logger_1.default.warn(`Invalid URL used "${url}"`);
+            logger.warn(`Invalid URL used "${url}"`);
         }
         return null;
     })
         .filter((f) => f);
     try {
-        const { hostname, pathname } = new url_1.URL(url);
+        const { hostname, pathname } = new URL(url);
         return parsedWhitelist.includes(hostname + pathname);
     }
     catch {
         return false;
     }
 }
-exports.default = isUrlAllowed;

@@ -1,14 +1,11 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FnHelperSQLite = void 0;
-const types_1 = require("../types");
+import { FnHelper } from '../types.js';
 const parseLocaltime = (columnType) => {
     if (columnType === 'timestamp') {
         return '';
     }
     return `, 'localtime'`;
 };
-class FnHelperSQLite extends types_1.FnHelper {
+export class FnHelperSQLite extends FnHelper {
     year(table, column, options) {
         return this.knex.raw(`CAST(strftime('%Y', ??.?? / 1000, 'unixepoch'${parseLocaltime(options?.type)}) AS INTEGER)`, [
             table,
@@ -69,4 +66,3 @@ class FnHelperSQLite extends types_1.FnHelper {
         throw new Error(`Couldn't extract type from ${table}.${column}`);
     }
 }
-exports.FnHelperSQLite = FnHelperSQLite;

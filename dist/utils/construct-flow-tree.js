@@ -1,18 +1,14 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.constructFlowTree = void 0;
-const lodash_1 = require("lodash");
-function constructFlowTree(flow) {
+import { omit } from 'lodash-es';
+export function constructFlowTree(flow) {
     const rootOperation = flow.operations.find((operation) => operation.id === flow.operation) ?? null;
     const operationTree = constructOperationTree(rootOperation, flow.operations);
     const flowTree = {
-        ...(0, lodash_1.omit)(flow, 'operations'),
+        ...omit(flow, 'operations'),
         operation: operationTree,
         options: flow.options ?? {},
     };
     return flowTree;
 }
-exports.constructFlowTree = constructFlowTree;
 function constructOperationTree(root, operations) {
     if (root === null) {
         return null;
@@ -23,7 +19,7 @@ function constructOperationTree(root, operations) {
         throw new Error('Undefined reference in operations');
     }
     const operationTree = {
-        ...(0, lodash_1.omit)(root, 'flow'),
+        ...omit(root, 'flow'),
         resolve: constructOperationTree(resolveOperation, operations),
         reject: constructOperationTree(rejectOperation, operations),
     };

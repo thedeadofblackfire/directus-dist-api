@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFilterForPath = exports.traverse = exports.mergePermissionsForShare = void 0;
-const lodash_1 = require("lodash");
-const merge_permissions_1 = require("./merge-permissions");
-const app_access_permissions_1 = require("../database/system-data/app-access-permissions");
-const reduce_schema_1 = require("./reduce-schema");
-function mergePermissionsForShare(currentPermissions, accountability, schema) {
+import { assign, set, uniq } from 'lodash-es';
+import { schemaPermissions } from '../database/system-data/app-access-permissions/index.js';
+import { mergePermissions } from './merge-permissions.js';
+import { reduceSchema } from './reduce-schema.js';
+export function mergePermissionsForShare(currentPermissions, accountability, schema) {
     const defaults = {
         action: 'read',
         role: accountability.role,
@@ -17,9 +14,9 @@ function mergePermissionsForShare(currentPermissions, accountability, schema) {
     };
     const { collection, item } = accountability.share_scope;
     const parentPrimaryKeyField = schema.collections[collection].primary;
-    const reducedSchema = (0, reduce_schema_1.reduceSchema)(schema, currentPermissions, ['read']);
+    const reducedSchema = reduceSchema(schema, currentPermissions, ['read']);
     const relationalPermissions = traverse(reducedSchema, parentPrimaryKeyField, item, collection);
-    const parentCollectionPermission = (0, lodash_1.assign)({}, defaults, {
+    const parentCollectionPermission = assign({}, defaults, {
         collection,
         permissions: {
             [parentPrimaryKeyField]: {
@@ -30,18 +27,18 @@ function mergePermissionsForShare(currentPermissions, accountability, schema) {
     // All permissions that will be merged into the original permissions set
     const allGeneratedPermissions = [
         parentCollectionPermission,
-        ...relationalPermissions.map((generated) => (0, lodash_1.assign)({}, defaults, generated)),
-        ...app_access_permissions_1.schemaPermissions,
+        ...relationalPermissions.map((generated) => assign({}, defaults, generated)),
+        ...schemaPermissions,
     ];
     // All the collections that are touched through the relational tree from the current root collection, and the schema collections
-    const allowedCollections = (0, lodash_1.uniq)(allGeneratedPermissions.map(({ collection }) => collection));
+    const allowedCollections = uniq(allGeneratedPermissions.map(({ collection }) => collection));
     const generatedPermissions = [];
     // Merge all the permissions that relate to the same collection with an _or (this allows you to properly retrieve)
     // the items of a collection if you entered that collection from multiple angles
     for (const collection of allowedCollections) {
         const permissionsForCollection = allGeneratedPermissions.filter((permission) => permission.collection === collection);
         if (permissionsForCollection.length > 0) {
-            generatedPermissions.push(...(0, merge_permissions_1.mergePermissions)('or', permissionsForCollection));
+            generatedPermissions.push(...mergePermissions('or', permissionsForCollection));
         }
         else {
             generatedPermissions.push(...permissionsForCollection);
@@ -49,10 +46,9 @@ function mergePermissionsForShare(currentPermissions, accountability, schema) {
     }
     // Explicitly filter out permissions to collections unrelated to the root parent item.
     const limitedPermissions = currentPermissions.filter(({ action, collection }) => allowedCollections.includes(collection) && action === 'read');
-    return (0, merge_permissions_1.mergePermissions)('and', limitedPermissions, generatedPermissions);
+    return mergePermissions('and', limitedPermissions, generatedPermissions);
 }
-exports.mergePermissionsForShare = mergePermissionsForShare;
-function traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, currentCollection, parentCollections = [], path = []) {
+export function traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, currentCollection, parentCollections = [], path = []) {
     const permissions = [];
     // If there's already a permissions rule for the collection we're currently checking, we'll shortcircuit.
     // This prevents infinite loop in recursive relationships, like articles->related_articles->articles, or
@@ -101,15 +97,13 @@ function traverse(schema, rootItemPrimaryKeyField, rootItemPrimaryKey, currentCo
     }
     return permissions;
 }
-exports.traverse = traverse;
-function getFilterForPath(type, path, rootPrimaryKeyField, rootPrimaryKey) {
+export function getFilterForPath(type, path, rootPrimaryKeyField, rootPrimaryKey) {
     const filter = {};
     if (type === 'm2o' || type === 'a2o') {
-        (0, lodash_1.set)(filter, path.reverse(), { [rootPrimaryKeyField]: { _eq: rootPrimaryKey } });
+        set(filter, path.reverse(), { [rootPrimaryKeyField]: { _eq: rootPrimaryKey } });
     }
     else {
-        (0, lodash_1.set)(filter, path.reverse(), { _eq: rootPrimaryKey });
+        set(filter, path.reverse(), { _eq: rootPrimaryKey });
     }
     return filter;
 }
-exports.getFilterForPath = getFilterForPath;

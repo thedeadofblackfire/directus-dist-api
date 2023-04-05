@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const utils_1 = require("@directus/shared/utils");
-async function up(knex) {
+import { parseJSON } from '@directus/utils';
+export async function up(knex) {
     await knex.schema.alterTable('directus_presets', (table) => {
         table.json('filter');
     });
@@ -11,7 +8,7 @@ async function up(knex) {
         .from('directus_presets');
     for (const preset of presets) {
         if (preset.filters) {
-            const oldFilters = (typeof preset.filters === 'string' ? (0, utils_1.parseJSON)(preset.filters) : preset.filters) ?? [];
+            const oldFilters = (typeof preset.filters === 'string' ? parseJSON(preset.filters) : preset.filters) ?? [];
             if (oldFilters.length === 0)
                 continue;
             const newFilter = {
@@ -33,7 +30,7 @@ async function up(knex) {
             }
         }
         if (preset.layout_query) {
-            const layoutQuery = typeof preset.layout_query === 'string' ? (0, utils_1.parseJSON)(preset.layout_query) : preset.layout_query;
+            const layoutQuery = typeof preset.layout_query === 'string' ? parseJSON(preset.layout_query) : preset.layout_query;
             for (const [layout, query] of Object.entries(layoutQuery)) {
                 if (query.sort) {
                     query.sort = [query.sort];
@@ -49,8 +46,7 @@ async function up(knex) {
         table.dropColumn('filters');
     });
 }
-exports.up = up;
-async function down(knex) {
+export async function down(knex) {
     const { nanoid } = await import('nanoid');
     await knex.schema.alterTable('directus_presets', (table) => {
         table.json('filters');
@@ -60,7 +56,7 @@ async function down(knex) {
         .from('directus_presets');
     for (const preset of presets) {
         if (preset.filter) {
-            const newFilter = (typeof preset.filter === 'string' ? (0, utils_1.parseJSON)(preset.filter) : preset.filter) ?? {};
+            const newFilter = (typeof preset.filter === 'string' ? parseJSON(preset.filter) : preset.filter) ?? {};
             if (Object.keys(newFilter).length === 0)
                 continue;
             const oldFilters = [];
@@ -84,7 +80,7 @@ async function down(knex) {
             }
         }
         if (preset.layout_query) {
-            const layoutQuery = typeof preset.layout_query === 'string' ? (0, utils_1.parseJSON)(preset.layout_query) : preset.layout_query;
+            const layoutQuery = typeof preset.layout_query === 'string' ? parseJSON(preset.layout_query) : preset.layout_query;
             for (const [layout, query] of Object.entries(layoutQuery)) {
                 if (query.sort && Array.isArray(query.sort)) {
                     query.sort = query.sort?.[0] ?? null;
@@ -100,4 +96,3 @@ async function down(knex) {
         table.dropColumn('filter');
     });
 }
-exports.down = down;

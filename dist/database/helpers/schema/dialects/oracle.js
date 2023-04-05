@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SchemaHelperOracle = void 0;
-const types_1 = require("../types");
-class SchemaHelperOracle extends types_1.SchemaHelper {
+import { SchemaHelper } from '../types.js';
+export class SchemaHelperOracle extends SchemaHelper {
     async changeToType(table, column, type, options = {}) {
         await this.changeToTypeByCopy(table, column, type, options);
     }
@@ -33,4 +30,3 @@ class SchemaHelperOracle extends types_1.SchemaHelper {
         return field.type;
     }
 }
-exports.SchemaHelperOracle = SchemaHelperOracle;

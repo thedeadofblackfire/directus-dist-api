@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.down = exports.up = void 0;
-const helpers_1 = require("../helpers");
-async function up(knex) {
-    const helper = (0, helpers_1.getHelpers)(knex).schema;
+import { getHelpers } from '../helpers/index.js';
+export async function up(knex) {
+    const helper = getHelpers(knex).schema;
     await knex.schema.alterTable('directus_relations', (table) => {
         table.dropColumns('many_primary', 'one_primary');
         table.string('one_deselect_action').defaultTo('nullify');
@@ -17,9 +14,8 @@ async function up(knex) {
         default: 'nullify',
     });
 }
-exports.up = up;
-async function down(knex) {
-    const helper = (0, helpers_1.getHelpers)(knex).schema;
+export async function down(knex) {
+    const helper = getHelpers(knex).schema;
     await helper.changeToType('directus_relations', 'sort_field', 'string', {
         length: 255,
     });
@@ -29,4 +25,3 @@ async function down(knex) {
         table.string('one_primary', 64);
     });
 }
-exports.down = down;

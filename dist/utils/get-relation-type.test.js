@@ -1,12 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const get_relation_type_1 = require("../../src/utils/get-relation-type");
-(0, vitest_1.test)('Returns null if no relation object is included', () => {
-    const result = (0, get_relation_type_1.getRelationType)({ relation: null, collection: null, field: 'test' });
-    (0, vitest_1.expect)(result).toBe(null);
+import { expect, test } from 'vitest';
+import { getRelationType } from '../../src/utils/get-relation-type.js';
+test('Returns null if no relation object is included', () => {
+    const result = getRelationType({ relation: null, collection: null, field: 'test' });
+    expect(result).toBe(null);
 });
-(0, vitest_1.test)('Returns a2o if relation matches and includes one_collection_field and one_allowed_collection', () => {
+test('Returns a2o if relation matches and includes one_collection_field and one_allowed_collection', () => {
     const relation = {
         collection: 'pages',
         field: 'item',
@@ -16,27 +14,27 @@ const get_relation_type_1 = require("../../src/utils/get-relation-type");
             one_allowed_collections: ['paragraphs', 'headings', 'images'],
         },
     };
-    const result = (0, get_relation_type_1.getRelationType)({
+    const result = getRelationType({
         relation,
         collection: 'pages',
         field: 'item',
     });
-    (0, vitest_1.expect)(result).toBe('a2o');
+    expect(result).toBe('a2o');
 });
-(0, vitest_1.test)('Returns m2o', () => {
+test('Returns m2o', () => {
     const relation = {
         collection: 'articles',
         field: 'author',
         related_collection: 'authors',
     };
-    const result = (0, get_relation_type_1.getRelationType)({
+    const result = getRelationType({
         relation,
         collection: 'articles',
         field: 'author',
     });
-    (0, vitest_1.expect)(result).toBe('m2o');
+    expect(result).toBe('m2o');
 });
-(0, vitest_1.test)('Returns o2m', () => {
+test('Returns o2m', () => {
     const relation = {
         collection: 'articles',
         field: 'author',
@@ -45,14 +43,14 @@ const get_relation_type_1 = require("../../src/utils/get-relation-type");
             one_field: 'articles',
         },
     };
-    const result = (0, get_relation_type_1.getRelationType)({
+    const result = getRelationType({
         relation,
         collection: 'authors',
         field: 'articles',
     });
-    (0, vitest_1.expect)(result).toBe('o2m');
+    expect(result).toBe('o2m');
 });
-(0, vitest_1.test)('Returns null when field/collection does not match the relationship', () => {
+test('Returns null when field/collection does not match the relationship', () => {
     const relation = {
         collection: 'articles',
         field: 'author',
@@ -61,10 +59,10 @@ const get_relation_type_1 = require("../../src/utils/get-relation-type");
             one_field: 'articles',
         },
     };
-    const result = (0, get_relation_type_1.getRelationType)({
+    const result = getRelationType({
         relation,
         collection: 'unrelated',
         field: 'wrong',
     });
-    (0, vitest_1.expect)(result).toBe(null);
+    expect(result).toBe(null);
 });

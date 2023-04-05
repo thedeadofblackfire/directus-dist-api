@@ -1,12 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const vitest_1 = require("vitest");
-const get_versioned_hash_1 = require("./get-versioned-hash");
-vitest_1.vi.mock('../../package.json', () => ({
+import { test, expect, describe, vi } from 'vitest';
+import { getVersionedHash } from './get-versioned-hash.js';
+vi.mock('./package.js', () => ({
     version: '10.10.10',
 }));
-(0, vitest_1.describe)('getVersionedHash', () => {
-    vitest_1.test.each([
+describe('getVersionedHash', () => {
+    test.each([
         {
             input: {
                 collection: 'test',
@@ -112,6 +110,6 @@ vitest_1.vi.mock('../../package.json', () => ({
             expected: 'fa17767ef6646a72a6cfc211d36886d06896d0fc',
         },
     ])('should return $expected', ({ input, expected }) => {
-        (0, vitest_1.expect)((0, get_versioned_hash_1.getVersionedHash)(input)).toBe(expected);
+        expect(getVersionedHash(input)).toBe(expected);
     });
 });
