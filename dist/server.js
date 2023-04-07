@@ -12,6 +12,7 @@ import emitter from './emitter.js';
 import env from './env.js';
 import logger from './logger.js';
 import { getConfigFromEnv } from './utils/get-config-from-env.js';
+export let SERVER_ONLINE = true;
 export async function createServer() {
     const server = http.createServer(await createApp());
     Object.assign(server, getConfigFromEnv('SERVER_'));
@@ -68,7 +69,9 @@ export async function createServer() {
         res.once('close', complete.bind(null, false));
     });
     const terminusOptions = {
-        timeout: 1000,
+        timeout: env['SERVER_SHUTDOWN_TIMEOUT'] >= 0 && env['SERVER_SHUTDOWN_TIMEOUT'] < Infinity
+            ? env['SERVER_SHUTDOWN_TIMEOUT']
+            : 1000,
         signals: ['SIGINT', 'SIGTERM', 'SIGHUP'],
         beforeShutdown,
         onSignal,
@@ -80,6 +83,7 @@ export async function createServer() {
         if (env['NODE_ENV'] !== 'development') {
             logger.info('Shutting down...');
         }
+        SERVER_ONLINE = false;
     }
     async function onSignal() {
         const database = getDatabase();

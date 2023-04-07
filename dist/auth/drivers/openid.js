@@ -99,7 +99,7 @@ export class OpenIDAuthDriver extends LocalAuthDriver {
         try {
             const client = await this.client;
             const codeChallenge = generators.codeChallenge(payload['codeVerifier']);
-            tokenSet = await client.callback(this.redirectUrl, { code: payload['code'], state: payload['state'] }, { code_verifier: payload['codeVerifier'], state: codeChallenge, nonce: codeChallenge });
+            tokenSet = await client.callback(this.redirectUrl, { code: payload['code'], state: payload['state'], iss: payload['iss'] }, { code_verifier: payload['codeVerifier'], state: codeChallenge, nonce: codeChallenge });
             userInfo = tokenSet.claims();
             if (client.issuer.metadata['userinfo_endpoint']) {
                 userInfo = {
@@ -261,6 +261,7 @@ export function createOpenIDAuthRouter(providerName) {
                 code: req.query['code'],
                 codeVerifier: verifier,
                 state: req.query['state'],
+                iss: req.query['iss'],
             });
         }
         catch (error) {

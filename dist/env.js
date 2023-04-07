@@ -214,6 +214,7 @@ const defaults = {
     REFRESH_TOKEN_COOKIE_SAME_SITE: 'lax',
     REFRESH_TOKEN_COOKIE_NAME: 'directus_refresh_token',
     LOGIN_STALL_TIME: 500,
+    SERVER_SHUTDOWN_TIMEOUT: 1000,
     ROOT_REDIRECT: './admin',
     CORS_ENABLED: false,
     CORS_ORIGIN: false,
@@ -275,6 +276,7 @@ const typeMap = {
     IMPORT_IP_DENY_LIST: 'array',
     FILE_METADATA_ALLOW_LIST: 'array',
     GRAPHQL_INTROSPECTION: 'boolean',
+    SERVER_SHUTDOWN_TIMEOUT: 'number',
 };
 let env = {
     ...defaults,
