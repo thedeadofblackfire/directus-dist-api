@@ -3,26 +3,32 @@ import { getMilliseconds } from './utils/get-milliseconds.js';
 export const SYSTEM_ASSET_ALLOW_LIST = [
     {
         key: 'system-small-cover',
+        format: 'auto',
         transforms: [['resize', { width: 64, height: 64, fit: 'cover' }]],
     },
     {
         key: 'system-small-contain',
+        format: 'auto',
         transforms: [['resize', { width: 64, fit: 'contain' }]],
     },
     {
         key: 'system-medium-cover',
+        format: 'auto',
         transforms: [['resize', { width: 300, height: 300, fit: 'cover' }]],
     },
     {
         key: 'system-medium-contain',
+        format: 'auto',
         transforms: [['resize', { width: 300, fit: 'contain' }]],
     },
     {
         key: 'system-large-cover',
+        format: 'auto',
         transforms: [['resize', { width: 800, height: 800, fit: 'cover' }]],
     },
     {
         key: 'system-large-contain',
+        format: 'auto',
         transforms: [['resize', { width: 800, fit: 'contain' }]],
     },
 ];
@@ -50,4 +56,15 @@ export const COOKIE_OPTIONS = {
     sameSite: env['REFRESH_TOKEN_COOKIE_SAME_SITE'] || 'strict',
 };
 export const OAS_REQUIRED_SCHEMAS = ['Diff', 'Schema', 'Query', 'x-metadata'];
+/** Formats from which transformation is supported */
+export const SUPPORTED_IMAGE_TRANSFORM_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/avif'];
+/** Formats where metadata extraction is supported */
+export const SUPPORTED_IMAGE_METADATA_FORMATS = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'image/tiff',
+    'image/avif',
+];
 export const REDACT_TEXT = '--redact--';

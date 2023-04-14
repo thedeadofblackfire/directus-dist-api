@@ -1,4 +1,5 @@
 import { parseJSON } from '@directus/utils';
+import contentDisposition from 'content-disposition';
 import { Router } from 'express';
 import { merge, pick } from 'lodash-es';
 import { ASSET_TRANSFORM_QUERY_KEYS, SYSTEM_ASSET_ALLOW_LIST } from '../constants.js';
@@ -107,6 +108,16 @@ asyncHandler(async (req, res) => {
     const transformation = res.locals['transformation'].key
         ? res.locals['shortcuts'].find((transformation) => transformation['key'] === res.locals['transformation'].key)
         : res.locals['transformation'];
+    if (transformation.format === 'auto' && req.headers.accept) {
+        let format = 'jpg';
+        if (req.headers.accept.includes('image/webp')) {
+            format = 'webp';
+        }
+        else if (req.headers.accept.includes('image/avif')) {
+            format = 'avif';
+        }
+        transformation.format = format;
+    }
     let range = undefined;
     if (req.headers.range) {
         const rangeParts = /bytes=([0-9]*)-([0-9]*)/.exec(req.headers.range);
@@ -125,7 +136,8 @@ asyncHandler(async (req, res) => {
         }
     }
     const { stream, file, stat } = await service.getAsset(id, transformation, range);
-    res.attachment(req.params['filename'] ?? file.filename_download);
+    const filename = req.params['filename'] ?? file.filename_download;
+    res.attachment(filename);
     res.setHeader('Content-Type', file.type);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', getCacheControlHeader(req, getMilliseconds(env['ASSETS_CACHE_TTL']), false, true));
@@ -143,7 +155,7 @@ asyncHandler(async (req, res) => {
         res.setHeader('Content-Length', stat.size);
     }
     if ('download' in req.query === false) {
-        res.removeHeader('Content-Disposition');
+        res.setHeader('Content-Disposition', contentDisposition(filename, { type: 'inline' }));
     }
     if (req.method.toLowerCase() === 'head') {
         res.status(200);

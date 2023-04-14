@@ -124,16 +124,16 @@ export class RolesService extends ItemsService {
             // Delete permissions/presets for this role, suspend all remaining users in role
             await permissionsService.deleteByQuery({
                 filter: { role: { _in: keys } },
-            }, opts);
+            }, { ...opts, bypassLimits: true });
             await presetsService.deleteByQuery({
                 filter: { role: { _in: keys } },
-            }, opts);
+            }, { ...opts, bypassLimits: true });
             await usersService.updateByQuery({
                 filter: { role: { _in: keys } },
             }, {
                 status: 'suspended',
                 role: null,
-            }, opts);
+            }, { ...opts, bypassLimits: true });
             await itemsService.deleteMany(keys, opts);
         });
         return keys;

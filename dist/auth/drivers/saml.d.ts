@@ -1,9 +1,10 @@
+import * as samlify from 'samlify';
 import { UsersService } from '../../services/users.js';
 import type { AuthDriverOptions, User } from '../../types/index.js';
 import { LocalAuthDriver } from './local.js';
 export declare class SAMLAuthDriver extends LocalAuthDriver {
-    idp: any;
-    sp: any;
+    sp: samlify.ServiceProviderInstance;
+    idp: samlify.IdentityProviderInstance;
     usersService: UsersService;
     config: Record<string, any>;
     constructor(options: AuthDriverOptions, config: Record<string, any>);

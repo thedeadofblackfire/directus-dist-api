@@ -5,7 +5,7 @@ import * as fnHelpers from './fn/index.js';
 import * as geometryHelpers from './geometry/index.js';
 import * as schemaHelpers from './schema/index.js';
 export declare function getHelpers(database: Knex): {
-    date: dateHelpers.postgres | dateHelpers.oracle | dateHelpers.mysql | dateHelpers.mssql | dateHelpers.sqlite;
+    date: dateHelpers.mysql | dateHelpers.postgres | dateHelpers.mssql | dateHelpers.sqlite | dateHelpers.oracle;
     st: geometryHelpers.mysql | geometryHelpers.postgres | geometryHelpers.mssql | geometryHelpers.sqlite | geometryHelpers.oracle | geometryHelpers.redshift;
     schema: schemaHelpers.mysql | schemaHelpers.cockroachdb | schemaHelpers.mssql | schemaHelpers.postgres | schemaHelpers.sqlite | schemaHelpers.oracle;
 };

@@ -1,13 +1,14 @@
 import { FailedValidationException } from '@directus/exceptions';
 import { getSimpleHash, toArray } from '@directus/utils';
 import jwt from 'jsonwebtoken';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, isEmpty } from 'lodash-es';
 import { performance } from 'perf_hooks';
 import getDatabase from '../database/index.js';
 import env from '../env.js';
-import { ForbiddenException, InvalidPayloadException, UnprocessableEntityException } from '../exceptions/index.js';
 import { RecordNotUniqueException } from '../exceptions/database/record-not-unique.js';
+import { ForbiddenException, InvalidPayloadException, UnprocessableEntityException } from '../exceptions/index.js';
 import isUrlAllowed from '../utils/is-url-allowed.js';
+import { verifyJWT } from '../utils/jwt.js';
 import { stall } from '../utils/stall.js';
 import { Url } from '../utils/url.js';
 import { ItemsService } from './items.js';
@@ -112,6 +113,26 @@ export class UsersService extends ItemsService {
         }
     }
     /**
+     * Get basic information of user identified by email
+     */
+    async getUserByEmail(email) {
+        return await this.knex
+            .select('id', 'role', 'status', 'password')
+            .from('directus_users')
+            .whereRaw(`LOWER(??) = ?`, ['email', email.toLowerCase()])
+            .first();
+    }
+    /**
+     * Create url for inviting users
+     */
+    inviteUrl(email, url) {
+        const payload = { email, scope: 'invite' };
+        const token = jwt.sign(payload, env['SECRET'], { expiresIn: '7d', issuer: 'directus' });
+        const inviteURL = url ? new Url(url) : new Url(env['PUBLIC_URL']).addPath('admin', 'accept-invite');
+        inviteURL.setQuery('token', token);
+        return inviteURL.toString();
+    }
+    /**
      * Create a new user
      */
     async createOne(data, opts) {
@@ -151,7 +172,9 @@ export class UsersService extends ItemsService {
         await this.updateMany([key], data, opts);
         return key;
     }
-    async updateBatch(data, opts) {
+    async updateBatch(data, opts = {}) {
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const keys = [];
         await this.knex.transaction(async (trx) => {
@@ -270,31 +293,38 @@ export class UsersService extends ItemsService {
             accountability: this.accountability,
         });
         for (const email of emails) {
-            const payload = { email, scope: 'invite' };
-            const token = jwt.sign(payload, env['SECRET'], { expiresIn: '7d', issuer: 'directus' });
-            const subjectLine = subject ?? "You've been invited";
-            const inviteURL = url ? new Url(url) : new Url(env['PUBLIC_URL']).addPath('admin', 'accept-invite');
-            inviteURL.setQuery('token', token);
-            // Create user first to verify uniqueness
-            await this.createOne({ email, role, status: 'invited' }, opts);
-            await mailService.send({
-                to: email,
-                subject: subjectLine,
-                template: {
-                    name: 'user-invitation',
-                    data: {
-                        url: inviteURL.toString(),
-                        email,
+            // Check if user is known
+            const user = await this.getUserByEmail(email);
+            // Create user first to verify uniqueness if unknown
+            if (isEmpty(user)) {
+                await this.createOne({ email, role, status: 'invited' }, opts);
+                // For known users update role if changed
+            }
+            else if (user.status === 'invited' && user.role !== role) {
+                await this.updateOne(user.id, { role }, opts);
+            }
+            // Send invite for new and already invited users
+            if (isEmpty(user) || user.status === 'invited') {
+                const subjectLine = subject ?? "You've been invited";
+                await mailService.send({
+                    to: email,
+                    subject: subjectLine,
+                    template: {
+                        name: 'user-invitation',
+                        data: {
+                            url: this.inviteUrl(email, url),
+                            email,
+                        },
                     },
-                },
-            });
+                });
+            }
         }
     }
     async acceptInvite(token, password) {
-        const { email, scope } = jwt.verify(token, env['SECRET'], { issuer: 'directus' });
+        const { email, scope } = verifyJWT(token, env['SECRET']);
         if (scope !== 'invite')
             throw new ForbiddenException();
-        const user = await this.knex.select('id', 'status').from('directus_users').where({ email }).first();
+        const user = await this.getUserByEmail(email);
         if (user?.status !== 'invited') {
             throw new InvalidPayloadException(`Email address ${email} hasn't been invited.`);
         }
@@ -308,11 +338,7 @@ export class UsersService extends ItemsService {
     async requestPasswordReset(email, url, subject) {
         const STALL_TIME = 500;
         const timeStart = performance.now();
-        const user = await this.knex
-            .select('status', 'password')
-            .from('directus_users')
-            .whereRaw('LOWER(??) = ?', ['email', email.toLowerCase()])
-            .first();
+        const user = await this.getUserByEmail(email);
         if (user?.status !== 'active') {
             await stall(STALL_TIME, timeStart);
             throw new ForbiddenException();
@@ -355,7 +381,7 @@ export class UsersService extends ItemsService {
         catch (err) {
             opts.preMutationException = err;
         }
-        const user = await this.knex.select('id', 'status', 'password').from('directus_users').where({ email }).first();
+        const user = await this.getUserByEmail(email);
         if (user?.status !== 'active' || hash !== getSimpleHash('' + user.password)) {
             throw new ForbiddenException();
         }

@@ -1,5 +1,5 @@
 import type { BaseException } from '@directus/exceptions';
-import { Accountability, Filter, Query, SchemaOverview } from '@directus/types';
+import type { Accountability, Filter, Query, SchemaOverview } from '@directus/types';
 import { ArgumentNode, FormattedExecutionResult, FragmentDefinitionNode, GraphQLError, GraphQLResolveInfo, GraphQLSchema, SelectionNode } from 'graphql';
 import { ObjectTypeComposer, SchemaComposer } from 'graphql-compose';
 import type { Knex } from 'knex';

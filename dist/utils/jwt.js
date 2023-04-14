@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { InvalidTokenException, ServiceUnavailableException, TokenExpiredException } from '../exceptions/index.js';
-export function verifyAccessJWT(token, secret) {
+export function verifyJWT(token, secret) {
     let payload;
     try {
         payload = jwt.verify(token, secret, {
@@ -18,7 +18,10 @@ export function verifyAccessJWT(token, secret) {
             throw new ServiceUnavailableException(`Couldn't verify token.`, { service: 'jwt' });
         }
     }
-    const { id, role, app_access, admin_access, share, share_scope } = payload;
+    return payload;
+}
+export function verifyAccessJWT(token, secret) {
+    const { id, role, app_access, admin_access, share, share_scope } = verifyJWT(token, secret);
     if (role === undefined || app_access === undefined || admin_access === undefined) {
         throw new InvalidTokenException('Invalid token payload.');
     }

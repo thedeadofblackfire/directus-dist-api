@@ -19,6 +19,14 @@ export declare class UsersService extends ItemsService {
      */
     private checkRemainingActiveAdmin;
     /**
+     * Get basic information of user identified by email
+     */
+    private getUserByEmail;
+    /**
+     * Create url for inviting users
+     */
+    private inviteUrl;
+    /**
      * Create a new user
      */
     createOne(data: Partial<Item>, opts?: MutationOptions): Promise<PrimaryKey>;

@@ -9,6 +9,7 @@ export const TransformationMethods /*: readonly (keyof Sharp)[]*/ = [
     'png',
     'tiff',
     'webp',
+    'avif',
     // Resizing
     // https://sharp.pixelplumbing.com/api-resize
     'resize',
@@ -48,4 +49,3 @@ export const TransformationMethods /*: readonly (keyof Sharp)[]*/ = [
     'extractChannel',
     'bandbool',
 ];
-// @NOTE Keys used in TransformationParams should match ASSET_GENERATION_QUERY_KEYS in constants.ts

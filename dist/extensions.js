@@ -3,6 +3,7 @@ import * as sharedExceptions from '@directus/exceptions';
 import { isIn, isTypeIn, pluralize } from '@directus/utils';
 import { ensureExtensionDirs, generateExtensionsEntrypoint, getLocalExtensions, getPackageExtensions, pathToRelativeUrl, resolvePackage, resolvePackageExtensions, } from '@directus/utils/node';
 import aliasDefault from '@rollup/plugin-alias';
+import nodeResolveDefault from '@rollup/plugin-node-resolve';
 import virtualDefault from '@rollup/plugin-virtual';
 import chokidar from 'chokidar';
 import express, { Router } from 'express';
@@ -29,6 +30,7 @@ import { Url } from './utils/url.js';
 // Workaround for https://github.com/rollup/plugins/issues/1329
 const virtual = virtualDefault;
 const alias = aliasDefault;
+const nodeResolve = nodeResolveDefault;
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let extensionManager;
@@ -48,6 +50,7 @@ class ExtensionManager {
     options;
     extensions = [];
     appExtensions = null;
+    appExtensionChunks;
     apiExtensions = [];
     apiEmitter;
     hookEvents = [];
@@ -61,6 +64,7 @@ class ExtensionManager {
         this.apiEmitter = new Emitter();
         this.endpointRouter = Router();
         this.reloadQueue = new JobQueue();
+        this.appExtensionChunks = new Map();
     }
     async initialize(options = {}) {
         const prevOptions = this.options;
@@ -149,6 +153,9 @@ class ExtensionManager {
     }
     getAppExtensions() {
         return this.appExtensions;
+    }
+    getAppExtensionChunk(name) {
+        return this.appExtensionChunks.get(name) ?? null;
     }
     getEndpointRouter() {
         return this.endpointRouter;
@@ -250,9 +257,14 @@ class ExtensionManager {
                 input: 'entry',
                 external: Object.values(sharedDepsMapping),
                 makeAbsoluteExternalsRelative: false,
-                plugins: [virtual({ entry: entrypoint }), alias({ entries: internalImports })],
+                plugins: [virtual({ entry: entrypoint }), alias({ entries: internalImports }), nodeResolve({ browser: true })],
             });
             const { output } = await bundle.generate({ format: 'es', compact: true });
+            for (const out of output) {
+                if (out.type === 'chunk') {
+                    this.appExtensionChunks.set(out.fileName, out.code);
+                }
+            }
             await bundle.close();
             return output[0].code;
         }

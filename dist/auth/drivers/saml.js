@@ -4,6 +4,8 @@ import express, { Router } from 'express';
 import * as samlify from 'samlify';
 import { getAuthProvider } from '../../auth.js';
 import { COOKIE_OPTIONS } from '../../constants.js';
+import getDatabase from '../../database/index.js';
+import emitter from '../../emitter.js';
 import env from '../../env.js';
 import { RecordNotUniqueException } from '../../exceptions/database/record-not-unique.js';
 import { InvalidCredentialsException, InvalidProviderException } from '../../exceptions/index.js';
@@ -14,11 +16,11 @@ import { UsersService } from '../../services/users.js';
 import asyncHandler from '../../utils/async-handler.js';
 import { getConfigFromEnv } from '../../utils/get-config-from-env.js';
 import { LocalAuthDriver } from './local.js';
-// tell samlify to use validator...
+// Register the samlify schema validator
 samlify.setSchemaValidator(validator);
 export class SAMLAuthDriver extends LocalAuthDriver {
-    idp;
     sp;
+    idp;
     usersService;
     config;
     constructor(options, config) {
@@ -49,15 +51,19 @@ export class SAMLAuthDriver extends LocalAuthDriver {
         }
         const firstName = payload[givenNameKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
         const lastName = payload[familyNameKey ?? 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
+        const userPayload = {
+            provider,
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            external_identifier: identifier.toLowerCase(),
+            role: this.config['defaultRoleId'],
+        };
+        // Run hook so the end user has the chance to augment the
+        // user that is about to be created
+        const updatedUserPayload = await emitter.emitFilter(`auth.create`, userPayload, { identifier: identifier.toLowerCase(), provider: this.config['provider'], providerPayload: { ...payload } }, { database: getDatabase(), schema: this.schema, accountability: null });
         try {
-            return await this.usersService.createOne({
-                provider,
-                first_name: firstName,
-                last_name: lastName,
-                email: email,
-                external_identifier: identifier.toLowerCase(),
-                role: this.config['defaultRoleId'],
-            });
+            return await this.usersService.createOne(updatedUserPayload);
         }
         catch (error) {
             if (error instanceof RecordNotUniqueException) {
@@ -67,7 +73,7 @@ export class SAMLAuthDriver extends LocalAuthDriver {
             throw error;
         }
     }
-    // There's no local checks to be done when the user is authenticated in the IDP
+    // There's no local checks to be done when the user is authenticated in the IdP
     async login(_user) {
         return;
     }
@@ -80,7 +86,7 @@ export function createSAMLAuthRouter(providerName) {
     }));
     router.get('/', asyncHandler(async (req, res) => {
         const { sp, idp } = getAuthProvider(providerName);
-        const { context: url } = await sp.createLoginRequest(idp, 'redirect');
+        const { context: url } = sp.createLoginRequest(idp, 'redirect');
         const parsedUrl = new URL(url);
         if (req.query['redirect']) {
             parsedUrl.searchParams.append('RelayState', req.query['redirect']);
@@ -89,7 +95,7 @@ export function createSAMLAuthRouter(providerName) {
     }));
     router.post('/logout', asyncHandler(async (req, res) => {
         const { sp, idp } = getAuthProvider(providerName);
-        const { context } = await sp.createLogoutRequest(idp, 'redirect', req.body);
+        const { context } = sp.createLogoutRequest(idp, 'redirect', req.body);
         const authService = new AuthenticationService({ accountability: req.accountability, schema: req.schema });
         if (req.cookies[env['REFRESH_TOKEN_COOKIE_NAME']]) {
             const currentRefreshToken = req.cookies[env['REFRESH_TOKEN_COOKIE_NAME']];

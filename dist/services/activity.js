@@ -1,4 +1,4 @@
-import { Action } from '@directus/types';
+import { Action } from '@directus/constants';
 import { uniq } from 'lodash-es';
 import validateUUID from 'uuid-validate';
 import env from '../env.js';

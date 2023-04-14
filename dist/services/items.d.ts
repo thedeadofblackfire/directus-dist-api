@@ -1,4 +1,4 @@
-import { Accountability, PermissionsAction, Query, SchemaOverview } from '@directus/types';
+import type { Accountability, PermissionsAction, Query, SchemaOverview } from '@directus/types';
 import type Keyv from 'keyv';
 import type { Knex } from 'knex';
 import type { AbstractService, AbstractServiceOptions, Item as AnyItem, MutationOptions, PrimaryKey } from '../types/index.js';
@@ -6,6 +6,10 @@ export type QueryOptions = {
     stripNonRequested?: boolean;
     permissionsAction?: PermissionsAction;
     emitEvents?: boolean;
+};
+export type MutationTracker = {
+    trackMutations: (count: number) => void;
+    getCount: () => number;
 };
 export declare class ItemsService<Item extends AnyItem = AnyItem> implements AbstractService {
     collection: string;
@@ -15,6 +19,7 @@ export declare class ItemsService<Item extends AnyItem = AnyItem> implements Abs
     schema: SchemaOverview;
     cache: Keyv<any> | null;
     constructor(collection: string, options: AbstractServiceOptions);
+    createMutationTracker(initialCount?: number): MutationTracker;
     getKeysByQuery(query: Query): Promise<PrimaryKey[]>;
     /**
      * Create a single new item.

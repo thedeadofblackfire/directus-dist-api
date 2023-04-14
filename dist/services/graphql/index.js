@@ -1,5 +1,5 @@
 import { FUNCTIONS } from '@directus/constants';
-import { Action } from '@directus/types';
+import { Action } from '@directus/constants';
 import { parseFilterFunctionPath } from '@directus/utils';
 import argon2 from 'argon2';
 import { execute, GraphQLBoolean, GraphQLEnumType, GraphQLError, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString, GraphQLUnionType, NoSchemaIntrospectionCustomRule, specifiedRules, validate, } from 'graphql';
@@ -1398,10 +1398,10 @@ export class GraphQLService {
      */
     formatError(error) {
         if (Array.isArray(error)) {
-            error[0].extensions['code'] = error[0].code;
+            set(error[0], 'extensions.code', error[0].code);
             return new GraphQLError(error[0].message, undefined, undefined, undefined, undefined, error[0]);
         }
-        error.extensions['code'] = error.code;
+        set(error, 'extensions.code', error.code);
         return new GraphQLError(error.message, undefined, undefined, undefined, undefined, error);
     }
     /**

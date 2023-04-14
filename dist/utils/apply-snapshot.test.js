@@ -14,6 +14,7 @@ describe('applySnapshot', () => {
     const mutationOptions = {
         autoPurgeSystemCache: false,
         bypassEmitAction: expect.any(Function),
+        bypassLimits: true,
     };
     beforeEach(() => {
         db = vi.mocked(knex.default({ client: Client_PG }));

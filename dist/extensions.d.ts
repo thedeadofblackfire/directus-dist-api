@@ -10,6 +10,7 @@ declare class ExtensionManager {
     private options;
     private extensions;
     private appExtensions;
+    private appExtensionChunks;
     private apiExtensions;
     private apiEmitter;
     private hookEvents;
@@ -24,6 +25,7 @@ declare class ExtensionManager {
     getExtensionsList(type?: ExtensionType): ExtensionInfo[];
     getExtension(name: string): Extension | undefined;
     getAppExtensions(): string | null;
+    getAppExtensionChunk(name: string): string | null;
     getEndpointRouter(): Router;
     getEmbeds(): {
         head: string;

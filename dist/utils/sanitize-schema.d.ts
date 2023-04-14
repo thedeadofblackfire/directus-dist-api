@@ -1,3 +1,4 @@
+import type { Column } from '@directus/schema';
 import type { Field, Relation } from '@directus/types';
 import type { Collection } from '../types/index.js';
 /**
@@ -15,6 +16,7 @@ export declare function sanitizeCollection(collection: Collection | undefined): 
  * @returns sanitized field
  */
 export declare function sanitizeField(field: Field | undefined, sanitizeAllSchema?: boolean): Partial<Field> | undefined;
+export declare function sanitizeColumn(column: Column): Pick<Column, "table" | "name" | "numeric_precision" | "numeric_scale" | "data_type" | "default_value" | "max_length" | "is_nullable" | "is_unique" | "is_primary_key" | "is_generated" | "generation_expression" | "has_auto_increment" | "foreign_key_table" | "foreign_key_column">;
 /**
  * Pick certain database vendor specific relation properties that should be compared when performing diff
  *

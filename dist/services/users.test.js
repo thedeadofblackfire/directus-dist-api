@@ -1,13 +1,18 @@
 import knex from 'knex';
 import { createTracker, MockClient } from 'knex-mock-client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ItemsService, UsersService } from './index.js';
+import { ItemsService, MailService, UsersService } from './index.js';
 import { ForbiddenException, InvalidPayloadException } from '../exceptions/index.js';
 import { RecordNotUniqueException } from '../exceptions/database/record-not-unique.js';
 vi.mock('../../src/database/index', () => ({
     default: vi.fn(),
     getDatabaseClient: vi.fn().mockReturnValue('postgres'),
 }));
+vi.mock('./mail', () => {
+    const MailService = vi.fn();
+    MailService.prototype.send = vi.fn();
+    return { MailService };
+});
 const testRoleId = '4ccdb196-14b3-4ed1-b9da-c1978be07ca2';
 const testSchema = {
     collections: {
@@ -55,6 +60,8 @@ describe('Integration Tests', () => {
     });
     describe('Services / Users', () => {
         let service;
+        let mailService;
+        let superCreateManySpy;
         let superUpdateManySpy;
         let checkUniqueEmailsSpy;
         let checkPasswordPolicySpy;
@@ -93,6 +100,7 @@ describe('Integration Tests', () => {
                     relations: [],
                 },
             });
+            superCreateManySpy = vi.spyOn(ItemsService.prototype, 'createMany');
             superUpdateManySpy = vi.spyOn(ItemsService.prototype, 'updateMany');
             // "as any" are needed since these are private methods
             checkUniqueEmailsSpy = vi
@@ -107,12 +115,13 @@ describe('Integration Tests', () => {
             checkRemainingActiveAdminSpy = vi
                 .spyOn(UsersService.prototype, 'checkRemainingActiveAdmin')
                 .mockResolvedValue(() => vi.fn());
+            vi.spyOn(UsersService.prototype, 'inviteUrl').mockImplementation(() => vi.fn());
+            mailService = new MailService({
+                schema: testSchema,
+            });
         });
         afterEach(() => {
-            checkUniqueEmailsSpy.mockClear();
-            checkPasswordPolicySpy.mockClear();
-            checkRemainingAdminExistenceSpy.mockClear();
-            checkRemainingActiveAdminSpy.mockClear();
+            vi.clearAllMocks();
         });
         describe('createOne', () => {
             it('should not checkUniqueEmails', async () => {
@@ -467,6 +476,75 @@ describe('Integration Tests', () => {
                     expect(err).toBeInstanceOf(ForbiddenException);
                 }
                 expect(checkRemainingAdminExistenceSpy).toBeCalledTimes(1);
+            });
+        });
+        describe('invite', () => {
+            it('should invite new users', async () => {
+                const service = new UsersService({
+                    knex: db,
+                    schema: testSchema,
+                    accountability: { role: 'test', admin: true },
+                });
+                const promise = service.inviteUser('user@example.com', 'invite-role', null);
+                await expect(promise).resolves.not.toThrow();
+                expect(superCreateManySpy.mock.lastCall[0]).toEqual([
+                    expect.objectContaining({
+                        email: 'user@example.com',
+                        status: 'invited',
+                        role: 'invite-role',
+                    }),
+                ]);
+                expect(mailService.send).toBeCalledTimes(1);
+            });
+            it('should re-send invites for invited users', async () => {
+                const service = new UsersService({
+                    knex: db,
+                    schema: testSchema,
+                    accountability: { role: 'test', admin: true },
+                });
+                // mock an invited user
+                vi.spyOn(UsersService.prototype, 'getUserByEmail').mockResolvedValueOnce({
+                    status: 'invited',
+                    role: 'invite-role',
+                });
+                const promise = service.inviteUser('user@example.com', 'invite-role', null);
+                await expect(promise).resolves.not.toThrow();
+                expect(superCreateManySpy).not.toBeCalled();
+                expect(mailService.send).toBeCalledTimes(1);
+            });
+            it('should not re-send invites for users in state other than invited', async () => {
+                const service = new UsersService({
+                    knex: db,
+                    schema: testSchema,
+                    accountability: { role: 'test', admin: true },
+                });
+                // mock an active user
+                vi.spyOn(UsersService.prototype, 'getUserByEmail').mockResolvedValueOnce({
+                    status: 'active',
+                    role: 'invite-role',
+                });
+                const promise = service.inviteUser('user@example.com', 'invite-role', null);
+                await expect(promise).resolves.not.toThrow();
+                expect(superCreateManySpy).not.toBeCalled();
+                expect(mailService.send).not.toBeCalled();
+            });
+            it('should update role when re-sent invite contains different role than user has', async () => {
+                const service = new UsersService({
+                    knex: db,
+                    schema: testSchema,
+                    accountability: { role: 'test', admin: true },
+                });
+                tracker.on.select(/select "admin_access" from "directus_roles"/).response({ admin_access: true });
+                // mock an invited user with different role
+                vi.spyOn(UsersService.prototype, 'getUserByEmail').mockResolvedValueOnce({
+                    id: 1,
+                    status: 'invited',
+                    role: 'existing-role',
+                });
+                const promise = service.inviteUser('user@example.com', 'invite-role', null);
+                await expect(promise).resolves.not.toThrow();
+                expect(superUpdateManySpy.mock.lastCall[0]).toEqual([1]);
+                expect(superUpdateManySpy.mock.lastCall[1]).toContain({ role: 'invite-role' });
             });
         });
     });

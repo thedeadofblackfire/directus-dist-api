@@ -1,3 +1,4 @@
+import formatTitle from '@directus/format-title';
 import { toArray } from '@directus/utils';
 import encodeURL from 'encodeurl';
 import exif from 'exif-reader';
@@ -8,6 +9,7 @@ import { pipeline } from 'node:stream/promises';
 import path from 'path';
 import sharp from 'sharp';
 import url from 'url';
+import { SUPPORTED_IMAGE_METADATA_FORMATS } from '../constants.js';
 import emitter from '../emitter.js';
 import env from '../env.js';
 import { ForbiddenException, InvalidPayloadException, ServiceUnavailableException } from '../exceptions/index.js';
@@ -16,7 +18,6 @@ import { getAxios } from '../request/index.js';
 import { getStorage } from '../storage/index.js';
 import { parseIptc, parseXmp } from '../utils/parse-image-metadata.js';
 import { ItemsService } from './items.js';
-import formatTitle from '@directus/format-title';
 export class FilesService extends ItemsService {
     constructor(options) {
         super('directus_files', options);
@@ -69,7 +70,7 @@ export class FilesService extends ItemsService {
         }
         const { size } = await storage.location(data.storage).stat(payload.filename_disk);
         payload.filesize = size;
-        if (['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff'].includes(payload.type)) {
+        if (SUPPORTED_IMAGE_METADATA_FORMATS.includes(payload.type)) {
             const stream = await storage.location(data.storage).read(payload.filename_disk);
             const { height, width, description, title, tags, metadata } = await this.getMetadata(stream);
             payload.height ??= height ?? null;

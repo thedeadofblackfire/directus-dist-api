@@ -9,14 +9,18 @@ import { FieldsService } from '../services/fields.js';
 import { RelationsService } from '../services/relations.js';
 import { DiffKind, } from '../types/index.js';
 import { getSchema } from './get-schema.js';
+import { getHelpers } from '../database/helpers/index.js';
 export async function applyDiff(currentSnapshot, snapshotDiff, options) {
     const database = options?.database ?? getDatabase();
+    const helpers = getHelpers(database);
     const schema = options?.schema ?? (await getSchema({ database, bypassCache: true }));
     const nestedActionEvents = [];
     const mutationOptions = {
         autoPurgeSystemCache: false,
         bypassEmitAction: (params) => nestedActionEvents.push(params),
+        bypassLimits: true,
     };
+    const runPostColumnChange = await helpers.schema.preColumnChange();
     await database.transaction(async (trx) => {
         const collectionsService = new CollectionsService({ knex: trx, schema });
         const getNestedCollectionsToCreate = (currentLevelCollection) => snapshotDiff.collections.filter(({ diff }) => diff[0].rhs?.meta?.group === currentLevelCollection);
@@ -230,6 +234,9 @@ export async function applyDiff(currentSnapshot, snapshotDiff, options) {
             }
         }
     });
+    if (runPostColumnChange) {
+        await helpers.schema.postColumnChange();
+    }
     await clearSystemCache();
     if (nestedActionEvents.length > 0) {
         const updatedSchema = await getSchema({ database, bypassCache: true });

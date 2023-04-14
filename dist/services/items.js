@@ -1,4 +1,4 @@
-import { Action } from '@directus/types';
+import { Action } from '@directus/constants';
 import { assign, clone, cloneDeep, omit, pick, without } from 'lodash-es';
 import { getCache } from '../cache.js';
 import { getHelpers } from '../database/helpers/index.js';
@@ -28,6 +28,21 @@ export class ItemsService {
         this.cache = getCache().cache;
         return this;
     }
+    createMutationTracker(initialCount = 0) {
+        const maxCount = Number(env['MAX_BATCH_MUTATION']);
+        let mutationCount = initialCount;
+        return {
+            trackMutations(count) {
+                mutationCount += count;
+                if (mutationCount > maxCount) {
+                    throw new InvalidPayloadException(`Exceeded max batch mutation limit of ${maxCount}.`);
+                }
+            },
+            getCount() {
+                return mutationCount;
+            },
+        };
+    }
     async getKeysByQuery(query) {
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const readQuery = cloneDeep(query);
@@ -45,7 +60,12 @@ export class ItemsService {
     /**
      * Create a single new item.
      */
-    async createOne(data, opts) {
+    async createOne(data, opts = {}) {
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
+        if (!opts.bypassLimits) {
+            opts.mutationTracker.trackMutations(1);
+        }
         const { ActivityService } = await import('./activity.js');
         const { RevisionsService } = await import('./revisions.js');
         const primaryKeyField = this.schema.collections[this.collection].primary;
@@ -73,7 +93,7 @@ export class ItemsService {
             });
             // Run all hooks that are attached to this event so the end user has the chance to augment the
             // item that is about to be saved
-            const payloadAfterHooks = opts?.emitEvents !== false
+            const payloadAfterHooks = opts.emitEvents !== false
                 ? await emitter.emitFilter(this.eventScope === 'items'
                     ? ['items.create', `${this.collection}.items.create`]
                     : `${this.eventScope}.create`, payload, {
@@ -87,7 +107,7 @@ export class ItemsService {
             const payloadWithPresets = this.accountability
                 ? authorizationService.validatePayload('create', this.collection, payloadAfterHooks)
                 : payloadAfterHooks;
-            if (opts?.preMutationException) {
+            if (opts.preMutationException) {
                 throw opts.preMutationException;
             }
             const { payload: payloadWithM2O, revisions: revisionsM2O, nestedActionEvents: nestedActionEventsM2O, } = await payloadService.processM2O(payloadWithPresets, opts);
@@ -160,16 +180,16 @@ export class ItemsService {
                     // Make sure to set the parent field of the child-revision rows
                     const childrenRevisions = [...revisionsM2O, ...revisionsA2O, ...revisionsO2M];
                     if (childrenRevisions.length > 0) {
-                        await revisionsService.updateMany(childrenRevisions, { parent: revision });
+                        await revisionsService.updateMany(childrenRevisions, { parent: revision }, { bypassLimits: true });
                     }
-                    if (opts?.onRevisionCreate) {
+                    if (opts.onRevisionCreate) {
                         opts.onRevisionCreate(revision);
                     }
                 }
             }
             return primaryKey;
         });
-        if (opts?.emitEvents !== false) {
+        if (opts.emitEvents !== false) {
             const actionEvent = {
                 event: this.eventScope === 'items'
                     ? ['items.create', `${this.collection}.items.create`]
@@ -185,14 +205,14 @@ export class ItemsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts?.bypassEmitAction) {
+            if (opts.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
                 emitter.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
             for (const nestedActionEvent of nestedActionEvents) {
-                if (opts?.bypassEmitAction) {
+                if (opts.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
@@ -200,7 +220,7 @@ export class ItemsService {
                 }
             }
         }
-        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKey;
@@ -208,7 +228,9 @@ export class ItemsService {
     /**
      * Create multiple new items at once. Inserts all provided records sequentially wrapped in a transaction.
      */
-    async createMany(data, opts) {
+    async createMany(data, opts = {}) {
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
         const { primaryKeys, nestedActionEvents } = await this.knex.transaction(async (trx) => {
             const service = new ItemsService(this.collection, {
                 accountability: this.accountability,
@@ -222,14 +244,15 @@ export class ItemsService {
                     ...(opts || {}),
                     autoPurgeCache: false,
                     bypassEmitAction: (params) => nestedActionEvents.push(params),
+                    mutationTracker: opts.mutationTracker,
                 });
                 primaryKeys.push(primaryKey);
             }
             return { primaryKeys, nestedActionEvents };
         });
-        if (opts?.emitEvents !== false) {
+        if (opts.emitEvents !== false) {
             for (const nestedActionEvent of nestedActionEvents) {
-                if (opts?.bypassEmitAction) {
+                if (opts.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
@@ -237,7 +260,7 @@ export class ItemsService {
                 }
             }
         }
-        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKeys;
@@ -354,10 +377,12 @@ export class ItemsService {
     /**
      * Update multiple items in a single transaction
      */
-    async updateBatch(data, opts) {
+    async updateBatch(data, opts = {}) {
         if (!Array.isArray(data)) {
             throw new InvalidPayloadException('Input should be an array of items.');
         }
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
         const primaryKeyField = this.schema.collections[this.collection].primary;
         const keys = [];
         try {
@@ -376,7 +401,7 @@ export class ItemsService {
             });
         }
         finally {
-            if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+            if (this.cache && env['CACHE_AUTO_PURGE'] && opts.autoPurgeCache !== false) {
                 await this.cache.clear();
             }
         }
@@ -385,7 +410,12 @@ export class ItemsService {
     /**
      * Update many items by primary key, setting all items to the same change
      */
-    async updateMany(keys, data, opts) {
+    async updateMany(keys, data, opts = {}) {
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
+        if (!opts.bypassLimits) {
+            opts.mutationTracker.trackMutations(keys.length);
+        }
         const { ActivityService } = await import('./activity.js');
         const { RevisionsService } = await import('./revisions.js');
         const primaryKeyField = this.schema.collections[this.collection].primary;
@@ -403,7 +433,7 @@ export class ItemsService {
         });
         // Run all hooks that are attached to this event so the end user has the chance to augment the
         // item that is about to be saved
-        const payloadAfterHooks = opts?.emitEvents !== false
+        const payloadAfterHooks = opts.emitEvents !== false
             ? await emitter.emitFilter(this.eventScope === 'items'
                 ? ['items.update', `${this.collection}.items.update`]
                 : `${this.eventScope}.update`, payload, {
@@ -423,7 +453,7 @@ export class ItemsService {
         const payloadWithPresets = this.accountability
             ? authorizationService.validatePayload('update', this.collection, payloadAfterHooks)
             : payloadAfterHooks;
-        if (opts?.preMutationException) {
+        if (opts.preMutationException) {
             throw opts.preMutationException;
         }
         await this.knex.transaction(async (trx) => {
@@ -466,7 +496,7 @@ export class ItemsService {
                     user_agent: this.accountability.userAgent,
                     origin: this.accountability.origin,
                     item: key,
-                })));
+                })), { bypassLimits: true });
                 if (this.schema.collections[this.collection].accountability === 'all') {
                     const itemsService = new ItemsService(this.collection, {
                         knex: trx,
@@ -484,10 +514,10 @@ export class ItemsService {
                         data: snapshots && Array.isArray(snapshots) ? JSON.stringify(snapshots[index]) : JSON.stringify(snapshots),
                         delta: await payloadService.prepareDelta(payloadWithTypeCasting),
                     })))).filter((revision) => revision.delta);
-                    const revisionIDs = await revisionsService.createMany(revisions);
+                    const revisionIDs = await revisionsService.createMany(revisions, { bypassLimits: true });
                     for (let i = 0; i < revisionIDs.length; i++) {
                         const revisionID = revisionIDs[i];
-                        if (opts?.onRevisionCreate) {
+                        if (opts.onRevisionCreate) {
                             opts.onRevisionCreate(revisionID);
                         }
                         if (i === 0) {
@@ -496,17 +526,17 @@ export class ItemsService {
                             // with all other revisions on the current level as regular "flat" updates, and
                             // nested revisions as children of this first "root" item.
                             if (childrenRevisions.length > 0) {
-                                await revisionsService.updateMany(childrenRevisions, { parent: revisionID });
+                                await revisionsService.updateMany(childrenRevisions, { parent: revisionID }, { bypassLimits: true });
                             }
                         }
                     }
                 }
             }
         });
-        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts.autoPurgeCache !== false) {
             await this.cache.clear();
         }
-        if (opts?.emitEvents !== false) {
+        if (opts.emitEvents !== false) {
             const actionEvent = {
                 event: this.eventScope === 'items'
                     ? ['items.update', `${this.collection}.items.update`]
@@ -522,14 +552,14 @@ export class ItemsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts?.bypassEmitAction) {
+            if (opts.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
                 emitter.emitAction(actionEvent.event, actionEvent.meta, actionEvent.context);
             }
             for (const nestedActionEvent of nestedActionEvents) {
-                if (opts?.bypassEmitAction) {
+                if (opts.bypassEmitAction) {
                     opts.bypassEmitAction(nestedActionEvent);
                 }
                 else {
@@ -564,7 +594,9 @@ export class ItemsService {
     /**
      * Upsert many items
      */
-    async upsertMany(payloads, opts) {
+    async upsertMany(payloads, opts = {}) {
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
         const primaryKeys = await this.knex.transaction(async (trx) => {
             const service = new ItemsService(this.collection, {
                 accountability: this.accountability,
@@ -578,7 +610,7 @@ export class ItemsService {
             }
             return primaryKeys;
         });
-        if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
+        if (this.cache && env['CACHE_AUTO_PURGE'] && opts.autoPurgeCache !== false) {
             await this.cache.clear();
         }
         return primaryKeys;
@@ -604,7 +636,12 @@ export class ItemsService {
     /**
      * Delete multiple items by primary key
      */
-    async deleteMany(keys, opts) {
+    async deleteMany(keys, opts = {}) {
+        if (!opts.mutationTracker)
+            opts.mutationTracker = this.createMutationTracker();
+        if (!opts.bypassLimits) {
+            opts.mutationTracker.trackMutations(keys.length);
+        }
         const { ActivityService } = await import('./activity.js');
         const primaryKeyField = this.schema.collections[this.collection].primary;
         validateKeys(this.schema, this.collection, primaryKeyField, keys);
@@ -616,10 +653,10 @@ export class ItemsService {
             });
             await authorizationService.checkAccess('delete', this.collection, keys);
         }
-        if (opts?.preMutationException) {
+        if (opts.preMutationException) {
             throw opts.preMutationException;
         }
-        if (opts?.emitEvents !== false) {
+        if (opts.emitEvents !== false) {
             await emitter.emitFilter(this.eventScope === 'items' ? ['items.delete', `${this.collection}.items.delete`] : `${this.eventScope}.delete`, keys, {
                 collection: this.collection,
             }, {
@@ -643,13 +680,13 @@ export class ItemsService {
                     user_agent: this.accountability.userAgent,
                     origin: this.accountability.origin,
                     item: key,
-                })));
+                })), { bypassLimits: true });
             }
         });
         if (this.cache && env['CACHE_AUTO_PURGE'] && opts?.autoPurgeCache !== false) {
             await this.cache.clear();
         }
-        if (opts?.emitEvents !== false) {
+        if (opts.emitEvents !== false) {
             const actionEvent = {
                 event: this.eventScope === 'items'
                     ? ['items.delete', `${this.collection}.items.delete`]
@@ -665,7 +702,7 @@ export class ItemsService {
                     accountability: this.accountability,
                 },
             };
-            if (opts?.bypassEmitAction) {
+            if (opts.bypassEmitAction) {
                 opts.bypassEmitAction(actionEvent);
             }
             else {
@@ -695,7 +732,7 @@ export class ItemsService {
                     defaults[name] = null;
                     continue;
                 }
-                if (field.defaultValue)
+                if (field.defaultValue !== null)
                     defaults[name] = field.defaultValue;
             }
             return defaults;

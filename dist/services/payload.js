@@ -348,6 +348,7 @@ export class PayloadService {
                         onRevisionCreate: (pk) => revisions.push(pk),
                         bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         emitEvents: opts?.emitEvents,
+                        mutationTracker: opts?.mutationTracker,
                     });
                 }
             }
@@ -356,6 +357,7 @@ export class PayloadService {
                     onRevisionCreate: (pk) => revisions.push(pk),
                     bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     emitEvents: opts?.emitEvents,
+                    mutationTracker: opts?.mutationTracker,
                 });
             }
             // Overwrite the nested object with just the primary key, so the parent level can be saved correctly
@@ -408,6 +410,7 @@ export class PayloadService {
                         onRevisionCreate: (pk) => revisions.push(pk),
                         bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         emitEvents: opts?.emitEvents,
+                        mutationTracker: opts?.mutationTracker,
                     });
                 }
             }
@@ -416,6 +419,7 @@ export class PayloadService {
                     onRevisionCreate: (pk) => revisions.push(pk),
                     bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     emitEvents: opts?.emitEvents,
+                    mutationTracker: opts?.mutationTracker,
                 });
             }
             // Overwrite the nested object with just the primary key, so the parent level can be saved correctly
@@ -497,6 +501,7 @@ export class PayloadService {
                     onRevisionCreate: (pk) => revisions.push(pk),
                     bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                     emitEvents: opts?.emitEvents,
+                    mutationTracker: opts?.mutationTracker,
                 })));
                 const query = {
                     filter: {
@@ -520,6 +525,7 @@ export class PayloadService {
                     await itemsService.deleteByQuery(query, {
                         bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         emitEvents: opts?.emitEvents,
+                        mutationTracker: opts?.mutationTracker,
                     });
                 }
                 else {
@@ -527,6 +533,7 @@ export class PayloadService {
                         onRevisionCreate: (pk) => revisions.push(pk),
                         bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         emitEvents: opts?.emitEvents,
+                        mutationTracker: opts?.mutationTracker,
                     });
                 }
             }
@@ -568,6 +575,7 @@ export class PayloadService {
                         onRevisionCreate: (pk) => revisions.push(pk),
                         bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                         emitEvents: opts?.emitEvents,
+                        mutationTracker: opts?.mutationTracker,
                     });
                 }
                 if (alterations.update) {
@@ -580,6 +588,7 @@ export class PayloadService {
                             onRevisionCreate: (pk) => revisions.push(pk),
                             bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                             emitEvents: opts?.emitEvents,
+                            mutationTracker: opts?.mutationTracker,
                         });
                     }
                 }
@@ -604,6 +613,7 @@ export class PayloadService {
                         await itemsService.deleteByQuery(query, {
                             bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                             emitEvents: opts?.emitEvents,
+                            mutationTracker: opts?.mutationTracker,
                         });
                     }
                     else {
@@ -611,6 +621,7 @@ export class PayloadService {
                             onRevisionCreate: (pk) => revisions.push(pk),
                             bypassEmitAction: (params) => opts?.bypassEmitAction ? opts.bypassEmitAction(params) : nestedActionEvents.push(params),
                             emitEvents: opts?.emitEvents,
+                            mutationTracker: opts?.mutationTracker,
                         });
                     }
                 }

@@ -83,8 +83,8 @@ const errorHandler = (err, req, res, _next) => {
         schema: req.schema,
         accountability: req.accountability ?? null,
     })
-        .then(() => {
-        return res.json(payload);
+        .then((updatedErrors) => {
+        return res.json({ ...payload, errors: updatedErrors });
     });
 };
 export default errorHandler;

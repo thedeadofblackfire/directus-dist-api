@@ -1,44 +1,24 @@
-import { isNil } from 'lodash-es';
-// Extract transforms from a preset
 export function resolvePreset(input, file) {
-    // Do the format conversion last
-    return [extractResize(input), ...(input.transforms ?? []), extractToFormat(input, file)].filter((transform) => transform !== undefined);
-}
-function extractOptions(keys, numberKeys = [], booleanKeys = []) {
-    return function (input) {
-        return Object.entries(input).reduce((config, [key, value]) => keys.includes(key) && isNil(value) === false
-            ? {
-                ...config,
-                [key]: numberKeys.includes(key)
-                    ? +value
-                    : booleanKeys.includes(key)
-                        ? Boolean(value)
-                        : value,
-            }
-            : config, {});
-    };
-}
-// Extract format transform from a preset
-function extractToFormat(input, file) {
-    const options = extractOptions(['format', 'quality'], ['quality'])(input);
-    return Object.keys(options).length > 0
-        ? [
+    const transforms = input.transforms ?? [];
+    if (input.format || input.quality)
+        transforms.push([
             'toFormat',
-            options.format || file.type.split('/')[1],
+            input.format || file.type.split('/')[1],
             {
-                quality: options.quality,
+                quality: input.quality ? Number(input.quality) : undefined,
             },
-        ]
-        : undefined;
-}
-function extractResize(input) {
-    const resizable = ['width', 'height'].some((key) => key in input);
-    if (!resizable)
-        return undefined;
-    return [
-        'resize',
-        extractOptions(['width', 'height', 'fit', 'withoutEnlargement'], ['width', 'height'], ['withoutEnlargement'])(input),
-    ];
+        ]);
+    if (input.width || input.height)
+        transforms.push([
+            'resize',
+            {
+                width: input.width ? Number(input.width) : undefined,
+                height: input.height ? Number(input.height) : undefined,
+                fit: input.fit,
+                withoutEnlargement: input.withoutEnlargement ? Boolean(input.withoutEnlargement) : undefined,
+            },
+        ]);
+    return transforms;
 }
 /**
  * Try to extract a file format from an array of `Transformation`'s.
