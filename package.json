@@ -149,7 +149,7 @@
     "@directus/exceptions": "9.25.1",
     "@directus/extensions-sdk": "9.25.1",
     "@directus/schema": "9.25.1",
-    "@directus/specs": "9.25.1",
+    "@directus/specs": "github:thedeadofblackfire/directus-dist-specs",
     "@directus/storage": "9.25.1",
     "@directus/storage-driver-azure": "9.25.1",
     "@directus/storage-driver-cloudinary": "9.25.1",
